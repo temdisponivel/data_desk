@@ -205,7 +205,7 @@ ParseExpression(Tokenizer *tokenizer, ParseContext *context)
     {
         NextToken(tokenizer);
         expression = ParseExpression(tokenizer, context);
-        if(RequireToken(tokenizer, ")", 0));
+        RequireToken(tokenizer, ")", 0);
     }
     else if(token.type == TOKEN_alphanumeric_block)
     {
@@ -447,7 +447,7 @@ ParseStruct(Tokenizer *tokenizer, ParseContext *context)
     
     Token struct_name = {0};
     
-    if(!RequireTokenType(tokenizer, TOKEN_alphanumeric_block, &struct_name));
+    RequireTokenType(tokenizer, TOKEN_alphanumeric_block, &struct_name);
     
     if(!RequireToken(tokenizer, "{", 0))
     {
@@ -465,7 +465,7 @@ ParseStruct(Tokenizer *tokenizer, ParseContext *context)
     while(1)
     {
         Token tag = {0};
-        if(RequireTokenType(tokenizer, TOKEN_tag, &tag));
+        RequireTokenType(tokenizer, TOKEN_tag, &tag);
         
         Tokenizer reset_tokenizer = *tokenizer;
         
@@ -528,7 +528,7 @@ ParseCode(Tokenizer *tokenizer, ParseContext *context)
     do
     {
         Token tag = {0};
-        if(RequireTokenType(tokenizer, TOKEN_tag, &tag));
+        RequireTokenType(tokenizer, TOKEN_tag, &tag);
         
         token = PeekToken(tokenizer);
         
