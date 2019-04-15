@@ -26,7 +26,7 @@ To use Data Desk, you'll need to do a few things:
 
 1. Run the command `git clone https://github.com/ryanfleury/data_desk`
 2. `cd data_desk`
-3. `build` on Windows (Linux builds not yet officially supported, but the build is extremely simple, so if you take a look at `build.bat` you can create a Linux equivalent very easily).
+3. `build` on Windows or `./build.sh` on Mac/Linux
 
 NOTE: The `build` command on Windows expects to find `cl` (MSVC). Your environment should know about this. The easiest way to do this is to call `vcvarsall.bat` in your terminal environemnt, which is packaged with Visual Studio.
 
