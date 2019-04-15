@@ -5,5 +5,5 @@ if [ ! -d "./build" ]; then
 fi
 
 pushd build
-clang ../source/data_desk_main.c -DBUILD_LINUX -o ./data_desk
+clang ../source/data_desk_main.c -DBUILD_LINUX=1 -DBUILD_WIN32=0 -o ./data_desk
 popd
