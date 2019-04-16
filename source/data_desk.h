@@ -175,6 +175,7 @@ DataDeskASTNode;
  */
 
 int DataDeskStringHasSubString(char *tag, char *substring);
+int DataDeskGetTagNodeWithTag(DataDeskASTNode *root, char *tag);
 int DataDeskNodeHasTag(DataDeskASTNode *root, char *tag);
 int DataDeskStructHasTag(DataDeskStruct struct_info, char *tag);
 int DataDeskDeclarationHasTag(DataDeskDeclaration declaration_info, char *tag);
@@ -238,21 +239,28 @@ DataDeskStringHasSubString(char *string, char *substring)
     return matches;
 }
 
-int
-DataDeskNodeHasTag(DataDeskASTNode *node, char *tag)
+char *
+DataDeskGetTagStringWithSubString(DataDeskASTNode *root, char *tag)
 {
-    int has = 0;
-    for(DataDeskASTNode *tag_node = node->first_tag;
+    char *str = 0;
+    for(DataDeskASTNode *tag_node = root->first_tag;
         tag_node;
         tag_node = tag_node->next)
     {
         if(DataDeskStringHasSubString(tag_node->string, tag))
         {
-            has = 1;
+            str = tag_node->string;
             break;
         }
     }
-    return has;
+    return str;
+}
+
+int
+DataDeskNodeHasTag(DataDeskASTNode *node, char *tag)
+{
+    char *tag_str = DataDeskGetTagStringWithSubString(node, tag);
+    return tag_str != 0;
 }
 
 int
