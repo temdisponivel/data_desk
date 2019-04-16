@@ -307,6 +307,13 @@ GetBinaryOperatorStringFromType(int type)
         "-",
         "*",
         "/",
+        "%",
+        "<<",
+        ">>",
+        "&",
+        "|",
+        "&&",
+        "||",
     };
     
     return binary_operator_strings[type];

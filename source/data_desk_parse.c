@@ -600,6 +600,7 @@ ParseCode(Tokenizer *tokenizer, ParseContext *context)
                     {
                         ASTNode *constant = ParseContextAllocateASTNode(context);
                         constant->type = DATA_DESK_AST_NODE_TYPE_constant_definition;
+                        constant->first_tag = tag_list;
                         constant->string = name.string;
                         constant->string_length = name.string_length;
                         constant->constant_definition.expression = ParseExpression(tokenizer, context);

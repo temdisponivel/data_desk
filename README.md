@@ -46,3 +46,108 @@ Grab an [example](https://github.com/ryanfleury/data_desk/blob/master/example_da
 To run Data Desk with your custom layer, you can use the following command template:
 
 `data_desk --custom /path/to/custom/layer /file/to/parse/1 /file/to/parse/2 ...`
+
+## Data Desk (.ds) File Documentation
+
+1. Identifiers
+2. Numeric Constants
+3. String Constants
+4. Character Constants
+5. Binary Operators
+6. Expressions
+7. Types
+8. Declarations
+9. Structs
+10. Constant Expressions
+11. Comments
+12. Tags
+
+### Identifiers
+
+`Identifier`s are defined as a sequence of characters that begin with either an underscore or an alphabetic character, and contain numeric characters, alphabetic characters, or underscores (similar to C).
+
+### Numeric Constants
+
+Numeric constants (`Number`s) are defined as a sequence of characters that begin with a numeric character, and contain only numeric characters, periods, or alphabetic characters.
+
+NOTE: Data Desk does not guarantee the correctness as defined by programming languages of your numeric constants. For example, the following will be interpreted by Data Desk as a numeric constant: `1.2.3.a.b.c`. Because Data Desk does not do any evaluation of numeric constants, it will not enforce validity of numeric constants.
+
+### String Constants
+
+String constants (`String`s) can be *single-line* or *multi-line*.
+
+A *single-line* string constant is defined similarly to those in C. It begins with a double-quote character, and ends with a *non-escaped* double-quote character. Double-quote characters can be escaped with a backslash.
+
+A *multi-line* string constant is defined as beginning with three double-quote characters (`"""`), and ending with three double-quote characters (`"""`).
+
+### Character Constants
+
+Character constants (`Char`s) are defined almost identically to single-line string constants, but with single-quote beginning and ending characters instead of double-quote characters.
+
+### Binary Operators
+
+Data Desk defines a subset of the binary operators found in C. It does not define shorthand assignment operators, like `+=` or `>>=`. The following binary operators are defined (in order of ascending precedence):
+
+ * `+`: Addition
+ * `-`: Subtraction
+ * `*`: Multiplication
+ * `/`: Division
+ * `%`: Modulus
+ * `<<`: Left Bitshift
+ * `>>`: Right Bitshift
+ * `&`: Bitwise And
+ * `|`: Bitwise Or
+ * `&&`: Boolean And
+ * `||`: Boolean Or
+
+### Expressions
+
+An expression (`Expr`) in Data Desk is defined as being one of the following:
+ * `Identifier`
+ * `Number`
+ * `String`
+ * `Char`
+ * `Expr` `Binary Operator` `Expr`
+
+### Types
+
+Types are used in declarations. They are defined as being the following:
+
+* A group of 0 or more `*` characters, representing the number of layers of indirection
+* A type name, which can be:
+  * Some `Identifier` referring to a type name
+  * A `Struct` definition (refer to next section)
+* A group of 0 or more array size specifiers, being defined as a `[` character, some `Expression`, and a `]` character
+
+### Declarations
+
+`Declaration`s are defined as follows:
+
+`Identifier` `:` `Type` `;`
+
+### Structs
+
+`Struct`s are groups of zero or more declarations. They are defined as:
+
+`struct` `Identifier`
+`{`
+Zero or more `Declaration`s
+`}`
+
+### Constant Expressions
+
+Constant expressions (`Const`s) are defined as:
+
+`Identifier` `::` `Expression` `;`
+
+### Comments
+
+Comments are ignored by the parser. They can be *single-line* or *multi-line*.
+
+*Single-line* comments can be defined with two `/` characters. They are terminated by a newline character.
+
+*Multi-line* comments can be defined with a `/*` pattern. They are terminated by a `*/` pattern. They can also be nested. For example, if there exists the pattern `/*/*`, it will require `*/*/` to terminate.
+
+### Tags
+
+`Struct`s, `Declaration`s (including those within `Struct`s), or `Const`s can be preceded with one or more `Tag`s. A `Tag` is defined as beginning with a `@` character, and ending with whitespace. These are used to annotate meta-information about various things. They will be passed to custom-layer code.
