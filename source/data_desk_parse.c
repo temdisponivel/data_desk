@@ -26,6 +26,7 @@ typedef struct ParseContext
     int error_stack_size;
     int error_stack_max;
     ParseError *error_stack;
+    ASTNode *tag_stack_head;
 }
 ParseContext;
 
@@ -76,6 +77,25 @@ ParseContextAllocateASTNode(ParseContext *context)
     ASTNode *node = ParseContextAllocateMemory(context, sizeof(ASTNode));
     MemorySet(node, 0, sizeof(ASTNode));
     return node;
+}
+
+static void
+ParseContextPushTag(ParseContext *context, Token tag_token)
+{
+    ASTNode *tag = ParseContextAllocateASTNode(context);
+    tag->type = DATA_DESK_AST_NODE_TYPE_tag;
+    tag->string = tag_token.string;
+    tag->string_length = tag_token.string_length;
+    tag->next = context->tag_stack_head;
+    context->tag_stack_head = tag;
+}
+
+static ASTNode *
+ParseContextPopAllTags(ParseContext *context)
+{
+    ASTNode *tags_head = context->tag_stack_head;
+    context->tag_stack_head = 0;
+    return tags_head;
 }
 
 static char *
@@ -186,6 +206,23 @@ ParseContextPushError(ParseContext *context, Tokenizer *tokenizer, char *msg, ..
             tokenizer->line,
         };
         context->error_stack[context->error_stack_size++] = error;
+    }
+}
+
+static void
+ParseTagList(Tokenizer *tokenizer, ParseContext *context)
+{
+    for(;;)
+    {
+        Token tag = {0};
+        if(RequireTokenType(tokenizer, TOKEN_tag, &tag))
+        {
+            ParseContextPushTag(context, tag);
+        }
+        else
+        {
+            break;
+        }
     }
 }
 
@@ -464,16 +501,15 @@ ParseStruct(Tokenizer *tokenizer, ParseContext *context)
     
     while(1)
     {
-        Token tag = {0};
-        RequireTokenType(tokenizer, TOKEN_tag, &tag);
+        ParseTagList(tokenizer, context);
+        ASTNode *tag_list = ParseContextPopAllTags(context);
         
         Tokenizer reset_tokenizer = *tokenizer;
         
         if(TokenMatch(PeekToken(tokenizer), "struct"))
         {
             ASTNode *sub_struct_declaration = ParseStruct(tokenizer, context);
-            sub_struct_declaration->tag = tag.string;
-            sub_struct_declaration->tag_length = tag.string_length;
+            sub_struct_declaration->first_tag = tag_list;
             *member_store_target = sub_struct_declaration;
             member_store_target = &(*member_store_target)->next;
         }
@@ -494,8 +530,7 @@ ParseStruct(Tokenizer *tokenizer, ParseContext *context)
             *tokenizer = reset_tokenizer;
             ASTNode *declaration = ParseDeclaration(tokenizer, context);
             
-            declaration->tag = tag.string;
-            declaration->tag_length = tag.string_length;
+            declaration->first_tag = tag_list;
             
             if(!RequireToken(tokenizer, ";", 0))
             {
@@ -527,8 +562,8 @@ ParseCode(Tokenizer *tokenizer, ParseContext *context)
     
     do
     {
-        Token tag = {0};
-        RequireTokenType(tokenizer, TOKEN_tag, &tag);
+        ParseTagList(tokenizer, context);
+        ASTNode *tag_list = ParseContextPopAllTags(context);
         
         token = PeekToken(tokenizer);
         
@@ -537,8 +572,7 @@ ParseCode(Tokenizer *tokenizer, ParseContext *context)
             if(TokenMatch(token, "struct"))
             {
                 ASTNode *struct_declaration = ParseStruct(tokenizer, context);
-                struct_declaration->tag = tag.string;
-                struct_declaration->tag_length = tag.string_length;
+                struct_declaration->first_tag = tag_list;
                 *node_store_target = struct_declaration;
                 node_store_target = &(*node_store_target)->next;
             }
@@ -551,8 +585,7 @@ ParseCode(Tokenizer *tokenizer, ParseContext *context)
                 {
                     *tokenizer = reset_tokenizer;
                     ASTNode *declaration = ParseDeclaration(tokenizer, context);
-                    declaration->tag = tag.string;
-                    declaration->tag_length = tag.string_length;
+                    declaration->first_tag = tag_list;
                     *node_store_target = declaration;
                     node_store_target = &(*node_store_target)->next;
                     

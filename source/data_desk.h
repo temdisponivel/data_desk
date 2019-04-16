@@ -44,7 +44,6 @@ typedef struct DataDeskStruct
     char *name_uppercase_with_underscores;
     char *name_lower_camel_case;
     char *name_upper_camel_case;
-    char *tag;
     DataDeskASTNode *root;
 }
 DataDeskStruct;
@@ -56,7 +55,6 @@ typedef struct DataDeskDeclaration
     char *name_uppercase_with_underscores;
     char *name_lower_camel_case;
     char *name_upper_camel_case;
-    char *tag;
     DataDeskASTNode *root;
 }
 DataDeskDeclaration;
@@ -104,6 +102,7 @@ enum
     DATA_DESK_AST_NODE_TYPE_struct_declaration,
     DATA_DESK_AST_NODE_TYPE_declaration,
     DATA_DESK_AST_NODE_TYPE_type_usage,
+    DATA_DESK_AST_NODE_TYPE_tag,
 };
 
 // NOTE(rjf): These must be in order of precedence
@@ -123,9 +122,9 @@ typedef struct DataDeskASTNode
     DataDeskASTNode *next;
     
     char *string;
-    char *tag;
     int string_length;
-    int tag_length;
+    
+    DataDeskASTNode *first_tag;
     
     union
     {
@@ -175,10 +174,9 @@ DataDeskASTNode;
  | syntax trees.
  */
 
-int DataDeskTagHasSubString(char *tag, char *substring);
+int DataDeskStringHasSubString(char *tag, char *substring);
+int DataDeskNodeHasTag(DataDeskASTNode *root, char *tag);
 int DataDeskStructHasTag(DataDeskStruct struct_info, char *tag);
-int DataDeskNodeHasTag(DataDeskASTNode *root, char *tag);
-int DataDeskNodeHasTag(DataDeskASTNode *root, char *tag);
 int DataDeskDeclarationHasTag(DataDeskDeclaration declaration_info, char *tag);
 int DataDeskDeclarationIsType(DataDeskASTNode *root, char *type);
 int DataDeskStructMemberIsType(DataDeskASTNode *root, char *type);
@@ -198,19 +196,19 @@ void DataDeskFWriteStructAsC(FILE *file, DataDeskStruct struct_info);
  */
 
 int
-DataDeskTagHasSubString(char *tag, char *substring)
+DataDeskStringHasSubString(char *string, char *substring)
 {
     int matches = 0;
     
-    if(tag)
+    if(string)
     {
-        for(int i = 0; tag[i]; ++i)
+        for(int i = 0; string[i]; ++i)
         {
-            if(tag[i] == substring[0])
+            if(string[i] == substring[0])
             {
                 matches = 1;
                 
-                int tag_i = i+1;
+                int string_i = i+1;
                 int substring_i = 1;
                 for(;;)
                 {
@@ -219,13 +217,13 @@ DataDeskTagHasSubString(char *tag, char *substring)
                         break;
                     }
                     
-                    if(tag[tag_i] != substring[substring_i])
+                    if(string[string_i] != substring[substring_i])
                     {
                         matches = 0;
                         break;
                     }
                     
-                    ++tag_i;
+                    ++string_i;
                     ++substring_i;
                 }
             }
@@ -241,21 +239,32 @@ DataDeskTagHasSubString(char *tag, char *substring)
 }
 
 int
+DataDeskNodeHasTag(DataDeskASTNode *node, char *tag)
+{
+    int has = 0;
+    for(DataDeskASTNode *tag_node = node->first_tag;
+        tag_node;
+        tag_node = tag_node->next)
+    {
+        if(DataDeskStringHasSubString(tag_node->string, tag))
+        {
+            has = 1;
+            break;
+        }
+    }
+    return has;
+}
+
+int
 DataDeskStructHasTag(DataDeskStruct struct_info, char *tag)
 {
-    return DataDeskTagHasSubString(struct_info.tag, tag);
+    return DataDeskNodeHasTag(struct_info.root, tag);
 }
 
 int
 DataDeskDeclarationHasTag(DataDeskDeclaration declaration_info, char *tag)
 {
-    return DataDeskTagHasSubString(declaration_info.tag, tag);
-}
-
-int
-DataDeskNodeHasTag(DataDeskASTNode *root, char *tag)
-{
-    return DataDeskTagHasSubString(root->tag, tag);
+    return DataDeskNodeHasTag(declaration_info.root, tag);
 }
 
 int

@@ -11,14 +11,6 @@ GenerateNullTerminatedStringsForAST(ParseContext *context, ASTNode *root)
             root->string = new_string;
         }
         
-        if(root->tag)
-        {
-            char *new_tag = ParseContextAllocateMemory(context, root->tag_length+1);
-            MemoryCopy(new_tag, root->tag, root->tag_length);
-            new_tag[root->tag_length] = 0;
-            root->tag = new_tag;
-        }
-        
         switch(root->type)
         {
             case DATA_DESK_AST_NODE_TYPE_binary_operator:
@@ -59,11 +51,6 @@ PrintASTFromRoot(ASTNode *root, int follow_next)
 {
     if(root)
     {
-        if(root->tag)
-        {
-            printf("%.*s\n", root->tag_length, root->tag);
-        }
-        
         switch(root->type)
         {
             case DATA_DESK_AST_NODE_TYPE_identifier:
@@ -143,6 +130,12 @@ PrintASTFromRoot(ASTNode *root, int follow_next)
                 break;
             }
             
+            case DATA_DESK_AST_NODE_TYPE_tag:
+            {
+                printf("%.*s\n", root->string_length, root->string);
+                break;
+            }
+            
             default: break;
         }
         
@@ -183,7 +176,6 @@ TraverseASTAndCallCustomParseCallbacks(ParseContext *context, ASTNode *root, Dat
                             ParseContextAllocateStringCopyLowerCamelCase(context, struct_info.name);
                         struct_info.name_upper_camel_case =
                             ParseContextAllocateStringCopyUpperCamelCase(context, struct_info.name);
-                        struct_info.tag = root->tag;
                         struct_info.root = root;
                     }
                     custom.StructCallback(struct_info, filename);
@@ -208,7 +200,6 @@ TraverseASTAndCallCustomParseCallbacks(ParseContext *context, ASTNode *root, Dat
                             ParseContextAllocateStringCopyLowerCamelCase(context, decl_info.name);
                         decl_info.name_upper_camel_case =
                             ParseContextAllocateStringCopyUpperCamelCase(context, decl_info.name);
-                        decl_info.tag = root->tag;
                         decl_info.root = root;
                     }
                     custom.DeclarationCallback(decl_info, filename);
