@@ -34,6 +34,11 @@ ProcessFile(DataDeskCustom custom, char *file, char *filename)
     
     ASTNode *root = ParseCode(&tokenizer, &context);
     GenerateNullTerminatedStringsForAST(&context, root);
+    
+    if(custom.FileCallback)
+    {
+        custom.FileCallback(root, filename);
+    }
     TraverseASTAndCallCustomParseCallbacks(&context, root, custom, filename);
     
     for(int i = 0; i < context.error_stack_size; ++i)
@@ -44,6 +49,8 @@ ProcessFile(DataDeskCustom custom, char *file, char *filename)
                 context.error_stack[i].line,
                 context.error_stack[i].string);
     }
+    
+    ParseContextCleanUp(&context);
 }
 
 int
@@ -118,10 +125,6 @@ main(int argument_count, char **arguments)
                 char *file = LoadEntireFileAndNullTerminate(filename);
                 if(file)
                 {
-                    if(custom.FileCallback)
-                    {
-                        custom.FileCallback(filename);
-                    }
                     ProcessFile(custom, file, filename);
                 }
                 else

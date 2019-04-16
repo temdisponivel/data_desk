@@ -5,7 +5,7 @@
 Data Desk is a project utility that parses a simple C-like data description format. Input files in this data description format are parsed to create corresponding abstract syntax trees which represent the information extracted from the files. These abstract syntax trees are then sent to project-specific custom code that is written by the user. This custom code is simply a dynamic library with a few exported functions that are used as callbacks for the parser. Below is a list of the callbacks.
 
 * `DataDeskCustomInitCallback(void)` is called when the parser starts.
-* `DataDeskCustomFileCallback(char *filename)` is called when the parser starts parsing a new file.
+* `DataDeskCustomFileCallback(DataDeskASTNode *root, char *filename)` is called when the parser finishes parsing a file.
 * `DataDeskCustomStructCallback(DataDeskStruct struct_info, char *filename)` is called for every structure that is parsed.
 * `DataDeskCustomDeclarationCallback(DataDeskDeclaration declaration, char *filename)` is called for every declaration that is parsed.
 * `DataDeskCustomCleanUpCallback(void)` is called before the parser shuts down.

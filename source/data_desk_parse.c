@@ -30,6 +30,18 @@ typedef struct ParseContext
 }
 ParseContext;
 
+static void
+ParseContextCleanUp(ParseContext *context)
+{
+    for(ParseContextMemoryBlock *block = context->first_block;
+        block;)
+    {
+        ParseContextMemoryBlock *next = block->next;
+        free(block);
+        block = next;
+    }
+}
+
 static void *
 ParseContextAllocateMemory(ParseContext *context, unsigned int size)
 {
@@ -403,7 +415,7 @@ ParseTypeUsage(Tokenizer *tokenizer, ParseContext *context)
         Token type_name = {0};
         if(!RequireTokenType(tokenizer, TOKEN_alphanumeric_block, &type_name))
         {
-            ParseContextPushError(context, tokenizer, "Missing type name in declaration");
+            ParseContextPushError(context, tokenizer, "Missing type name");
             goto end_parse;
         }
         type_name_string = type_name.string;
@@ -580,25 +592,45 @@ ParseCode(Tokenizer *tokenizer, ParseContext *context)
             {
                 Tokenizer reset_tokenizer = *tokenizer;
                 
-                if(RequireTokenType(tokenizer, TOKEN_alphanumeric_block, 0) &&
-                   RequireToken(tokenizer, ":", 0))
+                Token name = {0};
+                
+                if(RequireTokenType(tokenizer, TOKEN_alphanumeric_block, &name))
                 {
-                    *tokenizer = reset_tokenizer;
-                    ASTNode *declaration = ParseDeclaration(tokenizer, context);
-                    declaration->first_tag = tag_list;
-                    *node_store_target = declaration;
-                    node_store_target = &(*node_store_target)->next;
-                    
-                    // NOTE(rjf): This declaration has an assignment
-                    if(RequireToken(tokenizer, "=", 0))
+                    if(RequireToken(tokenizer, "::", 0))
                     {
-                        ASTNode *assignment = ParseExpression(tokenizer, context);
-                        declaration->declaration.initialization = assignment;
+                        ASTNode *constant = ParseContextAllocateASTNode(context);
+                        constant->type = DATA_DESK_AST_NODE_TYPE_constant_definition;
+                        constant->string = name.string;
+                        constant->string_length = name.string_length;
+                        constant->constant_definition.expression = ParseExpression(tokenizer, context);
+                        
+                        *node_store_target = constant;
+                        node_store_target = &(*node_store_target)->next;
+                        
+                        if(!RequireToken(tokenizer, ";", 0))
+                        {
+                            ParseContextPushError(context, tokenizer, "Missing ;");
+                        }
                     }
-                    
-                    if(!RequireToken(tokenizer, ";", 0))
+                    else if(RequireToken(tokenizer, ":", 0))
                     {
-                        ParseContextPushError(context, tokenizer, "Missing ;");
+                        *tokenizer = reset_tokenizer;
+                        ASTNode *declaration = ParseDeclaration(tokenizer, context);
+                        declaration->first_tag = tag_list;
+                        *node_store_target = declaration;
+                        node_store_target = &(*node_store_target)->next;
+                        
+                        // NOTE(rjf): This declaration has an assignment
+                        if(RequireToken(tokenizer, "=", 0))
+                        {
+                            ASTNode *assignment = ParseExpression(tokenizer, context);
+                            declaration->declaration.initialization = assignment;
+                        }
+                        
+                        if(!RequireToken(tokenizer, ";", 0))
+                        {
+                            ParseContextPushError(context, tokenizer, "Missing ;");
+                        }
                     }
                 }
                 else

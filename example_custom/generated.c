@@ -1,23 +1,17 @@
-typedef struct TestStruct
+typedef struct Foo
 {
-int test_integer_1;
-float test_float_1;
-char test_char_1;
-int test_integer_2;
-float test_float_2;
-char test_char_2;
-double *d;
+int an_integer;
+float a_float;
+char a_char;
+double *ptr_to_double;
 }
-TestStruct;
+Foo;
 
 void
-TestStructPrint(TestStruct *object)
+FooPrint(Foo *object)
 {
-    printf("%i", object->test_integer_1);
-    printf("%f", object->test_float_1);
-    printf("%c", object->test_char_1);
-    printf("%i", object->test_integer_2);
-    printf("%f", object->test_float_2);
-    printf("%c", object->test_char_2);
+    printf("%i", object->an_integer);
+    printf("%f", object->a_float);
+    printf("%c", object->a_char);
 }
 

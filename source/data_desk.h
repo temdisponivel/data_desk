@@ -37,6 +37,17 @@
 
 typedef struct DataDeskASTNode DataDeskASTNode;
 
+typedef struct DataDeskConstant
+{
+    char *name;
+    char *name_lowercase_with_underscores;
+    char *name_uppercase_with_underscores;
+    char *name_lower_camel_case;
+    char *name_upper_camel_case;
+    DataDeskASTNode *root;
+}
+DataDeskConstant;
+
 typedef struct DataDeskStruct
 {
     char *name;
@@ -63,7 +74,10 @@ DataDeskDeclaration;
 typedef void DataDeskInitCallback(void);
 
 /* DataDeskCustomFileCallback */
-typedef void DataDeskFileCallback(char *filename);
+typedef void DataDeskFileCallback(DataDeskASTNode *root, char *filename);
+
+/* DataDeskCustomConstantCallback */
+typedef void DataDeskConstantCallback(DataDeskConstant constant, char *filename);
 
 /* DataDeskCustomStructCallback */
 typedef void DataDeskStructCallback(DataDeskStruct parsed_struct, char *filename);
@@ -103,6 +117,7 @@ enum
     DATA_DESK_AST_NODE_TYPE_declaration,
     DATA_DESK_AST_NODE_TYPE_type_usage,
     DATA_DESK_AST_NODE_TYPE_tag,
+    DATA_DESK_AST_NODE_TYPE_constant_definition,
 };
 
 // NOTE(rjf): These must be in order of precedence
@@ -156,6 +171,12 @@ typedef struct DataDeskASTNode
             DataDeskASTNode *struct_declaration;
         }
         type_usage;
+        
+        struct ConstantDefinition
+        {
+            DataDeskASTNode *expression;
+        }
+        constant_definition;
     };
 }
 DataDeskASTNode;
@@ -177,12 +198,14 @@ DataDeskASTNode;
 int DataDeskStringHasSubString(char *tag, char *substring);
 int DataDeskGetTagNodeWithTag(DataDeskASTNode *root, char *tag);
 int DataDeskNodeHasTag(DataDeskASTNode *root, char *tag);
+int DataDeskConstantHasTag(DataDeskConstant constant_info, char *tag);
 int DataDeskStructHasTag(DataDeskStruct struct_info, char *tag);
 int DataDeskDeclarationHasTag(DataDeskDeclaration declaration_info, char *tag);
 int DataDeskDeclarationIsType(DataDeskASTNode *root, char *type);
 int DataDeskStructMemberIsType(DataDeskASTNode *root, char *type);
 
 #ifndef DATA_DESK_NO_CRT
+void DataDeskFWriteConstantAsC(FILE *file, DataDeskConstant constant_info);
 void DataDeskFWriteStructAsC(FILE *file, DataDeskStruct struct_info);
 #endif
 
@@ -192,9 +215,9 @@ void DataDeskFWriteStructAsC(FILE *file, DataDeskStruct struct_info);
 
 /*
 | /////////////////////////////////////////////////////////////////
- |  Helper Function Implementation Code
- | /////////////////////////////////////////////////////////////////
- */
+|  Helper Function Implementation Code
+| /////////////////////////////////////////////////////////////////
+*/
 
 int
 DataDeskStringHasSubString(char *string, char *substring)
@@ -408,10 +431,19 @@ DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next)
 }
 
 void
+DataDeskFWriteConstantAsC(FILE *file, DataDeskConstant constant_info)
+{
+    fprintf(file, "#define %s (", constant_info.name);
+    DataDeskFWriteASTFromRootAsC(file, constant_info.root->constant_definition.expression, 0);
+    fprintf(file, ")\n");
+}
+
+void
 DataDeskFWriteStructAsC(FILE *file, DataDeskStruct struct_info)
 {
     DataDeskFWriteASTFromRootAsC(file, struct_info.root, 0);
 }
+
 #endif // DATA_DESK_NO_CRT
 
 #endif // DATA_DESK_H_INCLUDED_

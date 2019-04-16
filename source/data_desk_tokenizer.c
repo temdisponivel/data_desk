@@ -42,11 +42,6 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
     char *buffer = tokenizer->at;
     for(int i = 0; buffer[i]; ++i)
     {
-        if(buffer[i] == '\n')
-        {
-            ++tokenizer->line;
-        }
-        
         if(skip_mode == SKIP_MODE_none)
         {
             if(buffer[i] == '/' && buffer[i+1] == '/')
@@ -70,11 +65,6 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                 {
                     for(j = i+1; buffer[j]; ++j)
                     {
-                        if(buffer[j] == '\n')
-                        {
-                            ++tokenizer->line;
-                        }
-                        
                         if(!CharIsAlpha(buffer[j]) && buffer[j] != '_' &&
                            !CharIsDigit(buffer[j]))
                         {
@@ -89,11 +79,6 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                 {
                     for(j = i+1; buffer[j]; ++j)
                     {
-                        if(buffer[j] == '\n')
-                        {
-                            ++tokenizer->line;
-                        }
-                        
                         if(!CharIsAlpha(buffer[j]) && buffer[j] != '.' &&
                            !CharIsDigit(buffer[j]))
                         {
@@ -112,11 +97,6 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                     {
                         for(j = i+3; buffer[j]; ++j)
                         {
-                            if(buffer[j] == '\n')
-                            {
-                                ++tokenizer->line;
-                            }
-                            
                             if(buffer[j] == '"' && buffer[j+1] == '"' && buffer[j+2] == '"')
                             {
                                 j += 3;
@@ -130,11 +110,6 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                     {
                         for(j = i+1; buffer[j]; ++j)
                         {
-                            if(buffer[j] == '\n')
-                            {
-                                ++tokenizer->line;
-                            }
-                            
                             if(buffer[j] == '"')
                             {
                                 break;
@@ -163,11 +138,7 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                     int paren_level = 0;
                     for(j = i+1; buffer[j]; ++j)
                     {
-                        if(buffer[j] == '\n')
-                        {
-                            ++tokenizer->line;
-                        }
-                        else if(buffer[j] == '(')
+                        if(buffer[j] == '(')
                         {
                             ++paren_level;
                         }
@@ -195,6 +166,7 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                         "{",
                         "}",
                         ";",
+                        "::",
                         ":",
                         "*",
                         "+",
@@ -204,26 +176,27 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                     
                     for(j = i+1; buffer[j]; ++j)
                     {
-                        if(buffer[j] == '\n')
-                        {
-                            ++tokenizer->line;
-                        }
-                        
-                        for(int k = 0; k < ArrayCount(symbolic_blocks_to_break_out); ++k)
-                        {
-                            if(StringMatchCaseSensitiveN(symbolic_blocks_to_break_out[k],
-                                                         buffer+i,
-                                                         j-i))
-                            {
-                                goto end_symbolic_block;
-                            }
-                        }
-                        
                         if(!CharIsSymbol(buffer[j]))
                         {
                             break;
                         }
                     }
+                    
+                    for(int k = 0; k < ArrayCount(symbolic_blocks_to_break_out); ++k)
+                    {
+                        int string_length = 0;
+                        while(symbolic_blocks_to_break_out[k][string_length++]);
+                        --string_length;
+                        
+                        if(StringMatchCaseSensitiveN(symbolic_blocks_to_break_out[k],
+                                                     buffer+i,
+                                                     string_length))
+                        {
+                            j = i + string_length;
+                            goto end_symbolic_block;
+                        }
+                    }
+                    
                     end_symbolic_block:;
                     token.type = TOKEN_symbolic_block;
                 }

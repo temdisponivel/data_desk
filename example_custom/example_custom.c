@@ -9,8 +9,14 @@ DataDeskCustomInitCallback(void)
 }
 
 DATA_DESK_FUNC void
-DataDeskCustomFileCallback(char *filename)
+DataDeskCustomFileCallback(DataDeskASTNode *root, char *filename)
 {
+}
+
+DATA_DESK_FUNC void
+DataDeskCustomConstantCallback(DataDeskConstant constant_info, char *filename)
+{
+    DataDeskFWriteConstantAsC(global_generation_file, constant_info);
 }
 
 DATA_DESK_FUNC void

@@ -2,6 +2,7 @@ typedef struct DataDeskCustom
 {
     DataDeskInitCallback *InitCallback;
     DataDeskFileCallback *FileCallback;
+    DataDeskConstantCallback *ConstantCallback;
     DataDeskStructCallback *StructCallback;
     DataDeskDeclarationCallback *DeclarationCallback;
     DataDeskCleanUpCallback *CleanUpCallback;
@@ -26,6 +27,7 @@ DataDeskCustomLoad(char *custom_dll_path)
     {
         custom.InitCallback = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomInitCallback");
         custom.FileCallback = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomFileCallback");
+        custom.ConstantCallback = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomConstantCallback");
         custom.StructCallback = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomStructCallback");
         custom.DeclarationCallback = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomDeclarationCallback");
         custom.CleanUpCallback = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomCleanUpCallback");
@@ -36,6 +38,7 @@ DataDeskCustomLoad(char *custom_dll_path)
     {
         custom.InitCallback = dlsym(custom.custom_dll, "DataDeskCustomInitCallback");
         custom.FileCallback = dlsym(custom.custom_dll, "DataDeskCustomFileCallback");
+        custom.ConstantCallback = dlsym(custom.custom_dll, "DataDeskCustomConstantCallback");
         custom.StructCallback = dlsym(custom.custom_dll, "DataDeskCustomStructCallback");
         custom.DeclarationCallback = dlsym(custom.custom_dll, "DataDeskCustomDeclarationCallback");
         custom.CleanUpCallback = dlsym(custom.custom_dll, "DataDeskCustomCleanUpCallback");
@@ -43,8 +46,8 @@ DataDeskCustomLoad(char *custom_dll_path)
 #endif
     
     if(!custom.InitCallback && !custom.FileCallback &&
-       !custom.StructCallback && !custom.DeclarationCallback &&
-       !custom.CleanUpCallback)
+       !custom.ConstantCallback && !custom.StructCallback &&
+       !custom.DeclarationCallback && !custom.CleanUpCallback)
     {
         fprintf(stdout, "WARNING: No callbacks successfully loaded in custom layer\n");
     }
@@ -64,6 +67,7 @@ DataDeskCustomUnload(DataDeskCustom *custom)
     
     custom->InitCallback = 0;
     custom->FileCallback = 0;
+    custom->ConstantCallback = 0;
     custom->StructCallback = 0;
     custom->DeclarationCallback = 0;
     custom->CleanUpCallback = 0;

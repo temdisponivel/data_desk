@@ -13,22 +13,23 @@
 // differs from C in that it has the following pattern:
 // <identifier> : <type>. Array specifiers are not an attribute of
 // a declaration, but rather of the type, so to declare an array
-// of i32's(32-bit integers), you'd do: array : i32[5];. To add
+// of i32's (32-bit integers), you'd do: array : i32[5];. To add
 // a layer of indirection to make something a pointer, prefix the
 // type with a number of *'s, e.g.: array : *i32[5];.
-struct TestStruct
+struct Foo
 {
-    test_integer_1 : int;
-    test_float_1   : float;
-    test_char_1    : char;
-    
-    test_integer_2 : int;
-    test_float_2   : float;
-    test_char_2    : char;
+    an_integer  : int;
+    a_float     : float;
+    a_char      : char;
     
     // NOTE: Individual declarations can also be tagged. The following
     // tag, NoPrint, signifies to the example custom layer that this
     // member is not to be included in the printing function.
     @NoPrint
-        d : *double;
+        ptr_to_double : *double;
 }
+
+// NOTE: You can also define constants. These are equivalent to macro
+// constants in C. The DataDeskFWriteConstantAsC helper function will
+// print them out as such.
+SOME_CONSTANT :: 123456;
