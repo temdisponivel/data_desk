@@ -6,6 +6,7 @@ Data Desk is a project utility that parses a simple C-like data description form
 
 * `DataDeskCustomInitCallback(void)` is called when the parser starts.
 * `DataDeskCustomFileCallback(DataDeskASTNode *root, char *filename)` is called when the parser finishes parsing a file.
+* `DataDeskCustomConstantCallback(DataDeskConstant constant_info, char *filename)` is called for every constant definition that is parsed.
 * `DataDeskCustomStructCallback(DataDeskStruct struct_info, char *filename)` is called for every structure that is parsed.
 * `DataDeskCustomDeclarationCallback(DataDeskDeclaration declaration, char *filename)` is called for every declaration that is parsed.
 * `DataDeskCustomCleanUpCallback(void)` is called before the parser shuts down.
