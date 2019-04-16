@@ -49,18 +49,20 @@ To run Data Desk with your custom layer, you can use the following command templ
 
 ## Data Desk (.ds) File Documentation
 
-1. Identifiers
-2. Numeric Constants
-3. String Constants
-4. Character Constants
-5. Binary Operators
-6. Expressions
-7. Types
-8. Declarations
-9. Structs
-10. Constant Expressions
-11. Comments
-12. Tags
+A valid Data Desk file is defined as a set of zero or more `Declaration`s, `Struct`s, `Comment`s, or `Const`s. Each of the following sections defines these (and what they are comprised of).
+
+1. [Identifiers](#identifiers)
+2. [Numeric Constants](#numeric-constants)
+3. [String Constants](#string-constants)
+4. [Character Constants](#character-constants)
+5. [Binary Operators](#binary-operators)
+6. [Expressions](#expressions)
+7. [Types](#types)
+8. [Declarations](#declarations)
+9. [Structs](#structs)
+10. [Constant Expressions](#constant-expressions)
+11. [Comments](#comments)
+12. [Tags](#tags)
 
 ### Identifiers
 
