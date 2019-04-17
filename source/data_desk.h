@@ -348,7 +348,7 @@ DataDeskStructMemberIsType(DataDeskASTNode *root, char *type)
 
 #ifndef DATA_DESK_NO_CRT
 void
-DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next)
+_DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next, int nest)
 {
     if(root)
     {
@@ -366,7 +366,7 @@ DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next)
             case DATA_DESK_AST_NODE_TYPE_binary_operator:
             {
                 fprintf(file, "(");
-                DataDeskFWriteASTFromRootAsC(file, root->binary_operator.left, 0);
+                _DataDeskFWriteASTFromRootAsC(file, root->binary_operator.left, 0, nest);
                 char *binary_operator_string = "";
                 
                 switch(root->binary_operator.type)
@@ -379,7 +379,7 @@ DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next)
                 }
                 
                 fprintf(file, "%s", binary_operator_string);
-                DataDeskFWriteASTFromRootAsC(file, root->binary_operator.right, 0);
+                _DataDeskFWriteASTFromRootAsC(file, root->binary_operator.right, 0, nest+1);
                 fprintf(file, ")");
                 
                 break;
@@ -387,21 +387,35 @@ DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next)
             
             case DATA_DESK_AST_NODE_TYPE_struct_declaration:
             {
-                fprintf(file, "typedef struct %s\n{\n", root->string);
+                if(root->string)
+                {
+                    fprintf(file, "struct %s\n{\n", root->string);
+                }
+                else
+                {
+                    fprintf(file, "struct\n{\n");
+                }
+                
                 for(DataDeskASTNode *member = root->struct_declaration.first_member;
                     member;
                     member = member->next)
                 {
-                    DataDeskFWriteASTFromRootAsC(file, member, 0);
+                    _DataDeskFWriteASTFromRootAsC(file, member, 0, nest+1);
                     fprintf(file, ";\n");
                 }
-                fprintf(file, "}\n%s;\n\n", root->string);
+                fprintf(file, "}");
+                
+                if(nest == 0)
+                {
+                    fprintf(file, ";\n\n");
+                }
+                
                 break;
             }
             
             case DATA_DESK_AST_NODE_TYPE_declaration:
             {
-                DataDeskFWriteASTFromRootAsC(file, root->declaration.type, 0);
+                _DataDeskFWriteASTFromRootAsC(file, root->declaration.type, 0, nest+1);
                 fprintf(file, "%s", root->string);
                 
                 for(DataDeskASTNode *array = root->declaration.type->type_usage.first_array_size_expression;
@@ -409,7 +423,7 @@ DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next)
                     array = array->next)
                 {
                     fprintf(file, "[");
-                    DataDeskFWriteASTFromRootAsC(file, array, 0);
+                    _DataDeskFWriteASTFromRootAsC(file, array, 0, nest);
                     fprintf(file, "]");
                 }
                 
@@ -418,7 +432,16 @@ DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next)
             
             case DATA_DESK_AST_NODE_TYPE_type_usage:
             {
-                fprintf(file, "%s ", root->string);
+                if(root->type_usage.struct_declaration)
+                {
+                    _DataDeskFWriteASTFromRootAsC(file, root->type_usage.struct_declaration, 0, nest+1);
+                    fprintf(file, "\n");
+                }
+                else
+                {
+                    fprintf(file, "%s ", root->string);
+                }
+                
                 for(int i = 0; i < root->type_usage.pointer_count; ++i)
                 {
                     fprintf(file, "*");
@@ -432,9 +455,15 @@ DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next)
         
         if(root->next && follow_next)
         {
-            DataDeskFWriteASTFromRootAsC(file, root->next, follow_next);
+            _DataDeskFWriteASTFromRootAsC(file, root->next, follow_next, nest);
         }
     }
+}
+
+void
+DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next)
+{
+    _DataDeskFWriteASTFromRootAsC(file, root, follow_next, 0);
 }
 
 void
@@ -448,6 +477,7 @@ DataDeskFWriteConstantAsC(FILE *file, DataDeskConstant constant_info)
 void
 DataDeskFWriteStructAsC(FILE *file, DataDeskStruct struct_info)
 {
+    fprintf(file, "typedef struct %s %s;\n", struct_info.name, struct_info.name);
     DataDeskFWriteASTFromRootAsC(file, struct_info.root, 0);
 }
 
