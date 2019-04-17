@@ -190,8 +190,6 @@ TraverseASTAndCallCustomParseCallbacks(ParseContext *context, ASTNode *root, Dat
                     }
                     custom.StructCallback(struct_info, filename);
                 }
-                
-                TraverseASTAndCallCustomParseCallbacks(context, root->struct_declaration.first_member, custom, filename);
                 break;
             }
             
@@ -215,16 +213,6 @@ TraverseASTAndCallCustomParseCallbacks(ParseContext *context, ASTNode *root, Dat
                     custom.DeclarationCallback(decl_info, filename);
                 }
                 
-                TraverseASTAndCallCustomParseCallbacks(context, root->declaration.type, custom, filename);
-                break;
-            }
-            
-            case DATA_DESK_AST_NODE_TYPE_type_usage:
-            {
-                if(root->type_usage.struct_declaration)
-                {
-                    TraverseASTAndCallCustomParseCallbacks(context, root->type_usage.struct_declaration, custom, filename);
-                }
                 break;
             }
             

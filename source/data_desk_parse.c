@@ -160,10 +160,13 @@ static char *
 ParseContextAllocateStringCopyUppercaseWithUnderscores(ParseContext *context, char *string)
 {
     char *new_string = 0;
-    new_string = ParseContextAllocateStringCopyLowercaseWithUnderscores(context, string);
-    for(int i = 0; new_string[i]; ++i)
+    if(string)
     {
-        new_string[i] = CharToUpper(new_string[i]);
+        new_string = ParseContextAllocateStringCopyLowercaseWithUnderscores(context, string);
+        for(int i = 0; new_string[i]; ++i)
+        {
+            new_string[i] = CharToUpper(new_string[i]);
+        }
     }
     return new_string;
 }
