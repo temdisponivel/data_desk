@@ -44,6 +44,11 @@ GenerateNullTerminatedStringsForAST(ParseContext *context, ASTNode *root)
             default: break;
         }
         
+        if(root->first_tag)
+        {
+            GenerateNullTerminatedStringsForAST(context, root->first_tag);
+        }
+        
         if(root->next)
         {
             GenerateNullTerminatedStringsForAST(context, root->next);

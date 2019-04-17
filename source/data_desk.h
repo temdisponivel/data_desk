@@ -203,7 +203,7 @@ DataDeskASTNode;
  */
 
 int DataDeskStringHasSubString(char *tag, char *substring);
-int DataDeskGetTagNodeWithTag(DataDeskASTNode *root, char *tag);
+char *DataDeskGetTagStringWithSubString(DataDeskASTNode *root, char *tag);
 int DataDeskNodeHasTag(DataDeskASTNode *root, char *tag);
 int DataDeskConstantHasTag(DataDeskConstant constant_info, char *tag);
 int DataDeskStructHasTag(DataDeskStruct struct_info, char *tag);
