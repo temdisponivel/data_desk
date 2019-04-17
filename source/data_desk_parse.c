@@ -116,17 +116,17 @@ ParseContextAllocateStringCopyLowercaseWithUnderscores(ParseContext *context, ch
     char *new_string = 0;
     if(string)
     {
-        int last_character_was_uppercase = 0;
+        int last_character_was_lowercase = 0;
         int bytes_needed = 0;
         
         for(int i = 0; string[i]; ++i)
         {
-            if(string[i] >= 'A' && string[i] <= 'Z')
+            if(string[i] >= 'a' && string[i] <= 'z')
             {
-                last_character_was_uppercase = 1;
+                last_character_was_lowercase = 1;
             }
-            else if(string[i] >= 'a' && string[i] <= 'z' &&
-                    last_character_was_uppercase)
+            else if(string[i] >= 'A' && string[i] <= 'Z' &&
+                    last_character_was_lowercase)
             {
                 ++bytes_needed;
             }
@@ -138,16 +138,19 @@ ParseContextAllocateStringCopyLowercaseWithUnderscores(ParseContext *context, ch
         new_string = ParseContextAllocateMemory(context, bytes_needed);
         int new_string_write_pos = 0;
         
+        last_character_was_lowercase = 0;
+        
         for(int i = 0; string[i]; ++i)
         {
-            if(string[i] >= 'A' && string[i] <= 'Z')
+            if(string[i] >= 'a' && string[i] <= 'z')
             {
-                last_character_was_uppercase = 1;
+                last_character_was_lowercase = 1;
             }
-            else if(string[i] >= 'a' && string[i] <= 'z' &&
-                    last_character_was_uppercase)
+            if(string[i] >= 'A' && string[i] <= 'Z' &&
+               last_character_was_lowercase)
             {
                 new_string[new_string_write_pos++] = '_';
+                last_character_was_lowercase = 0;
             }
             
             new_string[new_string_write_pos++] = CharToLower(string[i]);
