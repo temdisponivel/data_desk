@@ -58,88 +58,105 @@ main(int argument_count, char **arguments)
 {
     if(argument_count > 1)
     {
-        Log("Data Desk v0.1");
-        
-        DataDeskCustom custom = {0};
-        char *custom_layer_dll_path = 0;
-        
-        // NOTE(rjf): Load command line arguments and set all non-file arguments
-        // to zero, so that we know the arguments to process in the file-processing
-        // loop.
+        if(StringMatchCaseInsensitive(arguments[1], "help") ||
+           StringMatchCaseInsensitive(arguments[1], "-help") ||
+           StringMatchCaseInsensitive(arguments[1], "--help") ||
+           StringMatchCaseInsensitive(arguments[1], "-h") ||
+           StringMatchCaseInsensitive(arguments[1], "--h") ||
+           StringMatchCaseInsensitive(arguments[1], "/?") ||
+           StringMatchCaseInsensitive(arguments[1], "?") ||
+           StringMatchCaseInsensitive(arguments[1], "-?"))
         {
-            int argument_read_mode = 0;
-            enum
-            {
-                ARGUMENT_READ_MODE_files,
-                ARGUMENT_READ_MODE_custom_layer_dll,
-            };
-            
-            for(int i = 1; i < argument_count; ++i)
-            {
-                if(argument_read_mode == ARGUMENT_READ_MODE_files)
-                {
-                    if(StringMatchCaseInsensitive(arguments[i], "-c") ||
-                       StringMatchCaseInsensitive(arguments[i], "--custom"))
-                    {
-                        argument_read_mode = ARGUMENT_READ_MODE_custom_layer_dll;
-                        arguments[i] = 0;
-                    }
-                    else if(StringMatchCaseInsensitive(arguments[i], "-l") ||
-                            StringMatchCaseInsensitive(arguments[i], "--log"))
-                    {
-                        global_log_enabled = 1;
-                        arguments[i] = 0;
-                    }
-                }
-                else if(argument_read_mode == ARGUMENT_READ_MODE_custom_layer_dll)
-                {
-                    custom_layer_dll_path = arguments[i];
-                    arguments[i] = 0;
-                    argument_read_mode = ARGUMENT_READ_MODE_files;
-                }
-            }
-        }
-        
-        // NOTE(rjf): Load custom code DLL if needed.
-        if(custom_layer_dll_path)
-        {
-            Log("Loading custom layer from \"%s\"", custom_layer_dll_path);
-            custom = DataDeskCustomLoad(custom_layer_dll_path);
+            printf("Data Desk Flags\n");
+            printf("--custom, -c        Specify the path to a custom layer to which parse information is to be sent.\n");
+            printf("--log, -l           Enable logging.\n");
         }
         else
         {
-            Log("WARNING: No custom layer loaded");
-        }
-        
-        if(custom.InitCallback)
-        {
-            custom.InitCallback();
-        }
-        
-        for(int i = 1; i < argument_count; ++i)
-        {
-            if(arguments[i] != 0)
+            
+            Log("Data Desk v0.1");
+            
+            DataDeskCustom custom = {0};
+            char *custom_layer_dll_path = 0;
+            
+            // NOTE(rjf): Load command line arguments and set all non-file arguments
+            // to zero, so that we know the arguments to process in the file-processing
+            // loop.
             {
-                char *filename = arguments[i];
-                Log("Processing file at \"%s\"", filename);
-                char *file = LoadEntireFileAndNullTerminate(filename);
-                if(file)
+                int argument_read_mode = 0;
+                enum
                 {
-                    ProcessFile(custom, file, filename);
-                }
-                else
+                    ARGUMENT_READ_MODE_files,
+                    ARGUMENT_READ_MODE_custom_layer_dll,
+                };
+                
+                for(int i = 1; i < argument_count; ++i)
                 {
-                    Log("ERROR: Could not load \"%s\"", filename);
+                    if(argument_read_mode == ARGUMENT_READ_MODE_files)
+                    {
+                        if(StringMatchCaseInsensitive(arguments[i], "-c") ||
+                           StringMatchCaseInsensitive(arguments[i], "--custom"))
+                        {
+                            argument_read_mode = ARGUMENT_READ_MODE_custom_layer_dll;
+                            arguments[i] = 0;
+                        }
+                        else if(StringMatchCaseInsensitive(arguments[i], "-l") ||
+                                StringMatchCaseInsensitive(arguments[i], "--log"))
+                        {
+                            global_log_enabled = 1;
+                            arguments[i] = 0;
+                        }
+                    }
+                    else if(argument_read_mode == ARGUMENT_READ_MODE_custom_layer_dll)
+                    {
+                        custom_layer_dll_path = arguments[i];
+                        arguments[i] = 0;
+                        argument_read_mode = ARGUMENT_READ_MODE_files;
+                    }
                 }
             }
+            
+            // NOTE(rjf): Load custom code DLL if needed.
+            if(custom_layer_dll_path)
+            {
+                Log("Loading custom layer from \"%s\"", custom_layer_dll_path);
+                custom = DataDeskCustomLoad(custom_layer_dll_path);
+            }
+            else
+            {
+                Log("WARNING: No custom layer loaded");
+            }
+            
+            if(custom.InitCallback)
+            {
+                custom.InitCallback();
+            }
+            
+            for(int i = 1; i < argument_count; ++i)
+            {
+                if(arguments[i] != 0)
+                {
+                    char *filename = arguments[i];
+                    Log("Processing file at \"%s\"", filename);
+                    char *file = LoadEntireFileAndNullTerminate(filename);
+                    if(file)
+                    {
+                        ProcessFile(custom, file, filename);
+                    }
+                    else
+                    {
+                        Log("ERROR: Could not load \"%s\"", filename);
+                    }
+                }
+            }
+            
+            if(custom.CleanUpCallback)
+            {
+                custom.CleanUpCallback();
+            }
+            
+            DataDeskCustomUnload(&custom);
         }
-        
-        if(custom.CleanUpCallback)
-        {
-            custom.CleanUpCallback();
-        }
-        
-        DataDeskCustomUnload(&custom);
     }
     else
     {
