@@ -110,6 +110,14 @@ ParseContextPopAllTags(ParseContext *context)
     return tags_head;
 }
 
+enum
+{
+    STRING_STYLE_lowercase_with_underscores,
+    STRING_STYLE_uppercase_with_underscores,
+    STRING_STYLE_lower_camel_case,
+    STRING_STYLE_upper_camel_case,
+};
+
 static char *
 ParseContextAllocateStringCopyLowercaseWithUnderscores(ParseContext *context, char *string)
 {
@@ -180,7 +188,47 @@ ParseContextAllocateStringCopyLowerCamelCase(ParseContext *context, char *string
     char *new_string = 0;
     if(string)
     {
+        int bytes_needed = 0;
+        int found_alpha = 0;
         
+        for(int i = 0; string[i]; ++i)
+        {
+            if(!found_alpha || string[i] != '_')
+            {
+                ++bytes_needed;
+            }
+            
+            if(CharIsAlpha(string[i]))
+            {
+                found_alpha = 1;
+            }
+        }
+        
+        ++bytes_needed;
+        
+        new_string = ParseContextAllocateMemory(context, bytes_needed);
+        int new_string_write_pos = 0;
+        found_alpha = 0;
+        int need_capital = 0;
+        
+        for(int i = 0; string[i]; ++i)
+        {
+            if(string[i] == '_' && found_alpha)
+            {
+                need_capital = 1;
+            }
+            else
+            {
+                new_string[new_string_write_pos++] = need_capital ? CharToUpper(string[i]) : string[i];
+                
+                if(CharIsAlpha(string[i]))
+                {
+                    found_alpha = 1;
+                }
+                
+                need_capital = 0;
+            }
+        }
     }
     return new_string;
 }
@@ -191,7 +239,15 @@ ParseContextAllocateStringCopyUpperCamelCase(ParseContext *context, char *string
     char *new_string = 0;
     if(string)
     {
-        
+        new_string = ParseContextAllocateStringCopyLowerCamelCase(context, string);
+        for(int i = 0; new_string[i]; ++i)
+        {
+            if(CharIsAlpha(new_string[i]))
+            {
+                new_string[i] = CharToUpper(new_string[i]);
+                break;
+            }
+        }
     }
     return new_string;
 }
