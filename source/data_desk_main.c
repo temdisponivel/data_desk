@@ -50,7 +50,20 @@ ProcessFile(DataDeskCustom custom, char *file, char *filename)
                 context.error_stack[i].string);
     }
     
-    ParseContextCleanUp(&context);
+    // NOTE(rjf): ParseContextCleanUp shouldn't be called, because often time, code
+    // will depend on ASTs persisting between files (which should totally work).
+    // So, we won't clean up anything, and let the operating system do it ond
+    // program exit. We can still let a ParseContext go out of scope, though,
+    // because the memory will stay allocated. Usually, this is called a leak and
+    // thus harmful, but because we want memory for all ASTs ever parsed within
+    // a given runtime to persist (because we store pointers to them, etc.), we
+    // actually don't care; this is /exactly/ what we want. The operating system
+    // frees the memory on exit, and for this reason, there is literally no reason
+    // to care about AST clean-up at all.
+    // ParseContextCleanUp(&context);
+    
+    // NOTE(rjf): This is a reason why non-nuanced and non-context-specific programming
+    // rules suck.
 }
 
 int
