@@ -375,6 +375,13 @@ _DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next
                     case DATA_DESK_BINARY_OPERATOR_TYPE_subtract: { binary_operator_string = "-"; break; }
                     case DATA_DESK_BINARY_OPERATOR_TYPE_multiply: { binary_operator_string = "*"; break; }
                     case DATA_DESK_BINARY_OPERATOR_TYPE_divide: { binary_operator_string = "/"; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_modulus: { binary_operator_string = "%"; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_bitshift_left: { binary_operator_string = "<<"; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_bitshift_right: { binary_operator_string = ">>"; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_bitwise_and: { binary_operator_string = "&"; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_bitwise_or: { binary_operator_string = "|"; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_boolean_and: { binary_operator_string = "&&"; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_boolean_or: { binary_operator_string = "||"; break; }
                     default: break;
                 }
                 
