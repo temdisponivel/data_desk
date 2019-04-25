@@ -183,6 +183,41 @@ ParseContextAllocateStringCopyUppercaseWithUnderscores(ParseContext *context, ch
 }
 
 static char *
+ParseContextAllocateStringCopyWithSpaces(ParseContext *context, char *string)
+{
+    char *new_string = 0;
+    if(string)
+    {
+        int need_uppercase = 1;
+        new_string = ParseContextAllocateStringCopyLowercaseWithUnderscores(context, string);
+        for(int i = 0; new_string[i]; ++i)
+        {
+            if(CharIsAlpha(new_string[i]))
+            {
+                if(need_uppercase)
+                {
+                    new_string[i] = CharToUpper(new_string[i]);
+                }
+                else
+                {
+                    new_string[i] = new_string[i];
+                    need_uppercase = 0;
+                }
+            }
+            else
+            {
+                if(new_string[i] == '_')
+                {
+                    new_string[i] = '_';
+                    need_uppercase = 1;
+                }
+            }
+        }
+    }
+    return new_string;
+}
+
+static char *
 ParseContextAllocateStringCopyLowerCamelCase(ParseContext *context, char *string)
 {
     char *new_string = 0;

@@ -44,6 +44,7 @@ typedef struct DataDeskConstant
     char *name_uppercase_with_underscores;
     char *name_lower_camel_case;
     char *name_upper_camel_case;
+    char *name_with_spaces;
     DataDeskASTNode *root;
 }
 DataDeskConstant;
@@ -55,6 +56,7 @@ typedef struct DataDeskStruct
     char *name_uppercase_with_underscores;
     char *name_lower_camel_case;
     char *name_upper_camel_case;
+    char *name_with_spaces;
     DataDeskASTNode *root;
 }
 DataDeskStruct;
@@ -66,6 +68,7 @@ typedef struct DataDeskDeclaration
     char *name_uppercase_with_underscores;
     char *name_lower_camel_case;
     char *name_upper_camel_case;
+    char *name_with_spaces;
     DataDeskASTNode *root;
 }
 DataDeskDeclaration;

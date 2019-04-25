@@ -186,6 +186,8 @@ TraverseASTAndCallCustomParseCallbacks(ParseContext *context, ASTNode *root, Dat
                             ParseContextAllocateStringCopyLowerCamelCase(context, struct_info.name);
                         struct_info.name_upper_camel_case =
                             ParseContextAllocateStringCopyUpperCamelCase(context, struct_info.name);
+                        struct_info.name_with_spaces =
+                            ParseContextAllocateStringCopyWithSpaces(context, struct_info.name);
                         struct_info.root = root;
                     }
                     custom.StructCallback(struct_info, filename);
@@ -208,6 +210,8 @@ TraverseASTAndCallCustomParseCallbacks(ParseContext *context, ASTNode *root, Dat
                             ParseContextAllocateStringCopyLowerCamelCase(context, decl_info.name);
                         decl_info.name_upper_camel_case =
                             ParseContextAllocateStringCopyUpperCamelCase(context, decl_info.name);
+                        decl_info.name_with_spaces =
+                            ParseContextAllocateStringCopyWithSpaces(context, decl_info.name);
                         decl_info.root = root;
                     }
                     custom.DeclarationCallback(decl_info, filename);
@@ -229,6 +233,8 @@ TraverseASTAndCallCustomParseCallbacks(ParseContext *context, ASTNode *root, Dat
                         ParseContextAllocateStringCopyLowerCamelCase(context, const_info.name);
                     const_info.name_upper_camel_case =
                         ParseContextAllocateStringCopyUpperCamelCase(context, const_info.name);
+                    const_info.name_with_spaces =
+                        ParseContextAllocateStringCopyWithSpaces(context, const_info.name);
                     const_info.root = root;
                 }
                 custom.ConstantCallback(const_info, filename);
