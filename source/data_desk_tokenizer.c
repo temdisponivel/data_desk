@@ -136,6 +136,7 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                 else if(buffer[i] == '@')
                 {
                     int paren_level = 0;
+                    int quotes = 0;
                     for(j = i+1; buffer[j]; ++j)
                     {
                         if(buffer[j] == '(')
@@ -147,7 +148,12 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                             --paren_level;
                         }
                         
-                        if(!paren_level && buffer[j] <= 32)
+                        if(buffer[j] == '"')
+                        {
+                            quotes = !quotes;
+                        }
+                        
+                        if(!paren_level && !quotes && buffer[j] <= 32)
                         {
                             break;
                         }
