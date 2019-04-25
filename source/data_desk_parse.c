@@ -197,18 +197,18 @@ ParseContextAllocateStringCopyWithSpaces(ParseContext *context, char *string)
                 if(need_uppercase)
                 {
                     new_string[i] = CharToUpper(new_string[i]);
+                    need_uppercase = 0;
                 }
                 else
                 {
                     new_string[i] = new_string[i];
-                    need_uppercase = 0;
                 }
             }
             else
             {
                 if(new_string[i] == '_')
                 {
-                    new_string[i] = '_';
+                    new_string[i] = ' ';
                     need_uppercase = 1;
                 }
             }
