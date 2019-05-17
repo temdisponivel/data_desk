@@ -262,11 +262,17 @@ DataDeskStringHasAlphanumericBlock(char *string, char *substring)
                 {
                     if(!substring[substring_i])
                     {
-                        if(DataDeskCharIsAlpha(string[string_i]) ||
-                           DataDeskCharIsDigit(string[string_i]) ||
-                           string[string_i] == '_')
+                        if(substring_i > 0 &&
+                           (DataDeskCharIsAlpha(substring[substring_i-1]) ||
+                            DataDeskCharIsDigit(substring[substring_i-1]) ||
+                            substring[substring_i-1] == '_'))
                         {
-                            matches = 0;
+                            if(DataDeskCharIsAlpha(string[string_i]) ||
+                               DataDeskCharIsDigit(string[string_i]) ||
+                               string[string_i] == '_')
+                            {
+                                matches = 0;
+                            }
                         }
                         break;
                     }
