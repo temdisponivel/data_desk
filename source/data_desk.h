@@ -262,9 +262,9 @@ DataDeskStringHasAlphanumericBlock(char *string, char *substring)
                 {
                     if(!substring[substring_i])
                     {
-                        if(DataDeskCharIsAlpha(string[string_i+1]) ||
-                           DataDeskCharIsDigit(string[string_i+1]) ||
-                           string[string_i+1] == '_')
+                        if(DataDeskCharIsAlpha(string[string_i]) ||
+                           DataDeskCharIsDigit(string[string_i]) ||
+                           string[string_i] == '_')
                         {
                             matches = 0;
                         }
