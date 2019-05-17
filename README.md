@@ -49,7 +49,7 @@ To run Data Desk with your custom layer, you can use the following command templ
 
 ## Data Desk (.ds) File Documentation
 
-A valid Data Desk file is defined as a set of zero or more `Declaration`s, `Struct`s, `Comment`s, or `Const`s. Each of the following sections defines these (and what they are comprised of).
+A valid Data Desk file is defined as a set of zero or more `Declaration`s, `Struct`s, `Enum`s, `Flags`s, `Comment`s, or `Const`s. Each of the following sections defines these (and what they are comprised of).
 
 1. [Identifiers](#identifiers)
 2. [Numeric Constants](#numeric-constants)
@@ -60,9 +60,11 @@ A valid Data Desk file is defined as a set of zero or more `Declaration`s, `Stru
 7. [Types](#types)
 8. [Declarations](#declarations)
 9. [Structs](#structs)
-10. [Constant Expressions](#constant-expressions)
-11. [Comments](#comments)
-12. [Tags](#tags)
+10. [Enums](#enums)
+11. [Flags](#flags)
+12. [Constant Expressions](#constant-expressions)
+13. [Comments](#comments)
+14. [Tags](#tags)
 
 ### Identifiers
 
@@ -135,6 +137,28 @@ Types are used in declarations. They are defined as being the following:
 `{`
 Zero or more `Declaration`s
 `}`
+
+### Enums
+
+`Enum`s are groups of one or more identifiers. They are defined as:
+
+`enum` `Identifier`
+`{`
+One or more `Identifier`s, each followed by `,` characters.
+`}`
+
+When transpiled to C, these will be defined as a normal C `enum`; that is, the first one will be defined as a constant that evaluates to 0, the next to 1, and so on.
+
+### Flags
+
+`Flags`s are groups of one or more identifiers. They are defined as:
+
+`flags` `Identifier`
+`{`
+One or more `Identifier`s, each followed by `,` characters.
+`}`
+
+When transpiled to C, these will be defined as several C preprocessor macros that evaluate to unique bits inside of an integral value. These are similar to `Enum`s, but their purpose is to define unique bits instead of unique integral values for a set of constants.
 
 ### Constant Expressions
 

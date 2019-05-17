@@ -37,7 +37,7 @@
 
 typedef struct DataDeskASTNode DataDeskASTNode;
 
-typedef struct DataDeskConstant
+typedef struct DataDeskParsedNode
 {
     char *name;
     char *name_lowercase_with_underscores;
@@ -47,31 +47,13 @@ typedef struct DataDeskConstant
     char *name_with_spaces;
     DataDeskASTNode *root;
 }
-DataDeskConstant;
+DataDeskParsedNode;
 
-typedef struct DataDeskStruct
-{
-    char *name;
-    char *name_lowercase_with_underscores;
-    char *name_uppercase_with_underscores;
-    char *name_lower_camel_case;
-    char *name_upper_camel_case;
-    char *name_with_spaces;
-    DataDeskASTNode *root;
-}
-DataDeskStruct;
-
-typedef struct DataDeskDeclaration
-{
-    char *name;
-    char *name_lowercase_with_underscores;
-    char *name_uppercase_with_underscores;
-    char *name_lower_camel_case;
-    char *name_upper_camel_case;
-    char *name_with_spaces;
-    DataDeskASTNode *root;
-}
-DataDeskDeclaration;
+typedef DataDeskParsedNode DataDeskConstant;
+typedef DataDeskParsedNode DataDeskStruct;
+typedef DataDeskParsedNode DataDeskEnum;
+typedef DataDeskParsedNode DataDeskFlags;
+typedef DataDeskParsedNode DataDeskDeclaration;
 
 /* DataDeskCustomInitCallback */
 typedef void DataDeskInitCallback(void);
@@ -84,6 +66,12 @@ typedef void DataDeskConstantCallback(DataDeskConstant constant, char *filename)
 
 /* DataDeskCustomStructCallback */
 typedef void DataDeskStructCallback(DataDeskStruct parsed_struct, char *filename);
+
+/* DataDeskCustomEnumCallback */
+typedef void DataDeskEnumCallback(DataDeskEnum parsed_enum, char *filename);
+
+/* DataDeskCustomFlagsCallback */
+typedef void DataDeskFlagsCallback(DataDeskFlags parsed_flags, char *filename);
 
 /* DataDeskCustomDeclarationCallback */
 typedef void DataDeskDeclarationCallback(DataDeskDeclaration declaration, char *filename);
@@ -117,6 +105,8 @@ enum
     DATA_DESK_AST_NODE_TYPE_char_constant,
     DATA_DESK_AST_NODE_TYPE_binary_operator,
     DATA_DESK_AST_NODE_TYPE_struct_declaration,
+    DATA_DESK_AST_NODE_TYPE_enum_declaration,
+    DATA_DESK_AST_NODE_TYPE_flags_declaration,
     DATA_DESK_AST_NODE_TYPE_declaration,
     DATA_DESK_AST_NODE_TYPE_type_usage,
     DATA_DESK_AST_NODE_TYPE_tag,
@@ -166,6 +156,18 @@ typedef struct DataDeskASTNode
             DataDeskASTNode *first_member;
         }
         struct_declaration;
+        
+        struct EnumDeclaration
+        {
+            DataDeskASTNode *first_constant;
+        }
+        enum_declaration;
+        
+        struct FlagsDeclaration
+        {
+            DataDeskASTNode *first_flag;
+        }
+        flags_declaration;
         
         struct Declaration
         {
@@ -418,6 +420,63 @@ _DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next
                 if(nest == 0)
                 {
                     fprintf(file, ";\n\n");
+                }
+                
+                break;
+            }
+            
+            case DATA_DESK_AST_NODE_TYPE_enum_declaration:
+            {
+                if(root->string)
+                {
+                    fprintf(file, "enum %s\n{\n", root->string);
+                }
+                else
+                {
+                    fprintf(file, "enum\n{\n");
+                }
+                
+                for(DataDeskASTNode *member = root->enum_declaration.first_constant;
+                    member;
+                    member = member->next)
+                {
+                    fprintf(file, "%s", member->string);
+                    fprintf(file, ",\n");
+                }
+                fprintf(file, "}");
+                
+                fprintf(file, ";\n\n");
+                
+                break;
+            }
+            
+            case DATA_DESK_AST_NODE_TYPE_flags_declaration:
+            {
+                int needed_bits_for_flag_type = 32;
+                int current_bit = 0;
+                for(DataDeskASTNode *member = root->flags_declaration.first_flag;
+                    member;
+                    member = member->next)
+                {
+                    fprintf(file, "#define %s (1<<%i)\n", member->string, current_bit);
+                    ++current_bit;
+                }
+                
+                if(current_bit >= 31)
+                {
+                    needed_bits_for_flag_type = 64;
+                }
+                
+                if(root->string)
+                {
+                    if(needed_bits_for_flag_type == 32)
+                    {
+                        fprintf(file, "typedef unsigned int %s;\n\n", root->string);
+                    }
+                    else if(needed_bits_for_flag_type > 32)
+                    {
+                        fprintf(file, "typedef unsigned long int %s;\n\n", root->string);
+                    }
                 }
                 
                 break;

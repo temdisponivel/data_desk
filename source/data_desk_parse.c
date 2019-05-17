@@ -663,6 +663,151 @@ ParseStruct(Tokenizer *tokenizer, ParseContext *context)
 }
 
 static ASTNode *
+ParseEnum(Tokenizer *tokenizer, ParseContext *context)
+{
+    ASTNode *enum_declaration = 0;
+    
+    if(!RequireToken(tokenizer, "enum", 0))
+    {
+        ParseContextPushError(context, tokenizer, "Enum keyword not found");
+        goto end_parse;
+    }
+    
+    Token enum_name = {0};
+    
+    RequireTokenType(tokenizer, TOKEN_alphanumeric_block, &enum_name);
+    
+    if(!RequireToken(tokenizer, "{", 0))
+    {
+        ParseContextPushError(context, tokenizer, "Missing { after enum name");
+        goto end_parse;
+    }
+    
+    enum_declaration = ParseContextAllocateASTNode(context);
+    enum_declaration->type = DATA_DESK_AST_NODE_TYPE_enum_declaration;
+    enum_declaration->string = enum_name.string;
+    enum_declaration->string_length = enum_name.string_length;
+    
+    ASTNode **member_store_target = &enum_declaration->enum_declaration.first_constant;
+    
+    while(1)
+    {
+        ParseTagList(tokenizer, context);
+        ASTNode *tag_list = ParseContextPopAllTags(context);
+        
+        Tokenizer reset_tokenizer = *tokenizer;
+        
+        Token constant_name = {0};
+        
+        if(!RequireTokenType(tokenizer, TOKEN_alphanumeric_block, &constant_name))
+        {
+            ParseContextPushError(context, tokenizer, "Expected identifier inside of enum");
+            goto end_parse;
+        }
+        
+        ASTNode *constant = ParseContextAllocateASTNode(context);
+        constant->type = DATA_DESK_AST_NODE_TYPE_identifier;
+        constant->string = constant_name.string;
+        constant->string_length = constant_name.string_length;
+        *member_store_target = constant;
+        member_store_target = &(*member_store_target)->next;
+        
+        if(!RequireToken(tokenizer, ",", 0))
+        {
+            ParseContextPushError(context, tokenizer, "Expected , after enum entry");
+            goto end_parse;
+        }
+        
+        if(TokenMatch(PeekToken(tokenizer), "}"))
+        {
+            break;
+        }
+    }
+    
+    if(!RequireToken(tokenizer, "}", 0))
+    {
+        ParseContextPushError(context, tokenizer, "Missing } after enum declaration");
+        goto end_parse;
+    }
+    
+    end_parse:;
+    return enum_declaration;
+}
+
+static ASTNode *
+ParseFlags(Tokenizer *tokenizer, ParseContext *context)
+{
+    ASTNode *flags_declaration = 0;
+    
+    if(!RequireToken(tokenizer, "flags", 0))
+    {
+        ParseContextPushError(context, tokenizer, "Flags keyword not found");
+        goto end_parse;
+    }
+    
+    Token flags_name = {0};
+    
+    RequireTokenType(tokenizer, TOKEN_alphanumeric_block, &flags_name);
+    
+    if(!RequireToken(tokenizer, "{", 0))
+    {
+        ParseContextPushError(context, tokenizer, "Missing { after flags name");
+        goto end_parse;
+    }
+    
+    flags_declaration = ParseContextAllocateASTNode(context);
+    flags_declaration->type = DATA_DESK_AST_NODE_TYPE_flags_declaration;
+    flags_declaration->string = flags_name.string;
+    flags_declaration->string_length = flags_name.string_length;
+    
+    ASTNode **member_store_target = &flags_declaration->flags_declaration.first_flag;
+    
+    while(1)
+    {
+        ParseTagList(tokenizer, context);
+        ASTNode *tag_list = ParseContextPopAllTags(context);
+        
+        Tokenizer reset_tokenizer = *tokenizer;
+        
+        Token constant_name = {0};
+        
+        if(!RequireTokenType(tokenizer, TOKEN_alphanumeric_block, &constant_name))
+        {
+            ParseContextPushError(context, tokenizer, "Expected identifier inside of flags");
+            goto end_parse;
+        }
+        
+        ASTNode *constant = ParseContextAllocateASTNode(context);
+        constant->type = DATA_DESK_AST_NODE_TYPE_identifier;
+        constant->string = constant_name.string;
+        constant->string_length = constant_name.string_length;
+        constant->first_tag = tag_list;
+        *member_store_target = constant;
+        member_store_target = &(*member_store_target)->next;
+        
+        if(!RequireToken(tokenizer, ",", 0))
+        {
+            ParseContextPushError(context, tokenizer, "Expected , after flags entry");
+            goto end_parse;
+        }
+        
+        if(TokenMatch(PeekToken(tokenizer), "}"))
+        {
+            break;
+        }
+    }
+    
+    if(!RequireToken(tokenizer, "}", 0))
+    {
+        ParseContextPushError(context, tokenizer, "Missing } after flags declaration");
+        goto end_parse;
+    }
+    
+    end_parse:;
+    return flags_declaration;
+}
+
+static ASTNode *
 ParseCode(Tokenizer *tokenizer, ParseContext *context)
 {
     ASTNode *root = 0;
@@ -683,6 +828,20 @@ ParseCode(Tokenizer *tokenizer, ParseContext *context)
                 ASTNode *struct_declaration = ParseStruct(tokenizer, context);
                 struct_declaration->first_tag = tag_list;
                 *node_store_target = struct_declaration;
+                node_store_target = &(*node_store_target)->next;
+            }
+            else if(TokenMatch(token, "enum"))
+            {
+                ASTNode *enum_declaration = ParseEnum(tokenizer, context);
+                enum_declaration->first_tag = tag_list;
+                *node_store_target = enum_declaration;
+                node_store_target = &(*node_store_target)->next;
+            }
+            else if(TokenMatch(token, "flags"))
+            {
+                ASTNode *flags_declaration = ParseFlags(tokenizer, context);
+                flags_declaration->first_tag = tag_list;
+                *node_store_target = flags_declaration;
                 node_store_target = &(*node_store_target)->next;
             }
             else if(PeekToken(tokenizer).type == TOKEN_alphanumeric_block)

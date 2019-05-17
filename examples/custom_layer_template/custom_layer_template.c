@@ -13,6 +13,12 @@ DATA_DESK_FUNC void
 DataDeskCustomStructCallback(DataDeskStruct struct_info, char *filename) {}
 
 DATA_DESK_FUNC void
+DataDeskCustomEnumCallback(DataDeskEnum enum_info, char *filename) {}
+
+DATA_DESK_FUNC void
+DataDeskCustomFlagsCallback(DataDeskFlags flags_info, char *filename) {}
+
+DATA_DESK_FUNC void
 DataDeskCustomDeclarationCallback(DataDeskDeclaration declaration_info, char *filename) {}
 
 DATA_DESK_FUNC void

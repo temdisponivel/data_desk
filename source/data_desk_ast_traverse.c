@@ -24,6 +24,16 @@ GenerateNullTerminatedStringsForAST(ParseContext *context, ASTNode *root)
                 GenerateNullTerminatedStringsForAST(context, root->struct_declaration.first_member);
                 break;
             }
+            case DATA_DESK_AST_NODE_TYPE_enum_declaration:
+            {
+                GenerateNullTerminatedStringsForAST(context, root->enum_declaration.first_constant);
+                break;
+            }
+            case DATA_DESK_AST_NODE_TYPE_flags_declaration:
+            {
+                GenerateNullTerminatedStringsForAST(context, root->flags_declaration.first_flag);
+                break;
+            }
             case DATA_DESK_AST_NODE_TYPE_declaration:
             {
                 GenerateNullTerminatedStringsForAST(context, root->declaration.type);
@@ -63,6 +73,7 @@ PrintASTFromRoot(ASTNode *root, int follow_next)
     {
         switch(root->type)
         {
+            default:
             case DATA_DESK_AST_NODE_TYPE_identifier:
             case DATA_DESK_AST_NODE_TYPE_numeric_constant:
             case DATA_DESK_AST_NODE_TYPE_string_constant:
@@ -99,6 +110,52 @@ PrintASTFromRoot(ASTNode *root, int follow_next)
                 {
                     PrintASTFromRoot(member, 0);
                     printf(";\n");
+                }
+                
+                printf("}\n\n");
+                break;
+            }
+            
+            case DATA_DESK_AST_NODE_TYPE_enum_declaration:
+            {
+                printf("enum");
+                
+                if(root->string)
+                {
+                    printf(" %.*s", root->string_length, root->string);
+                }
+                
+                printf("\n{\n");
+                
+                for(DataDeskASTNode *member = root->enum_declaration.first_constant;
+                    member;
+                    member = member->next)
+                {
+                    PrintASTFromRoot(member, 0);
+                    printf(",\n");
+                }
+                
+                printf("}\n\n");
+                break;
+            }
+            
+            case DATA_DESK_AST_NODE_TYPE_flags_declaration:
+            {
+                printf("flags");
+                
+                if(root->string)
+                {
+                    printf(" %.*s", root->string_length, root->string);
+                }
+                
+                printf("\n{\n");
+                
+                for(DataDeskASTNode *member = root->flags_declaration.first_flag;
+                    member;
+                    member = member->next)
+                {
+                    PrintASTFromRoot(member, 0);
+                    printf(",\n");
                 }
                 
                 printf("}\n\n");
@@ -146,7 +203,6 @@ PrintASTFromRoot(ASTNode *root, int follow_next)
                 break;
             }
             
-            default: break;
         }
         
         if(follow_next)
@@ -191,6 +247,54 @@ TraverseASTAndCallCustomParseCallbacks(ParseContext *context, ASTNode *root, Dat
                         struct_info.root = root;
                     }
                     custom.StructCallback(struct_info, filename);
+                }
+                break;
+            }
+            
+            case DATA_DESK_AST_NODE_TYPE_enum_declaration:
+            {
+                if(custom.EnumCallback)
+                {
+                    DataDeskEnum enum_info = {0};
+                    {
+                        enum_info.name = root->string;
+                        enum_info.name_lowercase_with_underscores =
+                            ParseContextAllocateStringCopyLowercaseWithUnderscores(context, enum_info.name);
+                        enum_info.name_uppercase_with_underscores =
+                            ParseContextAllocateStringCopyUppercaseWithUnderscores(context, enum_info.name);
+                        enum_info.name_lower_camel_case =
+                            ParseContextAllocateStringCopyLowerCamelCase(context, enum_info.name);
+                        enum_info.name_upper_camel_case =
+                            ParseContextAllocateStringCopyUpperCamelCase(context, enum_info.name);
+                        enum_info.name_with_spaces =
+                            ParseContextAllocateStringCopyWithSpaces(context, enum_info.name);
+                        enum_info.root = root;
+                    }
+                    custom.EnumCallback(enum_info, filename);
+                }
+                break;
+            }
+            
+            case DATA_DESK_AST_NODE_TYPE_flags_declaration:
+            {
+                if(custom.FlagsCallback)
+                {
+                    DataDeskFlags flags_info = {0};
+                    {
+                        flags_info.name = root->string;
+                        flags_info.name_lowercase_with_underscores =
+                            ParseContextAllocateStringCopyLowercaseWithUnderscores(context, flags_info.name);
+                        flags_info.name_uppercase_with_underscores =
+                            ParseContextAllocateStringCopyUppercaseWithUnderscores(context, flags_info.name);
+                        flags_info.name_lower_camel_case =
+                            ParseContextAllocateStringCopyLowerCamelCase(context, flags_info.name);
+                        flags_info.name_upper_camel_case =
+                            ParseContextAllocateStringCopyUpperCamelCase(context, flags_info.name);
+                        flags_info.name_with_spaces =
+                            ParseContextAllocateStringCopyWithSpaces(context, flags_info.name);
+                        flags_info.root = root;
+                    }
+                    custom.FlagsCallback(flags_info, filename);
                 }
                 break;
             }
