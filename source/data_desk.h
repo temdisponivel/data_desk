@@ -232,7 +232,19 @@ void DataDeskFWriteStructAsC(FILE *file, DataDeskStruct struct_info);
 */
 
 int
-DataDeskStringHasSubString(char *string, char *substring)
+DataDeskCharIsAlpha(int c)
+{
+    return ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'));
+}
+
+int
+DataDeskCharIsDigit(int c)
+{
+    return (c >= '0' && c <= '9');
+}
+
+int
+DataDeskStringHasAlphanumericBlock(char *string, char *substring)
 {
     int matches = 0;
     
@@ -250,6 +262,12 @@ DataDeskStringHasSubString(char *string, char *substring)
                 {
                     if(!substring[substring_i])
                     {
+                        if(DataDeskCharIsAlpha(string[string_i+1]) ||
+                           DataDeskCharIsDigit(string[string_i+1]) ||
+                           string[string_i+1] == '_')
+                        {
+                            matches = 0;
+                        }
                         break;
                     }
                     
@@ -282,7 +300,7 @@ DataDeskGetTagStringWithSubString(DataDeskASTNode *root, char *tag)
         tag_node;
         tag_node = tag_node->next)
     {
-        if(DataDeskStringHasSubString(tag_node->string, tag))
+        if(DataDeskStringHasAlphanumericBlock(tag_node->string, tag))
         {
             str = tag_node->string;
             break;
