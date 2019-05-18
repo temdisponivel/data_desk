@@ -29,7 +29,7 @@ To use Data Desk, you'll need to do a few things:
 2. `cd data_desk`
 3. `build` on Windows or `./build.sh` on Mac/Linux
 
-NOTE: The `build` command on Windows expects to find `cl` (MSVC). Your environment should know about this. The easiest way to do this is to call `vcvarsall.bat` in your terminal environment, which is packaged with Visual Studio.
+NOTE: The `build.bat` script on Windows expects to find `cl` (MSVC). Your environment should know about this. The easiest way to do this is to use one of the Visual Studio command prompts (titled `x64 Native Tools Command Prompt for VS<version>`, or `x86 Native Tools Command Prompt for VS<version>`). Otherwise, you can call `vcvarsall.bat` in your terminal environment, which is packaged with Visual Studio.
 
 ### Step 2: Make or get Data Desk format files (.ds)
 
