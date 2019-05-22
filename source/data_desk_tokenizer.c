@@ -112,6 +112,7 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                         {
                             if(buffer[j] == '"')
                             {
+                                ++j;
                                 break;
                             }
                         }
