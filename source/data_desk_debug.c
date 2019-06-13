@@ -8,7 +8,7 @@ _AssertFailure(char *condition, int line, char *file, int crash)
     fprintf(stderr, "ASSERTION FAILURE: %s at %s:%i\n", condition, file, line);
     if(crash)
     {
-        *(int *)0 = 0;
+        *(volatile int *)0 = 0;
     }
 }
 
