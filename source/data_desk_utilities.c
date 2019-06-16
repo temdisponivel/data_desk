@@ -110,7 +110,7 @@ LoadEntireFileAndNullTerminate(char *filename)
 {
     char *result = 0;
     
-    FILE *file = fopen(filename, "r");
+    FILE *file = fopen(filename, "rb");
     if(file)
     {
         fseek(file, 0, SEEK_END);
@@ -122,6 +122,7 @@ LoadEntireFileAndNullTerminate(char *filename)
         {
             fread(result, 1, file_size, file);
         }
+        fclose(file);
     }
     
     return result;

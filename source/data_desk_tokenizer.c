@@ -22,6 +22,7 @@ typedef struct Token
     int type;
     char *string;
     int string_length;
+    int lines_traversed;
 }
 Token;
 
@@ -112,6 +113,7 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                         {
                             if(buffer[j] == '"')
                             {
+                                ++j;
                                 break;
                             }
                         }
@@ -241,7 +243,23 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
             }
         }
         
-        
+    }
+    
+    // NOTE(rjf): This is probably a little slow, but will work
+    // for now. Ideally this calculation would happen as a token
+    // is being processed, but I'm in a crunch so I'm not going
+    // to care about performance right now.
+    {
+        token.lines_traversed = 0;
+        for(int i = (intptr_t)tokenizer->at - (intptr_t)token.string;
+            i < token.string_length;
+            ++i)
+        {
+            if(token.string[i] == '\n')
+            {
+                ++token.lines_traversed;
+            }
+        }
     }
     
     return token;
@@ -259,6 +277,7 @@ NextToken(Tokenizer *tokenizer)
 {
     Token token = GetNextTokenFromBuffer(tokenizer);
     tokenizer->at = token.string + token.string_length;
+    tokenizer->line += token.lines_traversed;
     return token;
 }
 
@@ -278,6 +297,7 @@ RequireToken(Tokenizer *tokenizer, char *string, Token *token_ptr)
     if(TokenMatch(token, string))
     {
         tokenizer->at = token.string + token.string_length;
+        tokenizer->line += token.lines_traversed;
         if(token_ptr)
         {
             *token_ptr = token;
@@ -295,6 +315,7 @@ RequireTokenType(Tokenizer *tokenizer, int type, Token *token_ptr)
     if(type == token.type)
     {
         tokenizer->at = token.string + token.string_length;
+        tokenizer->line += token.lines_traversed;
         if(token_ptr)
         {
             *token_ptr = token;
