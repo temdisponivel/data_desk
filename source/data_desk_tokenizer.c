@@ -249,6 +249,7 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
     // for now. Ideally this calculation would happen as a token
     // is being processed, but I'm in a crunch so I'm not going
     // to care about performance right now.
+    if(token.string)
     {
         token.lines_traversed = 0;
         for(int i = (intptr_t)tokenizer->at - (intptr_t)token.string;
