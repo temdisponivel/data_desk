@@ -11,8 +11,10 @@ struct Foo
 void
 FooPrint(Foo *object)
 {
+    printf("{ ");
     printf("%i", object->an_integer);
     printf("%f", object->a_float);
     printf("%c", object->a_char);
+    printf(" }");
 }
 

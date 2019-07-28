@@ -27,27 +27,29 @@ DataDeskCustomLoad(char *custom_dll_path)
     custom.custom_dll = LoadLibraryA(custom_dll_path);
     if(custom.custom_dll)
     {
-        custom.InitCallback = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomInitCallback");
-        custom.FileCallback = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomFileCallback");
-        custom.ConstantCallback = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomConstantCallback");
-        custom.StructCallback = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomStructCallback");
-        custom.EnumCallback = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomEnumCallback");
-        custom.FlagsCallback = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomFlagsCallback");
-        custom.DeclarationCallback = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomDeclarationCallback");
-        custom.CleanUpCallback = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomCleanUpCallback");
+        Log("Custom layer successfully loaded from \"%s\".", custom_dll_path);
+        custom.InitCallback         = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomInitCallback");
+        custom.FileCallback         = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomFileCallback");
+        custom.ConstantCallback     = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomConstantCallback");
+        custom.StructCallback       = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomStructCallback");
+        custom.EnumCallback         = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomEnumCallback");
+        custom.FlagsCallback        = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomFlagsCallback");
+        custom.DeclarationCallback  = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomDeclarationCallback");
+        custom.CleanUpCallback      = (void *)GetProcAddress(custom.custom_dll, "DataDeskCustomCleanUpCallback");
     }
 #elif BUILD_LINUX
     custom.custom_dll = dlopen(custom_dll_path, RTLD_NOW);
     if(custom.custom_dll)
     {
-        custom.InitCallback = dlsym(custom.custom_dll, "DataDeskCustomInitCallback");
-        custom.FileCallback = dlsym(custom.custom_dll, "DataDeskCustomFileCallback");
-        custom.ConstantCallback = dlsym(custom.custom_dll, "DataDeskCustomConstantCallback");
-        custom.StructCallback = dlsym(custom.custom_dll, "DataDeskCustomStructCallback");
-        custom.EnumCallback = dlsym(custom.custom_dll, "DataDeskCustomEnumCallback");
-        custom.FlagsCallback = dlsym(custom.custom_dll, "DataDeskCustomFlagsCallback");
-        custom.DeclarationCallback = dlsym(custom.custom_dll, "DataDeskCustomDeclarationCallback");
-        custom.CleanUpCallback = dlsym(custom.custom_dll, "DataDeskCustomCleanUpCallback");
+        Log("Custom layer successfully loaded from \"%s\".", custom_dll_path);
+        custom.InitCallback         = dlsym(custom.custom_dll, "DataDeskCustomInitCallback");
+        custom.FileCallback         = dlsym(custom.custom_dll, "DataDeskCustomFileCallback");
+        custom.ConstantCallback     = dlsym(custom.custom_dll, "DataDeskCustomConstantCallback");
+        custom.StructCallback       = dlsym(custom.custom_dll, "DataDeskCustomStructCallback");
+        custom.EnumCallback         = dlsym(custom.custom_dll, "DataDeskCustomEnumCallback");
+        custom.FlagsCallback        = dlsym(custom.custom_dll, "DataDeskCustomFlagsCallback");
+        custom.DeclarationCallback  = dlsym(custom.custom_dll, "DataDeskCustomDeclarationCallback");
+        custom.CleanUpCallback      = dlsym(custom.custom_dll, "DataDeskCustomCleanUpCallback");
     }
 #endif
     
