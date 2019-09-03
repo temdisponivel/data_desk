@@ -219,6 +219,16 @@ int DataDeskStructMemberIsType(DataDeskASTNode *root, char *type);
 #ifndef DATA_DESK_NO_CRT
 void DataDeskFWriteConstantAsC(FILE *file, DataDeskConstant constant_info);
 void DataDeskFWriteStructAsC(FILE *file, DataDeskStruct struct_info);
+void DataDeskFWriteStringWithSpaces(FILE *file, char *string);
+void DataDeskFWriteStringAsLowercaseWithUnderscores(FILE *file, char *string);
+void DataDeskFWriteStringAsUppercaseWithUnderscores(FILE *file, char *string);
+void DataDeskFWriteStringAsUpperCamelCase(FILE *file, char *string);
+void DataDeskFWriteStringAsLowerCamelCase(FILE *file, char *string);
+void DataDeskFWriteStringWithSpacesN(FILE *file, char *string, int string_length);
+void DataDeskFWriteStringAsLowercaseWithUnderscoresN(FILE *file, char *string, int string_length);
+void DataDeskFWriteStringAsUppercaseWithUnderscoresN(FILE *file, char *string, int string_length);
+void DataDeskFWriteStringAsUpperCamelCaseN(FILE *file, char *string, int string_length);
+void DataDeskFWriteStringAsLowerCamelCaseN(FILE *file, char *string, int string_length);
 #endif
 
 
@@ -241,6 +251,30 @@ int
 DataDeskCharIsDigit(int c)
 {
     return (c >= '0' && c <= '9');
+}
+
+int
+DataDeskCharIsLowercaseAlpha(int c)
+{
+    return (c >= 'a' && c <= 'z');
+}
+
+int
+DataDeskCharIsUppercaseAlpha(int c)
+{
+    return (c >= 'A' && c <= 'Z');
+}
+
+int
+DataDeskCharToLower(int c)
+{
+    return (DataDeskCharIsUppercaseAlpha(c) ? c + 32 : c);
+}
+
+int
+DataDeskCharToUpper(int c)
+{
+    return (DataDeskCharIsLowercaseAlpha(c) ? c - 32 : c);
 }
 
 int
@@ -572,6 +606,154 @@ DataDeskFWriteStructAsC(FILE *file, DataDeskStruct struct_info)
 {
     fprintf(file, "typedef struct %s %s;\n", struct_info.name, struct_info.name);
     DataDeskFWriteASTFromRootAsC(file, struct_info.root, 0);
+}
+
+void
+DataDeskFWriteStringWithSpaces(FILE *file, char *string)
+{
+    int string_length = 0;
+    for(; string[string_length]; ++string_length);
+    DataDeskFWriteStringWithSpacesN(file, string, string_length);
+}
+
+void
+DataDeskFWriteStringAsLowercaseWithUnderscores(FILE *file, char *string)
+{
+    int string_length = 0;
+    for(; string[string_length]; ++string_length);
+    DataDeskFWriteStringAsLowercaseWithUnderscoresN(file, string, string_length);
+}
+
+void
+DataDeskFWriteStringAsUppercaseWithUnderscores(FILE *file, char *string)
+{
+    int string_length = 0;
+    for(; string[string_length]; ++string_length);
+    DataDeskFWriteStringAsUppercaseWithUnderscoresN(file, string, string_length);
+}
+
+void
+DataDeskFWriteStringAsUpperCamelCase(FILE *file, char *string)
+{
+    int string_length = 0;
+    for(; string[string_length]; ++string_length);
+    DataDeskFWriteStringAsUpperCamelCaseN(file, string, string_length);
+}
+
+void
+DataDeskFWriteStringAsLowerCamelCase(FILE *file, char *string)
+{
+    int string_length = 0;
+    for(; string[string_length]; ++string_length);
+    DataDeskFWriteStringAsLowerCamelCaseN(file, string, string_length);
+}
+
+void
+DataDeskFWriteStringWithSpacesN(FILE *file, char *string, int string_length)
+{
+    for(int i = 0; i < string_length && string[i]; ++i)
+    {
+        if(string[i] != '_')
+        {
+            fprintf(file, "%c", string[i]);
+            if(DataDeskCharIsUppercaseAlpha(string[i+1]))
+            {
+                fprintf(file, " ", string[i]);
+            }
+            else if(string[i+1] == '_')
+            {
+                fprintf(file, " ", string[i]);
+            }
+        }
+    }
+}
+
+void
+DataDeskFWriteStringAsLowercaseWithUnderscoresN(FILE *file, char *string, int string_length)
+{
+    for(int i = 0; i < string_length && string[i]; ++i)
+    {
+        fprintf(file, "%c", DataDeskCharToLower(string[i]));
+        if(DataDeskCharIsUppercaseAlpha(string[i+1]))
+        {
+            fprintf(file, "_", string[i]);
+        }
+    }
+}
+
+void
+DataDeskFWriteStringAsUppercaseWithUnderscoresN(FILE *file, char *string, int string_length)
+{
+    for(int i = 0; i < string_length && string[i]; ++i)
+    {
+        fprintf(file, "%c", DataDeskCharToUpper(string[i]));
+        if(DataDeskCharIsUppercaseAlpha(string[i+1]))
+        {
+            fprintf(file, "_", string[i]);
+        }
+    }
+}
+
+void
+DataDeskFWriteStringAsUpperCamelCaseN(FILE *file, char *string, int string_length)
+{
+    int needs_uppercase = 1;
+    for(int i = 0; i < string_length && string[i]; ++i)
+    {
+        if(string[i] != '_')
+        {
+            if(string[i+1] == '_')
+            {
+                needs_uppercase = 1;
+            }
+        }
+        
+        if(needs_uppercase)
+        {
+            fprintf(file, "%c", DataDeskCharToUpper(string[i]));
+            needs_uppercase = 0;
+        }
+        else
+        {
+            fprintf(file, "%c", string[i]);
+        }
+    }
+}
+
+void
+DataDeskFWriteStringAsLowerCamelCaseN(FILE *file, char *string, int string_length)
+{
+    int needs_uppercase = 0;
+    int need_first_lowercase = 1;
+    
+    for(int i = 0; i < string_length && string[i]; ++i)
+    {
+        if(string[i] != '_')
+        {
+            if(string[i+1] == '_')
+            {
+                needs_uppercase = 1;
+            }
+        }
+        
+        if(needs_uppercase)
+        {
+            fprintf(file, "%c", DataDeskCharToUpper(string[i]));
+            needs_uppercase = 0;
+        }
+        else
+        {
+            if(need_first_lowercase)
+            {
+                need_first_lowercase = 0;
+                fprintf(file, "%c", DataDeskCharToLower(string[i]));
+            }
+            else
+            {
+                fprintf(file, "%c", string[i]);
+            }
+        }
+    }
 }
 
 #endif // DATA_DESK_NO_CRT
