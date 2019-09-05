@@ -37,7 +37,8 @@
 
 typedef struct DataDeskASTNode DataDeskASTNode;
 
-typedef struct DataDeskParsedNode
+typedef struct DataDeskParsedNode DataDeskParsedNode;
+struct DataDeskParsedNode
 {
     char *name;
     char *name_lowercase_with_underscores;
@@ -46,11 +47,11 @@ typedef struct DataDeskParsedNode
     char *name_upper_camel_case;
     char *name_with_spaces;
     DataDeskASTNode *root;
-}
-DataDeskParsedNode;
+};
 
 typedef DataDeskParsedNode DataDeskConstant;
 typedef DataDeskParsedNode DataDeskStruct;
+typedef DataDeskParsedNode DataDeskUnion;
 typedef DataDeskParsedNode DataDeskEnum;
 typedef DataDeskParsedNode DataDeskFlags;
 typedef DataDeskParsedNode DataDeskDeclaration;
@@ -66,6 +67,9 @@ typedef void DataDeskConstantCallback(DataDeskConstant constant, char *filename)
 
 /* DataDeskCustomStructCallback */
 typedef void DataDeskStructCallback(DataDeskStruct parsed_struct, char *filename);
+
+/* DataDeskCustomUnionCallback */
+typedef void DataDeskUnionCallback(DataDeskUnion parsed_union, char *filename);
 
 /* DataDeskCustomEnumCallback */
 typedef void DataDeskEnumCallback(DataDeskEnum parsed_enum, char *filename);
@@ -105,6 +109,7 @@ enum
     DATA_DESK_AST_NODE_TYPE_char_constant,
     DATA_DESK_AST_NODE_TYPE_binary_operator,
     DATA_DESK_AST_NODE_TYPE_struct_declaration,
+    DATA_DESK_AST_NODE_TYPE_union_declaration,
     DATA_DESK_AST_NODE_TYPE_enum_declaration,
     DATA_DESK_AST_NODE_TYPE_flags_declaration,
     DATA_DESK_AST_NODE_TYPE_declaration,
@@ -132,7 +137,7 @@ enum
     DATA_DESK_BINARY_OPERATOR_TYPE_MAX
 };
 
-typedef struct DataDeskASTNode
+struct DataDeskASTNode
 {
     int type;
     DataDeskASTNode *next;
@@ -158,6 +163,12 @@ typedef struct DataDeskASTNode
         }
         struct_declaration;
         
+        struct UnionDeclaration
+        {
+            DataDeskASTNode *first_member;
+        }
+        union_declaration;
+        
         struct EnumDeclaration
         {
             DataDeskASTNode *first_constant;
@@ -182,6 +193,8 @@ typedef struct DataDeskASTNode
             int pointer_count;
             DataDeskASTNode *first_array_size_expression;
             DataDeskASTNode *struct_declaration;
+            DataDeskASTNode *union_declaration;
+            DataDeskASTNode *type_definition;
         }
         type_usage;
         
@@ -191,8 +204,7 @@ typedef struct DataDeskASTNode
         }
         constant_definition;
     };
-}
-DataDeskASTNode;
+};
 
 
 
@@ -218,8 +230,12 @@ int DataDeskDeclarationIsType(DataDeskASTNode *root, char *type);
 int DataDeskStructMemberIsType(DataDeskASTNode *root, char *type);
 
 #ifndef DATA_DESK_NO_CRT
-void DataDeskFWriteConstantAsC(FILE *file, DataDeskConstant constant_info);
-void DataDeskFWriteStructAsC(FILE *file, DataDeskStruct struct_info);
+void DataDeskFWriteConstantAsC      (FILE *file, DataDeskConstant    constant_info);
+void DataDeskFWriteStructAsC        (FILE *file, DataDeskStruct      struct_info);
+void DataDeskFWriteUnionAsC         (FILE *file, DataDeskUnion       union_info);
+void DataDeskFWriteEnumAsC          (FILE *file, DataDeskEnum        enum_info);
+void DataDeskFWriteFlagsAsC         (FILE *file, DataDeskFlags       flags_info);
+void DataDeskFWriteDeclarationAsC   (FILE *file, DataDeskDeclaration declaration_info);
 void DataDeskFWriteStringWithSpaces(FILE *file, char *string);
 void DataDeskFWriteStringAsLowercaseWithUnderscores(FILE *file, char *string);
 void DataDeskFWriteStringAsUppercaseWithUnderscores(FILE *file, char *string);
@@ -242,43 +258,43 @@ void DataDeskFWriteStringAsLowerCamelCaseN(FILE *file, char *string, int string_
 | /////////////////////////////////////////////////////////////////
 */
 
-int
+inline int
 DataDeskCharIsAlpha(int c)
 {
     return ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'));
 }
 
-int
+inline int
 DataDeskCharIsDigit(int c)
 {
     return (c >= '0' && c <= '9');
 }
 
-int
+inline int
 DataDeskCharIsLowercaseAlpha(int c)
 {
     return (c >= 'a' && c <= 'z');
 }
 
-int
+inline int
 DataDeskCharIsUppercaseAlpha(int c)
 {
     return (c >= 'A' && c <= 'Z');
 }
 
-int
+inline int
 DataDeskCharToLower(int c)
 {
     return (DataDeskCharIsUppercaseAlpha(c) ? c + 32 : c);
 }
 
-int
+inline int
 DataDeskCharToUpper(int c)
 {
     return (DataDeskCharIsLowercaseAlpha(c) ? c - 32 : c);
 }
 
-int
+inline int
 DataDeskStringHasAlphanumericBlock(char *string, char *substring)
 {
     int matches = 0;
@@ -333,7 +349,7 @@ DataDeskStringHasAlphanumericBlock(char *string, char *substring)
     return matches;
 }
 
-char *
+inline char *
 DataDeskGetTagStringWithSubString(DataDeskASTNode *root, char *tag)
 {
     char *str = 0;
@@ -350,26 +366,26 @@ DataDeskGetTagStringWithSubString(DataDeskASTNode *root, char *tag)
     return str;
 }
 
-int
+inline int
 DataDeskNodeHasTag(DataDeskASTNode *node, char *tag)
 {
     char *tag_str = DataDeskGetTagStringWithSubString(node, tag);
     return tag_str != 0;
 }
 
-int
+inline int
 DataDeskStructHasTag(DataDeskStruct struct_info, char *tag)
 {
     return DataDeskNodeHasTag(struct_info.root, tag);
 }
 
-int
+inline int
 DataDeskDeclarationHasTag(DataDeskDeclaration declaration_info, char *tag)
 {
     return DataDeskNodeHasTag(declaration_info.root, tag);
 }
 
-int
+inline int
 DataDeskDeclarationIsType(DataDeskASTNode *root, char *type)
 {
     int pointer_count = 0;
@@ -404,14 +420,14 @@ DataDeskDeclarationIsType(DataDeskASTNode *root, char *type)
     return matches;
 }
 
-int
+inline int
 DataDeskStructMemberIsType(DataDeskASTNode *root, char *type)
 {
     return DataDeskDeclarationIsType(root, type);
 }
 
 #ifndef DATA_DESK_NO_CRT
-void
+inline void
 _DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next, int nest)
 {
     if(root)
@@ -435,17 +451,17 @@ _DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next
                 
                 switch(root->binary_operator.type)
                 {
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_add: { binary_operator_string = "+"; break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_subtract: { binary_operator_string = "-"; break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_multiply: { binary_operator_string = "*"; break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_divide: { binary_operator_string = "/"; break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_modulus: { binary_operator_string = "%"; break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_bitshift_left: { binary_operator_string = "<<"; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_add:            { binary_operator_string = "+";  break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_subtract:       { binary_operator_string = "-";  break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_multiply:       { binary_operator_string = "*";  break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_divide:         { binary_operator_string = "/";  break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_modulus:        { binary_operator_string = "%";  break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_bitshift_left:  { binary_operator_string = "<<"; break; }
                     case DATA_DESK_BINARY_OPERATOR_TYPE_bitshift_right: { binary_operator_string = ">>"; break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_bitwise_and: { binary_operator_string = "&"; break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_bitwise_or: { binary_operator_string = "|"; break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_boolean_and: { binary_operator_string = "&&"; break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_boolean_or: { binary_operator_string = "||"; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_bitwise_and:    { binary_operator_string = "&"; break;  }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_bitwise_or:     { binary_operator_string = "|"; break;  }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_boolean_and:    { binary_operator_string = "&&"; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_boolean_or:     { binary_operator_string = "||"; break; }
                     default: break;
                 }
                 
@@ -457,14 +473,25 @@ _DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next
             }
             
             case DATA_DESK_AST_NODE_TYPE_struct_declaration:
+            case DATA_DESK_AST_NODE_TYPE_union_declaration:
             {
+                char *definition_type_string = "";
+                if(root->type == DATA_DESK_AST_NODE_TYPE_struct_declaration)
+                {
+                    definition_type_string = "struct";
+                }
+                else if(root->type == DATA_DESK_AST_NODE_TYPE_union_declaration)
+                {
+                    definition_type_string = "union";
+                }
+                
                 if(root->string)
                 {
-                    fprintf(file, "struct %s\n{\n", root->string);
+                    fprintf(file, "%s %s\n{\n", definition_type_string, root->string);
                 }
                 else
                 {
-                    fprintf(file, "struct\n{\n");
+                    fprintf(file, "%s\n{\n", definition_type_string);
                 }
                 
                 for(DataDeskASTNode *member = root->struct_declaration.first_member;
@@ -588,13 +615,13 @@ _DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next
     }
 }
 
-void
+inline void
 DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next)
 {
     _DataDeskFWriteASTFromRootAsC(file, root, follow_next, 0);
 }
 
-void
+inline void
 DataDeskFWriteConstantAsC(FILE *file, DataDeskConstant constant_info)
 {
     fprintf(file, "#define %s (", constant_info.name);
@@ -602,14 +629,39 @@ DataDeskFWriteConstantAsC(FILE *file, DataDeskConstant constant_info)
     fprintf(file, ")\n");
 }
 
-void
+inline void
 DataDeskFWriteStructAsC(FILE *file, DataDeskStruct struct_info)
 {
     fprintf(file, "typedef struct %s %s;\n", struct_info.name, struct_info.name);
     DataDeskFWriteASTFromRootAsC(file, struct_info.root, 0);
 }
 
-void
+inline void
+DataDeskFWriteUnionAsC(FILE *file, DataDeskUnion union_info)
+{
+    fprintf(file, "typedef union %s %s;\n", union_info.name, union_info.name);
+    DataDeskFWriteASTFromRootAsC(file, union_info.root, 0);
+}
+
+inline void
+DataDeskFWriteEnumAsC(FILE *file, DataDeskEnum enum_info)
+{
+    DataDeskFWriteASTFromRootAsC(file, enum_info.root, 0);
+}
+
+inline void
+DataDeskFWriteFlagsAsC(FILE *file, DataDeskFlags flags_info)
+{
+    DataDeskFWriteASTFromRootAsC(file, flags_info.root, 0);
+}
+
+inline void
+DataDeskFWriteDeclarationAsC(FILE *file, DataDeskDeclaration declaration_info)
+{
+    DataDeskFWriteASTFromRootAsC(file, declaration_info.root, 0);
+}
+
+inline void
 DataDeskFWriteStringWithSpaces(FILE *file, char *string)
 {
     int string_length = 0;
@@ -617,7 +669,7 @@ DataDeskFWriteStringWithSpaces(FILE *file, char *string)
     DataDeskFWriteStringWithSpacesN(file, string, string_length);
 }
 
-void
+inline void
 DataDeskFWriteStringAsLowercaseWithUnderscores(FILE *file, char *string)
 {
     int string_length = 0;
@@ -625,7 +677,7 @@ DataDeskFWriteStringAsLowercaseWithUnderscores(FILE *file, char *string)
     DataDeskFWriteStringAsLowercaseWithUnderscoresN(file, string, string_length);
 }
 
-void
+inline void
 DataDeskFWriteStringAsUppercaseWithUnderscores(FILE *file, char *string)
 {
     int string_length = 0;
@@ -633,7 +685,7 @@ DataDeskFWriteStringAsUppercaseWithUnderscores(FILE *file, char *string)
     DataDeskFWriteStringAsUppercaseWithUnderscoresN(file, string, string_length);
 }
 
-void
+inline void
 DataDeskFWriteStringAsUpperCamelCase(FILE *file, char *string)
 {
     int string_length = 0;
@@ -641,7 +693,7 @@ DataDeskFWriteStringAsUpperCamelCase(FILE *file, char *string)
     DataDeskFWriteStringAsUpperCamelCaseN(file, string, string_length);
 }
 
-void
+inline void
 DataDeskFWriteStringAsLowerCamelCase(FILE *file, char *string)
 {
     int string_length = 0;
@@ -649,7 +701,7 @@ DataDeskFWriteStringAsLowerCamelCase(FILE *file, char *string)
     DataDeskFWriteStringAsLowerCamelCaseN(file, string, string_length);
 }
 
-void
+inline void
 DataDeskFWriteStringWithSpacesN(FILE *file, char *string, int string_length)
 {
     for(int i = 0; i < string_length && string[i]; ++i)
@@ -669,7 +721,7 @@ DataDeskFWriteStringWithSpacesN(FILE *file, char *string, int string_length)
     }
 }
 
-void
+inline void
 DataDeskFWriteStringAsLowercaseWithUnderscoresN(FILE *file, char *string, int string_length)
 {
     for(int i = 0; i < string_length && string[i]; ++i)
@@ -682,7 +734,7 @@ DataDeskFWriteStringAsLowercaseWithUnderscoresN(FILE *file, char *string, int st
     }
 }
 
-void
+inline void
 DataDeskFWriteStringAsUppercaseWithUnderscoresN(FILE *file, char *string, int string_length)
 {
     for(int i = 0; i < string_length && string[i]; ++i)
@@ -695,7 +747,7 @@ DataDeskFWriteStringAsUppercaseWithUnderscoresN(FILE *file, char *string, int st
     }
 }
 
-void
+inline void
 DataDeskFWriteStringAsUpperCamelCaseN(FILE *file, char *string, int string_length)
 {
     int needs_uppercase = 1;
@@ -721,7 +773,7 @@ DataDeskFWriteStringAsUpperCamelCaseN(FILE *file, char *string, int string_lengt
     }
 }
 
-void
+inline void
 DataDeskFWriteStringAsLowerCamelCaseN(FILE *file, char *string, int string_length)
 {
     int needs_uppercase = 0;

@@ -1,20 +1,27 @@
+typedef struct Guts Guts;
+struct Guts
+{
+int data;
+};
 
 typedef struct Foo Foo;
 struct Foo
 {
-    int an_integer;
-    float a_float;
-    char a_char;
-    double *ptr_to_double;
+int a;
+float b;
+char c;
+Guts *guts;
+double *d;
 };
 
 void
 FooPrint(Foo *object)
 {
     printf("{ ");
-    printf("%i", object->an_integer);
-    printf("%f", object->a_float);
-    printf("%c", object->a_char);
-    printf(" }");
+    printf("%i, ", object->a);
+    printf("%f, ", object->b);
+    printf("%c, ", object->c);
+    printf("%i, ", object->guts->data);
+    printf("}");
 }
 

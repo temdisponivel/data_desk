@@ -21,6 +21,7 @@ typedef struct ParseContextSymbolTableKey ParseContextSymbolTableKey;
 struct ParseContextSymbolTableKey
 {
     char *key;
+    int key_length;
 };
 
 typedef struct ParseContextSymbolTableValue ParseContextSymbolTableValue;
@@ -126,10 +127,10 @@ static unsigned int global_crc32_table[] =
 };
 
 static unsigned int
-ParseContextSymbolTableHash(char *key)
+ParseContextSymbolTableHash(char *key, int length)
 {
     unsigned int crc = 0;
-    for(int i = 0; key[i]; ++i)
+    for(int i = 0; key[i] && i < length; ++i)
     {
         crc = (crc << 8) ^ global_crc32_table[((crc >> 24) ^ key[i]) & 255];
     }
@@ -137,36 +138,40 @@ ParseContextSymbolTableHash(char *key)
 }
 
 static DataDeskASTNode *
-ParseContextLookUpSymbol(ParseContext *context, char *key)
+ParseContextLookUpSymbol(ParseContext *context, char *key, int key_length)
 {
     DataDeskASTNode *symbol_value = 0;
     
-    unsigned int key_hash = ParseContextSymbolTableHash(key) % context->symbol_table_max;
-    unsigned int original_hash = key_hash;
-    
-    for(;;)
+    if(context->symbol_table_max)
     {
-        if(context->symbol_table_keys[key_hash].key)
+        unsigned int key_hash = ParseContextSymbolTableHash(key, key_length) % context->symbol_table_max;
+        unsigned int original_hash = key_hash;
+        
+        for(;;)
         {
-            if(StringMatchCaseSensitive(context->symbol_table_keys[key_hash].key, key))
+            if(context->symbol_table_keys[key_hash].key)
             {
-                symbol_value = context->symbol_table_values[key_hash].root;
+                if(StringMatchCaseSensitiveN(context->symbol_table_keys[key_hash].key, key, key_length))
+                {
+                    symbol_value = context->symbol_table_values[key_hash].root;
+                    break;
+                }
+                else
+                {
+                    if(++key_hash >= context->symbol_table_max)
+                    {
+                        key_hash = 0;
+                    }
+                    if(key_hash == original_hash)
+                    {
+                        break;
+                    }
+                }
             }
             else
             {
-                if(++key_hash >= context->symbol_table_max)
-                {
-                    key_hash = 0;
-                }
-                if(key_hash == original_hash)
-                {
-                    break;
-                }
+                break;
             }
-        }
-        else
-        {
-            break;
         }
     }
     
@@ -181,13 +186,13 @@ enum
 };
 
 static int
-ParseContextAddSymbolAST(ParseContext *context, char *key, DataDeskASTNode *root)
+ParseContextAddSymbolAST(ParseContext *context, char *key, int key_length, DataDeskASTNode *root)
 {
     int result = PARSE_CONTEXT_ADD_SYMBOL_MEMORY_FAILURE;
     
     // NOTE(rjf): Reallocate symbol table if necessary (if the count we have is 75%+ of
     // the allocated size of the symbol table).
-    if(context->symbol_table_count >= (context->symbol_table_count * 3) / 4)
+    if(context->symbol_table_count >= (context->symbol_table_max * 3) / 4)
     {
         // NOTE(rjf): If we're resizing, increase size by a factor of 1.5x (exponentially),
         // and fall back on 1024 (this case happens if this is the first add ever).
@@ -207,9 +212,10 @@ ParseContextAddSymbolAST(ParseContext *context, char *key, DataDeskASTNode *root
             if(context->symbol_table_keys[i].key)
             {
                 char *old_key = context->symbol_table_keys[i].key;
+                int old_key_length = context->symbol_table_keys[i].key_length;
                 DataDeskASTNode *old_root = context->symbol_table_values[i].root;
                 
-                unsigned int new_hash = ParseContextSymbolTableHash(old_key) % new_symbol_table_max;
+                unsigned int new_hash = ParseContextSymbolTableHash(old_key, old_key_length) % new_symbol_table_max;
                 unsigned int original_new_hash = new_hash;
                 
                 for(;;)
@@ -240,6 +246,7 @@ ParseContextAddSymbolAST(ParseContext *context, char *key, DataDeskASTNode *root
                     else
                     {
                         new_symbol_table_keys[new_hash].key = old_key;
+                        new_symbol_table_keys[new_hash].key_length = old_key_length;
                         new_symbol_table_values[new_hash].root = old_root;
                         break;
                     }
@@ -254,16 +261,26 @@ ParseContextAddSymbolAST(ParseContext *context, char *key, DataDeskASTNode *root
         context->symbol_table_max    = new_symbol_table_max;
     }
     
-    unsigned int key_hash = ParseContextSymbolTableHash(key) % context->symbol_table_max;
+    unsigned int key_hash = ParseContextSymbolTableHash(key, key_length) % context->symbol_table_max;
     unsigned int original_hash = key_hash;
     
     for(;;)
     {
         if(context->symbol_table_keys[key_hash].key)
         {
-            if(StringMatchCaseSensitive(context->symbol_table_keys[key_hash].key, key))
+            if(StringMatchCaseSensitiveN(context->symbol_table_keys[key_hash].key, key, key_length))
             {
-                result = PARSE_CONTEXT_ADD_SYMBOL_ALREADY_DEFINED;
+                if(context->symbol_table_values[key_hash].root)
+                {
+                    result = PARSE_CONTEXT_ADD_SYMBOL_ALREADY_DEFINED;
+                }
+                else
+                {
+                    result = PARSE_CONTEXT_ADD_SYMBOL_SUCCESS;
+                    context->symbol_table_keys[key_hash].key = key;
+                    context->symbol_table_values[key_hash].root = root;
+                    ++context->symbol_table_count;
+                }
                 break;
             }
             else
@@ -585,7 +602,7 @@ ParseTagList(Tokenizer *tokenizer, ParseContext *context)
 }
 
 static ASTNode *
-ParseStruct(Tokenizer *tokenizer, ParseContext *context);
+ParseStructOrUnion(Tokenizer *tokenizer, ParseContext *context);
 
 static int
 BinaryOperatorPrecedence(int type)
@@ -770,15 +787,16 @@ ParseTypeUsage(Tokenizer *tokenizer, ParseContext *context)
         }
     }
     
-    ASTNode *struct_declaration_type = 0;
+    ASTNode *struct_or_union_declaration_type = 0;
+    ASTNode *type_definition_type = 0;
     char *type_name_string = 0;
     int type_name_string_length = 0;
     
-    if(TokenMatch(PeekToken(tokenizer), "struct"))
+    if(TokenMatch(PeekToken(tokenizer), "struct") || TokenMatch(PeekToken(tokenizer), "union"))
     {
-        type_name_string = "ANONYMOUSSTRUCT";
+        type_name_string = "(anonymous type)";
         type_name_string_length = CalculateCStringLength(type_name_string);
-        struct_declaration_type = ParseStruct(tokenizer, context);
+        struct_or_union_declaration_type = ParseStructOrUnion(tokenizer, context);
     }
     else
     {
@@ -790,12 +808,24 @@ ParseTypeUsage(Tokenizer *tokenizer, ParseContext *context)
         }
         type_name_string = type_name.string;
         type_name_string_length = type_name.string_length;
+        type_definition_type = ParseContextLookUpSymbol(context, type_name_string, type_name_string_length);
     }
     
     type = ParseContextAllocateASTNode(context);
     type->type = DATA_DESK_AST_NODE_TYPE_type_usage;
     type->type_usage.pointer_count = pointer_count;
-    type->type_usage.struct_declaration = struct_declaration_type;
+    if(struct_or_union_declaration_type)
+    {
+        if(struct_or_union_declaration_type->type == DATA_DESK_AST_NODE_TYPE_struct_declaration)
+        {
+            type->type_usage.struct_declaration = struct_or_union_declaration_type;
+        }
+        else if(struct_or_union_declaration_type->type == DATA_DESK_AST_NODE_TYPE_union_declaration)
+        {
+            type->type_usage.union_declaration = struct_or_union_declaration_type;
+        }
+    }
+    type->type_usage.type_definition = type_definition_type;
     type->string = type_name_string;
     type->string_length = type_name_string_length;
     
@@ -854,32 +884,45 @@ ParseDeclaration(Tokenizer *tokenizer, ParseContext *context)
 }
 
 static ASTNode *
-ParseStruct(Tokenizer *tokenizer, ParseContext *context)
+ParseStructOrUnion(Tokenizer *tokenizer, ParseContext *context)
 {
-    ASTNode *struct_declaration = 0;
+    ASTNode *type = 0;
+    char *type_string = "";
+    int is_struct = 0;
+    int is_union = 0;
     
-    if(!RequireToken(tokenizer, "struct", 0))
+    if(RequireToken(tokenizer, "struct", 0))
     {
-        ParseContextPushError(context, tokenizer, "Struct keyword not found");
+        type_string = "struct";
+        is_struct = 1;
+    }
+    else if(RequireToken(tokenizer, "union", 0))
+    {
+        type_string = "union";
+        is_union = 1;
+    }
+    else
+    {
+        ParseContextPushError(context, tokenizer, "'struct' or 'union' keyword not found");
         goto end_parse;
     }
     
-    Token struct_name = {0};
+    Token type_name = {0};
     
-    RequireTokenType(tokenizer, TOKEN_alphanumeric_block, &struct_name);
+    RequireTokenType(tokenizer, TOKEN_alphanumeric_block, &type_name);
     
     if(!RequireToken(tokenizer, "{", 0))
     {
-        ParseContextPushError(context, tokenizer, "Missing { after struct name");
+        ParseContextPushError(context, tokenizer, "Missing { after %s name", type_string);
         goto end_parse;
     }
     
-    struct_declaration = ParseContextAllocateASTNode(context);
-    struct_declaration->type = DATA_DESK_AST_NODE_TYPE_struct_declaration;
-    struct_declaration->string = struct_name.string;
-    struct_declaration->string_length = struct_name.string_length;
+    type = ParseContextAllocateASTNode(context);
+    type->type = is_struct ? DATA_DESK_AST_NODE_TYPE_struct_declaration : DATA_DESK_AST_NODE_TYPE_union_declaration;
+    type->string = type_name.string;
+    type->string_length = type_name.string_length;
     
-    ASTNode **member_store_target = &struct_declaration->struct_declaration.first_member;
+    ASTNode **member_store_target = is_struct ? (&type->struct_declaration.first_member) : (&type->union_declaration.first_member);
     
     while(1)
     {
@@ -888,11 +931,11 @@ ParseStruct(Tokenizer *tokenizer, ParseContext *context)
         
         Tokenizer reset_tokenizer = *tokenizer;
         
-        if(TokenMatch(PeekToken(tokenizer), "struct"))
+        if(TokenMatch(PeekToken(tokenizer), "struct") || TokenMatch(PeekToken(tokenizer), "union"))
         {
-            ASTNode *sub_struct_declaration = ParseStruct(tokenizer, context);
-            sub_struct_declaration->first_tag = tag_list;
-            *member_store_target = sub_struct_declaration;
+            ASTNode *sub_type_declaration = ParseStructOrUnion(tokenizer, context);
+            sub_type_declaration->first_tag = tag_list;
+            *member_store_target = sub_type_declaration;
             member_store_target = &(*member_store_target)->next;
         }
         else
@@ -927,12 +970,12 @@ ParseStruct(Tokenizer *tokenizer, ParseContext *context)
     
     if(!RequireToken(tokenizer, "}", 0))
     {
-        ParseContextPushError(context, tokenizer, "Missing } after struct declaration");
+        ParseContextPushError(context, tokenizer, "Missing } after %s declaration", type_string);
         goto end_parse;
     }
     
     end_parse:;
-    return struct_declaration;
+    return type;
 }
 
 static ASTNode *
@@ -1096,11 +1139,15 @@ ParseCode(Tokenizer *tokenizer, ParseContext *context)
         
         if(token.type != TOKEN_invalid)
         {
-            if(TokenMatch(token, "struct"))
+            if(TokenMatch(token, "struct") || TokenMatch(token, "union"))
             {
-                ASTNode *struct_declaration = ParseStruct(tokenizer, context);
-                struct_declaration->first_tag = tag_list;
-                *node_store_target = struct_declaration;
+                ASTNode *type_definition = ParseStructOrUnion(tokenizer, context);
+                type_definition->first_tag = tag_list;
+                if(ParseContextAddSymbolAST(context, type_definition->string, type_definition->string_length, type_definition) == PARSE_CONTEXT_ADD_SYMBOL_ALREADY_DEFINED)
+                {
+                    ParseContextPushError(context, tokenizer, "\"%.*s\" has already been defined", type_definition->string_length, type_definition->string);
+                }
+                *node_store_target = type_definition;
                 node_store_target = &(*node_store_target)->next;
             }
             else if(TokenMatch(token, "enum"))

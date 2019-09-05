@@ -1,10 +1,15 @@
+struct Guts
+{
+    data : int;
+}
 
 @Printable
 struct Foo
 {
-    an_integer  : int;
-    a_float     : float;
-    a_char      : char;
+    a          : int;
+    b          : float;
+    c          : char;
+    guts       : Guts;
     @NoPrint
-        ptr_to_double : *double;
+        d : *double;
 }
