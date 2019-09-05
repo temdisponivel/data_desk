@@ -5,7 +5,6 @@ struct Foo
     an_integer  : int;
     a_float     : float;
     a_char      : char;
-    
     @NoPrint
         ptr_to_double : *double;
 }

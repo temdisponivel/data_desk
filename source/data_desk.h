@@ -113,7 +113,8 @@ enum
     DATA_DESK_AST_NODE_TYPE_constant_definition,
 };
 
-// NOTE(rjf): These must be in order of precedence
+// NOTE(rjf): The binary operator precedence table in BinaryOperatorPrecedence
+// must update to match this when this changes.
 enum
 {
     DATA_DESK_BINARY_OPERATOR_TYPE_invalid,

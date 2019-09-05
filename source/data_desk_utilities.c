@@ -23,6 +23,29 @@ StringMatchCaseSensitiveN(char *a, char *b, int n)
 }
 
 static int
+StringMatchCaseSensitive(char *a, char *b)
+{
+    int matches = 0;
+    if(a && b)
+    {
+        matches = 1;
+        for(int i = 0;; ++i)
+        {
+            if(a[i] != b[i])
+            {
+                matches = 0;
+                break;
+            }
+            else if(!a[i])
+            {
+                break;
+            }
+        }
+    }
+    return matches;
+}
+
+static int
 StringMatchCaseInsensitive(char *a, char *b)
 {
     int matches = 0;
