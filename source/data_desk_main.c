@@ -72,14 +72,14 @@ main(int argument_count, char **arguments)
 {
     if(argument_count > 1)
     {
-        if(StringMatchCaseInsensitive(arguments[1], "help") ||
-           StringMatchCaseInsensitive(arguments[1], "-help") ||
+        if(StringMatchCaseInsensitive(arguments[1], "help"  ) ||
+           StringMatchCaseInsensitive(arguments[1], "-help" ) ||
            StringMatchCaseInsensitive(arguments[1], "--help") ||
-           StringMatchCaseInsensitive(arguments[1], "-h") ||
-           StringMatchCaseInsensitive(arguments[1], "--h") ||
-           StringMatchCaseInsensitive(arguments[1], "/?") ||
-           StringMatchCaseInsensitive(arguments[1], "?") ||
-           StringMatchCaseInsensitive(arguments[1], "-?"))
+           StringMatchCaseInsensitive(arguments[1], "-h"    ) ||
+           StringMatchCaseInsensitive(arguments[1], "--h"   ) ||
+           StringMatchCaseInsensitive(arguments[1], "/?"    ) ||
+           StringMatchCaseInsensitive(arguments[1], "?"     ) ||
+           StringMatchCaseInsensitive(arguments[1], "-?"    ))
         {
             printf("Data Desk Flags\n");
             printf("--custom, -c        Specify the path to a custom layer to which parse information is to be sent.\n");

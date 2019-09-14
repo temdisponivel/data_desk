@@ -175,11 +175,13 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                         "}",
                         ";",
                         "::",
+                        "->",
                         ":",
                         "*",
                         "+",
                         "-",
                         "/",
+                        ";"
                     };
                     
                     for(j = i+1; buffer[j]; ++j)

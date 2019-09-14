@@ -50,6 +50,12 @@ GenerateNullTerminatedStringsForAST(ParseContext *context, ASTNode *root)
                 GenerateNullTerminatedStringsForAST(context, root->constant_definition.expression);
                 break;
             }
+            case DATA_DESK_AST_NODE_TYPE_procedure_header:
+            {
+                GenerateNullTerminatedStringsForAST(context, root->procedure_header.first_parameter);
+                GenerateNullTerminatedStringsForAST(context, root->procedure_header.return_type);
+                break;
+            }
             
             default: break;
         }
@@ -326,22 +332,44 @@ TraverseASTAndCallCustomParseCallbacks(ParseContext *context, ASTNode *root, Dat
             
             case DATA_DESK_AST_NODE_TYPE_constant_definition:
             {
-                DataDeskConstant const_info = {0};
+                if(custom.ConstantCallback)
                 {
-                    const_info.name = root->string;
-                    const_info.name_lowercase_with_underscores =
-                        ParseContextAllocateStringCopyLowercaseWithUnderscores(context, const_info.name);
-                    const_info.name_uppercase_with_underscores =
-                        ParseContextAllocateStringCopyUppercaseWithUnderscores(context, const_info.name);
-                    const_info.name_lower_camel_case =
-                        ParseContextAllocateStringCopyLowerCamelCase(context, const_info.name);
-                    const_info.name_upper_camel_case =
-                        ParseContextAllocateStringCopyUpperCamelCase(context, const_info.name);
-                    const_info.name_with_spaces =
-                        ParseContextAllocateStringCopyWithSpaces(context, const_info.name);
-                    const_info.root = root;
+                    DataDeskConstant const_info = {0};
+                    {
+                        const_info.name = root->string;
+                        const_info.name_lowercase_with_underscores =
+                            ParseContextAllocateStringCopyLowercaseWithUnderscores(context, const_info.name);
+                        const_info.name_uppercase_with_underscores =
+                            ParseContextAllocateStringCopyUppercaseWithUnderscores(context, const_info.name);
+                        const_info.name_lower_camel_case =
+                            ParseContextAllocateStringCopyLowerCamelCase(context, const_info.name);
+                        const_info.name_upper_camel_case =
+                            ParseContextAllocateStringCopyUpperCamelCase(context, const_info.name);
+                        const_info.name_with_spaces =
+                            ParseContextAllocateStringCopyWithSpaces(context, const_info.name);
+                        const_info.root = root;
+                    }
+                    custom.ConstantCallback(const_info, filename);
                 }
-                custom.ConstantCallback(const_info, filename);
+                break;
+            }
+            
+            case DATA_DESK_AST_NODE_TYPE_procedure_header:
+            {
+                if(custom.ProcedureHeaderCallback)
+                {
+                    DataDeskProcedureHeader proc = {0};
+                    {
+                        proc.name = root->string;
+                        proc.name_lowercase_with_underscores = ParseContextAllocateStringCopyLowercaseWithUnderscores(context, proc.name);
+                        proc.name_uppercase_with_underscores = ParseContextAllocateStringCopyUppercaseWithUnderscores(context, proc.name);
+                        proc.name_lower_camel_case = ParseContextAllocateStringCopyLowerCamelCase(context, proc.name);
+                        proc.name_upper_camel_case = ParseContextAllocateStringCopyUpperCamelCase(context, proc.name);
+                        proc.name_with_spaces = ParseContextAllocateStringCopyWithSpaces(context, proc.name);
+                        proc.root = root;
+                    }
+                    custom.ProcedureHeaderCallback(proc, filename);
+                }
                 break;
             }
             

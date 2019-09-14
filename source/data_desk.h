@@ -55,6 +55,7 @@ typedef DataDeskParsedNode DataDeskUnion;
 typedef DataDeskParsedNode DataDeskEnum;
 typedef DataDeskParsedNode DataDeskFlags;
 typedef DataDeskParsedNode DataDeskDeclaration;
+typedef DataDeskParsedNode DataDeskProcedureHeader;
 
 /* DataDeskCustomInitCallback */
 typedef void DataDeskInitCallback(void);
@@ -79,6 +80,9 @@ typedef void DataDeskFlagsCallback(DataDeskFlags parsed_flags, char *filename);
 
 /* DataDeskCustomDeclarationCallback */
 typedef void DataDeskDeclarationCallback(DataDeskDeclaration declaration, char *filename);
+
+/* DataDeskCustomProcedureHeaderCallback */
+typedef void DataDeskProcedureHeaderCallback(DataDeskProcedureHeader procedure, char *filename);
 
 /* DataDeskCustomCleanUpCallback */
 typedef void DataDeskCleanUpCallback(void);
@@ -116,6 +120,7 @@ enum
     DATA_DESK_AST_NODE_TYPE_type_usage,
     DATA_DESK_AST_NODE_TYPE_tag,
     DATA_DESK_AST_NODE_TYPE_constant_definition,
+    DATA_DESK_AST_NODE_TYPE_procedure_header,
 };
 
 // NOTE(rjf): The binary operator precedence table in BinaryOperatorPrecedence
@@ -203,6 +208,13 @@ struct DataDeskASTNode
             DataDeskASTNode *expression;
         }
         constant_definition;
+        
+        struct ProcedureHeader
+        {
+            DataDeskASTNode *return_type;
+            DataDeskASTNode *first_parameter;
+        }
+        procedure_header;
     };
 };
 

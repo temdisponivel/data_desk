@@ -831,7 +831,7 @@ ParseTypeUsage(Tokenizer *tokenizer, ParseContext *context)
     
     ASTNode **array_size_target = &type->type_usage.first_array_size_expression;
     
-    while(1)
+    for(;;)
     {
         if(RequireToken(tokenizer, "[", 0))
         {
@@ -1124,6 +1124,69 @@ ParseFlags(Tokenizer *tokenizer, ParseContext *context)
 }
 
 static ASTNode *
+ParseProcedureHeader(Tokenizer *tokenizer, ParseContext *context)
+{
+    ASTNode *root = 0;
+    
+    Token name = {0};
+    if(!RequireTokenType(tokenizer, TOKEN_alphanumeric_block, &name))
+    {
+        ParseContextPushError(context, tokenizer, "Expected identifier");
+    }
+    
+    if(!RequireToken(tokenizer, "::", 0))
+    {
+        ParseContextPushError(context, tokenizer, "Expected ::");
+    }
+    
+    if(!RequireToken(tokenizer, "(", 0))
+    {
+        ParseContextPushError(context, tokenizer, "Expected (");
+    }
+    
+    root = ParseContextAllocateASTNode(context);
+    root->type = DATA_DESK_AST_NODE_TYPE_procedure_header;
+    root->string = name.string;
+    root->string_length = name.string_length;
+    
+    ASTNode **parameter_store_target = &root->procedure_header.first_parameter;
+    for(;;)
+    {
+        if(TokenMatch(PeekToken(tokenizer), ")"))
+        {
+            break;
+        }
+        ASTNode *parameter = ParseDeclaration(tokenizer, context);
+        if(parameter)
+        {
+            *parameter_store_target = parameter;
+            parameter_store_target = &(*parameter_store_target)->next;
+            if(!TokenMatch(PeekToken(tokenizer), ")") && !RequireToken(tokenizer, ",", 0))
+            {
+                ParseContextPushError(context, tokenizer, "Expected ,");
+                break;
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+    
+    if(!RequireToken(tokenizer, ")", 0))
+    {
+        ParseContextPushError(context, tokenizer, "Expected )");
+    }
+    
+    if(RequireToken(tokenizer, "->", 0))
+    {
+        root->procedure_header.return_type = ParseTypeUsage(tokenizer, context);
+    }
+    
+    return root;
+}
+
+static ASTNode *
 ParseCode(Tokenizer *tokenizer, ParseContext *context)
 {
     ASTNode *root = 0;
@@ -1174,20 +1237,53 @@ ParseCode(Tokenizer *tokenizer, ParseContext *context)
                 {
                     if(RequireToken(tokenizer, "::", 0))
                     {
-                        ASTNode *constant = ParseContextAllocateASTNode(context);
-                        constant->type = DATA_DESK_AST_NODE_TYPE_constant_definition;
-                        constant->first_tag = tag_list;
-                        constant->string = name.string;
-                        constant->string_length = name.string_length;
-                        constant->constant_definition.expression = ParseExpression(tokenizer, context);
+                        Tokenizer reset_tokenizer_2 = *tokenizer;
                         
-                        *node_store_target = constant;
-                        node_store_target = &(*node_store_target)->next;
-                        
-                        if(!RequireToken(tokenizer, ";", 0))
+                        // NOTE(rjf): Procedure header definition.
+                        if(RequireToken(tokenizer, "(", 0) &&
+                           (RequireTokenType(tokenizer, TOKEN_alphanumeric_block, 0) && RequireToken(tokenizer, ":", 0)) ||
+                           (RequireToken(tokenizer, ")", 0)))
                         {
-                            ParseContextPushError(context, tokenizer, "Missing ;");
+                            *tokenizer = reset_tokenizer;
+                            
+                            ASTNode *proc = ParseProcedureHeader(tokenizer, context);
+                            proc->first_tag = tag_list;
+                            *node_store_target = proc;
+                            node_store_target = &(*node_store_target)->next;
+                            
+                            if(!RequireToken(tokenizer, ";", 0))
+                            {
+                                ParseContextPushError(context, tokenizer, "Missing ;");
+                            }
+                            
+                            goto end_constant_parse;
                         }
+                        else
+                        {
+                            *tokenizer = reset_tokenizer_2;
+                        }
+                        
+                        // NOTE(rjf): Constant definition.
+                        {
+                            ASTNode *constant = ParseContextAllocateASTNode(context);
+                            constant->type = DATA_DESK_AST_NODE_TYPE_constant_definition;
+                            constant->first_tag = tag_list;
+                            constant->string = name.string;
+                            constant->string_length = name.string_length;
+                            constant->constant_definition.expression = ParseExpression(tokenizer, context);
+                            
+                            *node_store_target = constant;
+                            node_store_target = &(*node_store_target)->next;
+                            
+                            if(!RequireToken(tokenizer, ";", 0))
+                            {
+                                ParseContextPushError(context, tokenizer, "Missing ;");
+                            }
+                            
+                            goto end_constant_parse;
+                        }
+                        
+                        end_constant_parse:;
                     }
                     else if(RequireToken(tokenizer, ":", 0))
                     {
