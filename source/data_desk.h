@@ -242,12 +242,13 @@ int DataDeskDeclarationIsType(DataDeskASTNode *root, char *type);
 int DataDeskStructMemberIsType(DataDeskASTNode *root, char *type);
 
 #ifndef DATA_DESK_NO_CRT
-void DataDeskFWriteConstantAsC      (FILE *file, DataDeskConstant    constant_info);
-void DataDeskFWriteStructAsC        (FILE *file, DataDeskStruct      struct_info);
-void DataDeskFWriteUnionAsC         (FILE *file, DataDeskUnion       union_info);
-void DataDeskFWriteEnumAsC          (FILE *file, DataDeskEnum        enum_info);
-void DataDeskFWriteFlagsAsC         (FILE *file, DataDeskFlags       flags_info);
-void DataDeskFWriteDeclarationAsC   (FILE *file, DataDeskDeclaration declaration_info);
+void DataDeskFWriteConstantAsC          (FILE *file, DataDeskConstant        constant_info);
+void DataDeskFWriteStructAsC            (FILE *file, DataDeskStruct          struct_info);
+void DataDeskFWriteUnionAsC             (FILE *file, DataDeskUnion           union_info);
+void DataDeskFWriteEnumAsC              (FILE *file, DataDeskEnum            enum_info);
+void DataDeskFWriteFlagsAsC             (FILE *file, DataDeskFlags           flags_info);
+void DataDeskFWriteDeclarationAsC       (FILE *file, DataDeskDeclaration     declaration_info);
+void DataDeskFWriteProcedureHeaderAsC   (FILE *file, DataDeskProcedureHeader procedure_info);
 void DataDeskFWriteStringWithSpaces(FILE *file, char *string);
 void DataDeskFWriteStringAsLowercaseWithUnderscores(FILE *file, char *string);
 void DataDeskFWriteStringAsUppercaseWithUnderscores(FILE *file, char *string);
@@ -617,6 +618,37 @@ _DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next
                 break;
             }
             
+            case DATA_DESK_AST_NODE_TYPE_procedure_header:
+            {
+                if(root->procedure_header.return_type)
+                {
+                    _DataDeskFWriteASTFromRootAsC(file, root->procedure_header.return_type, 0, nest);
+                }
+                else
+                {
+                    fprintf(file, "void");
+                }
+                fprintf(file, " %s(", root->string);
+                if(root->procedure_header.first_parameter)
+                {
+                    for(DataDeskASTNode *parameter = root->procedure_header.first_parameter;
+                        parameter; parameter = parameter->next)
+                    {
+                        _DataDeskFWriteASTFromRootAsC(file, parameter, 0, nest);
+                        if(parameter->next)
+                        {
+                            fprintf(file, ", ");
+                        }
+                    }
+                }
+                else
+                {
+                    fprintf(file, "void");
+                }
+                fprintf(file, ");\n");
+                break;
+            }
+            
             default: break;
         }
         
@@ -671,6 +703,12 @@ inline void
 DataDeskFWriteDeclarationAsC(FILE *file, DataDeskDeclaration declaration_info)
 {
     DataDeskFWriteASTFromRootAsC(file, declaration_info.root, 0);
+}
+
+inline void
+DataDeskFWriteProcedureHeaderAsC(FILE *file, DataDeskProcedureHeader procedure_info)
+{
+    DataDeskFWriteASTFromRootAsC(file, procedure_info.root, 0);
 }
 
 inline void
