@@ -240,6 +240,7 @@ int DataDeskStructHasTag(DataDeskStruct struct_info, char *tag);
 int DataDeskDeclarationHasTag(DataDeskDeclaration declaration_info, char *tag);
 int DataDeskDeclarationIsType(DataDeskASTNode *root, char *type);
 int DataDeskStructMemberIsType(DataDeskASTNode *root, char *type);
+int DataDeskInterpretNumericExpressionAsInteger(DataDeskASTNode *root);
 
 #ifndef DATA_DESK_NO_CRT
 void DataDeskFWriteConstantAsC          (FILE *file, DataDeskConstant        constant_info);
@@ -437,6 +438,80 @@ inline int
 DataDeskStructMemberIsType(DataDeskASTNode *root, char *type)
 {
     return DataDeskDeclarationIsType(root, type);
+}
+
+inline int
+DataDeskCStringToInt(char *string)
+{
+    int value = 0;
+    
+    char value_str[64] = {0};
+    int value_str_write_pos = 0;
+    for(int i = 0; string[i]; ++i)
+    {
+        if(DataDeskCharIsDigit(string[i]))
+        {
+            for(int j = i; string[j]; ++j)
+            {
+                if(DataDeskCharIsDigit(string[j]))
+                {
+                    value_str[value_str_write_pos++] = string[j];
+                }
+                else
+                {
+                    break;
+                }
+            }
+            
+            int number_of_digits = value_str_write_pos;
+            int multiplier = 1;
+            for(int j = 0; j < number_of_digits; ++j)
+            {
+                value += (value_str[number_of_digits - j - 1] - '0') * multiplier;
+                multiplier *= 10;
+            }
+            
+            break;
+        }
+    }
+    
+    return value;
+}
+
+inline int
+DataDeskInterpretNumericExpressionAsInteger(DataDeskASTNode *root)
+{
+    int result = 0;
+    switch(root->type)
+    {
+        case DATA_DESK_AST_NODE_TYPE_numeric_constant:
+        {
+            result = DataDeskCStringToInt(root->string);
+            break;
+        }
+        case DATA_DESK_AST_NODE_TYPE_binary_operator:
+        {
+            int binary_operator_type = root->binary_operator.type;
+            int left_tree = DataDeskInterpretNumericExpressionAsInteger(root->binary_operator.left);
+            int right_tree = DataDeskInterpretNumericExpressionAsInteger(root->binary_operator.right);
+            
+            switch(binary_operator_type)
+            {
+                case DATA_DESK_BINARY_OPERATOR_TYPE_add: { result = left_tree + right_tree; break; }
+                case DATA_DESK_BINARY_OPERATOR_TYPE_subtract: { result = left_tree - right_tree; break; }
+                case DATA_DESK_BINARY_OPERATOR_TYPE_multiply: { result = left_tree * right_tree; break; }
+                case DATA_DESK_BINARY_OPERATOR_TYPE_divide: { result = (right_tree != 0) ? (left_tree / right_tree) : 0; break; }
+                case DATA_DESK_BINARY_OPERATOR_TYPE_modulus: { result = (right_tree != 0) ? (left_tree % right_tree) : 0; break; }
+                case DATA_DESK_BINARY_OPERATOR_TYPE_bitshift_left: { result = left_tree << right_tree; break; }
+                case DATA_DESK_BINARY_OPERATOR_TYPE_bitshift_right: { result = left_tree >> right_tree; break; }
+                default: break;
+            }
+            
+            break;
+        }
+        default: break;
+    }
+    return result;
 }
 
 #ifndef DATA_DESK_NO_CRT
