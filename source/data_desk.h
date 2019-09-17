@@ -203,6 +203,12 @@ struct DataDeskASTNode
         }
         type_usage;
         
+        struct Tag
+        {
+            DataDeskASTNode *first_tag_parameter;
+        }
+        tag;
+        
         struct ConstantDefinition
         {
             DataDeskASTNode *expression;
@@ -232,12 +238,10 @@ struct DataDeskASTNode
  | syntax trees.
  */
 
-int DataDeskStringHasSubString(char *tag, char *substring);
-char *DataDeskGetTagStringWithSubString(DataDeskASTNode *root, char *tag);
+int DataDeskStringHasSubString(char *string, char *substring);
+DataDeskASTNode *DataDeskGetNodeTag(DataDeskASTNode *root, char *tag);
+DataDeskASTNode *DataDeskGetTagParameter(DataDeskASTNode *tag, int parameter_number);
 int DataDeskNodeHasTag(DataDeskASTNode *root, char *tag);
-int DataDeskConstantHasTag(DataDeskConstant constant_info, char *tag);
-int DataDeskStructHasTag(DataDeskStruct struct_info, char *tag);
-int DataDeskDeclarationHasTag(DataDeskDeclaration declaration_info, char *tag);
 int DataDeskDeclarationIsType(DataDeskASTNode *root, char *type);
 int DataDeskStructMemberIsType(DataDeskASTNode *root, char *type);
 int DataDeskInterpretNumericExpressionAsInteger(DataDeskASTNode *root);
@@ -363,70 +367,89 @@ DataDeskStringHasAlphanumericBlock(char *string, char *substring)
     return matches;
 }
 
-inline char *
-DataDeskGetTagStringWithSubString(DataDeskASTNode *root, char *tag)
+inline int
+DataDeskStringHasSubString(char *string, char *substring)
 {
-    char *str = 0;
+    return DataDeskStringHasAlphanumericBlock(string, substring);
+}
+
+inline DataDeskASTNode *
+DataDeskGetNodeTag(DataDeskASTNode *root, char *tag)
+{
+    DataDeskASTNode *found_tag_node = 0;
     for(DataDeskASTNode *tag_node = root->first_tag;
-        tag_node;
-        tag_node = tag_node->next)
+        tag_node; tag_node = tag_node->next)
     {
         if(DataDeskStringHasAlphanumericBlock(tag_node->string, tag))
         {
-            str = tag_node->string;
+            found_tag_node = tag_node;
             break;
         }
     }
-    return str;
+    return found_tag_node;
+}
+
+inline DataDeskASTNode *
+DataDeskGetTagParameter(DataDeskASTNode *tag, int parameter_number)
+{
+    DataDeskASTNode *result = 0;
+    if(tag && tag->type == DATA_DESK_AST_NODE_TYPE_tag)
+    {
+        int i = 0;
+        for(DataDeskASTNode *parameter = tag->tag.first_tag_parameter;
+            parameter; parameter = parameter->next)
+        {
+            if(i == parameter_number)
+            {
+                result = parameter;
+                break;
+            }
+            ++i;
+        }
+    }
+    return result;
 }
 
 inline int
 DataDeskNodeHasTag(DataDeskASTNode *node, char *tag)
 {
-    char *tag_str = DataDeskGetTagStringWithSubString(node, tag);
-    return tag_str != 0;
-}
-
-inline int
-DataDeskStructHasTag(DataDeskStruct struct_info, char *tag)
-{
-    return DataDeskNodeHasTag(struct_info.root, tag);
-}
-
-inline int
-DataDeskDeclarationHasTag(DataDeskDeclaration declaration_info, char *tag)
-{
-    return DataDeskNodeHasTag(declaration_info.root, tag);
+    DataDeskASTNode *tag_node = DataDeskGetNodeTag(node, tag);
+    return tag_node != 0;
 }
 
 inline int
 DataDeskDeclarationIsType(DataDeskASTNode *root, char *type)
 {
-    int pointer_count = 0;
-    char *type_name = type;
+    int matches = 0;
     
-    for(int i = 0; type[i]; ++i)
+    if(root->type == DATA_DESK_AST_NODE_TYPE_declaration)
     {
-        if(type[i] == '*')
+        int pointer_count = 0;
+        char *type_name = type;
+        
+        for(int i = 0; type[i]; ++i)
         {
-            ++pointer_count;
-        }
-        else
-        {
-            type_name = type+i;
-            break;
-        }
-    }
-    
-    int matches = pointer_count == root->declaration.type->type_usage.pointer_count;
-    if(matches)
-    {
-        for(int i = 0; type_name[i] && root->declaration.type->string[i]; ++i)
-        {
-            if(type_name[i] != root->declaration.type->string[i])
+            if(type[i] == '*')
             {
-                matches = 0;
+                ++pointer_count;
+            }
+            else
+            {
+                type_name = type+i;
                 break;
+            }
+        }
+        
+        matches = pointer_count == root->declaration.type->type_usage.pointer_count;
+        if(matches)
+        {
+            for(int i = 0; type_name[i] && root->declaration.type->string[i]; ++i)
+            {
+                if(type_name[i] != root->declaration.type->string[i])
+                {
+                    matches = 0;
+                    break;
+                }
             }
         }
     }
@@ -482,34 +505,37 @@ inline int
 DataDeskInterpretNumericExpressionAsInteger(DataDeskASTNode *root)
 {
     int result = 0;
-    switch(root->type)
+    if(root)
     {
-        case DATA_DESK_AST_NODE_TYPE_numeric_constant:
+        switch(root->type)
         {
-            result = DataDeskCStringToInt(root->string);
-            break;
-        }
-        case DATA_DESK_AST_NODE_TYPE_binary_operator:
-        {
-            int binary_operator_type = root->binary_operator.type;
-            int left_tree = DataDeskInterpretNumericExpressionAsInteger(root->binary_operator.left);
-            int right_tree = DataDeskInterpretNumericExpressionAsInteger(root->binary_operator.right);
-            
-            switch(binary_operator_type)
+            case DATA_DESK_AST_NODE_TYPE_numeric_constant:
             {
-                case DATA_DESK_BINARY_OPERATOR_TYPE_add: { result = left_tree + right_tree; break; }
-                case DATA_DESK_BINARY_OPERATOR_TYPE_subtract: { result = left_tree - right_tree; break; }
-                case DATA_DESK_BINARY_OPERATOR_TYPE_multiply: { result = left_tree * right_tree; break; }
-                case DATA_DESK_BINARY_OPERATOR_TYPE_divide: { result = (right_tree != 0) ? (left_tree / right_tree) : 0; break; }
-                case DATA_DESK_BINARY_OPERATOR_TYPE_modulus: { result = (right_tree != 0) ? (left_tree % right_tree) : 0; break; }
-                case DATA_DESK_BINARY_OPERATOR_TYPE_bitshift_left: { result = left_tree << right_tree; break; }
-                case DATA_DESK_BINARY_OPERATOR_TYPE_bitshift_right: { result = left_tree >> right_tree; break; }
-                default: break;
+                result = DataDeskCStringToInt(root->string);
+                break;
             }
-            
-            break;
+            case DATA_DESK_AST_NODE_TYPE_binary_operator:
+            {
+                int binary_operator_type = root->binary_operator.type;
+                int left_tree = DataDeskInterpretNumericExpressionAsInteger(root->binary_operator.left);
+                int right_tree = DataDeskInterpretNumericExpressionAsInteger(root->binary_operator.right);
+                
+                switch(binary_operator_type)
+                {
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_add: { result = left_tree + right_tree; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_subtract: { result = left_tree - right_tree; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_multiply: { result = left_tree * right_tree; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_divide: { result = (right_tree != 0) ? (left_tree / right_tree) : 0; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_modulus: { result = (right_tree != 0) ? (left_tree % right_tree) : 0; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_bitshift_left: { result = left_tree << right_tree; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_bitshift_right: { result = left_tree >> right_tree; break; }
+                    default: break;
+                }
+                
+                break;
+            }
+            default: break;
         }
-        default: break;
     }
     return result;
 }

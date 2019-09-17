@@ -137,25 +137,10 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                 // NOTE(rjf): Tag block
                 else if(buffer[i] == '@')
                 {
-                    int paren_level = 0;
-                    int quotes = 0;
                     for(j = i+1; buffer[j]; ++j)
                     {
-                        if(buffer[j] == '(')
-                        {
-                            ++paren_level;
-                        }
-                        else if(buffer[j] == ')')
-                        {
-                            --paren_level;
-                        }
-                        
-                        if(buffer[j] == '"')
-                        {
-                            quotes = !quotes;
-                        }
-                        
-                        if(!paren_level && !quotes && buffer[j] <= 32)
+                        if(!CharIsAlpha(buffer[j]) && buffer[j] != '_' &&
+                           !CharIsDigit(buffer[j]))
                         {
                             break;
                         }

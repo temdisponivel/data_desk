@@ -56,7 +56,11 @@ GenerateNullTerminatedStringsForAST(ParseContext *context, ASTNode *root)
                 GenerateNullTerminatedStringsForAST(context, root->procedure_header.return_type);
                 break;
             }
-            
+            case DATA_DESK_AST_NODE_TYPE_tag:
+            {
+                GenerateNullTerminatedStringsForAST(context, root->tag.first_tag_parameter);
+                break;
+            }
             default: break;
         }
         

@@ -358,12 +358,8 @@ ParseContextAllocateASTNode(ParseContext *context)
 }
 
 static void
-ParseContextPushTag(ParseContext *context, Token tag_token)
+ParseContextPushTag(ParseContext *context, ASTNode *tag)
 {
-    ASTNode *tag = ParseContextAllocateASTNode(context);
-    tag->type = DATA_DESK_AST_NODE_TYPE_tag;
-    tag->string = tag_token.string;
-    tag->string_length = tag_token.string_length;
     tag->next = context->tag_stack_head;
     context->tag_stack_head = tag;
 }
@@ -584,15 +580,44 @@ ParseContextPushError(ParseContext *context, Tokenizer *tokenizer, char *msg, ..
     }
 }
 
+static ASTNode *
+ParseExpression(Tokenizer *tokenizer, ParseContext *context);
+
 static void
 ParseTagList(Tokenizer *tokenizer, ParseContext *context)
 {
     for(;;)
     {
         Token tag = {0};
+        ASTNode *tag_node = 0;
         if(RequireTokenType(tokenizer, TOKEN_tag, &tag))
         {
-            ParseContextPushTag(context, tag);
+            tag_node = ParseContextAllocateASTNode(context);
+            tag_node->type = DATA_DESK_AST_NODE_TYPE_tag;
+            tag_node->string = tag.string;
+            tag_node->string_length = tag.string_length;
+            if(RequireToken(tokenizer, "(", 0))
+            {
+                ASTNode **parameter_store_target = &tag_node->tag.first_tag_parameter;
+                for(;;)
+                {
+                    ASTNode *parameter = ParseExpression(tokenizer, context);
+                    if(parameter)
+                    {
+                        *parameter_store_target = parameter;
+                        parameter_store_target = &(*parameter_store_target)->next;
+                    }
+                    if(RequireToken(tokenizer, ")", 0))
+                    {
+                        break;
+                    }
+                    if(!RequireToken(tokenizer, ",", 0))
+                    {
+                        ParseContextPushError(context, tokenizer, "Expected ','.");
+                    }
+                }
+            }
+            ParseContextPushTag(context, tag_node);
         }
         else
         {
@@ -695,6 +720,10 @@ ParseExpression(Tokenizer *tokenizer, ParseContext *context)
         goto end_parse;
     }
     else if(TokenMatch(token, ";"))
+    {
+        goto end_parse;
+    }
+    else if(TokenMatch(token, ","))
     {
         goto end_parse;
     }
