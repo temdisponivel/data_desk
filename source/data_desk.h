@@ -154,6 +154,12 @@ struct DataDeskASTNode
     
     union
     {
+        struct Identifier
+        {
+            DataDeskASTNode *declaration;
+        }
+        identifier;
+        
         struct BinaryOperator
         {
             int type;

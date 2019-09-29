@@ -386,3 +386,66 @@ TraverseASTAndCallCustomParseCallbacks(ParseContext *context, ASTNode *root, Dat
         }
     }
 }
+
+static void
+PatchASTSymbols(ParseContext *context, ASTNode *root)
+{
+    for(ASTNode *node = root; node; node = node->next)
+    {
+        switch(node->type)
+        {
+            case DATA_DESK_AST_NODE_TYPE_identifier:
+            {
+                node->identifier.declaration = ParseContextLookUpSymbol(context, node->string, node->string_length);
+                break;
+            }
+            case DATA_DESK_AST_NODE_TYPE_binary_operator:
+            {
+                PatchASTSymbols(context, node->binary_operator.left);
+                PatchASTSymbols(context, node->binary_operator.right);
+                break;
+            }
+            case DATA_DESK_AST_NODE_TYPE_struct_declaration:
+            {
+                PatchASTSymbols(context, node->struct_declaration.first_member);
+                break;
+            }
+            case DATA_DESK_AST_NODE_TYPE_union_declaration:
+            {
+                PatchASTSymbols(context, node->union_declaration.first_member);
+                break;
+            }
+            case DATA_DESK_AST_NODE_TYPE_declaration:
+            {
+                PatchASTSymbols(context, node->declaration.type);
+                PatchASTSymbols(context, node->declaration.initialization);
+                break;
+            }
+            case DATA_DESK_AST_NODE_TYPE_type_usage:
+            {
+                if(!node->type_usage.struct_declaration && !node->type_usage.union_declaration)
+                {
+                    node->type_usage.type_definition = ParseContextLookUpSymbol(context, node->string, node->string_length);
+                }
+                break;
+            }
+            case DATA_DESK_AST_NODE_TYPE_tag:
+            {
+                PatchASTSymbols(context, node->tag.first_tag_parameter);
+                break;
+            }
+            case DATA_DESK_AST_NODE_TYPE_procedure_header:
+            {
+                PatchASTSymbols(context, node->procedure_header.return_type);
+                PatchASTSymbols(context, node->procedure_header.first_parameter);
+                break;
+            }
+            default: break;
+        }
+        
+        if(node->first_tag)
+        {
+            PatchASTSymbols(context, node->first_tag);
+        }
+    }
+}

@@ -34,8 +34,8 @@ ProcessFile(DataDeskCustom custom, char *file, char *filename)
     ParseContext context = {0};
     
     ASTNode *root = ParseCode(&tokenizer, &context);
+    PatchASTSymbols(&context, root);
     GenerateNullTerminatedStringsForAST(&context, root);
-    
     if(custom.FileCallback)
     {
         custom.FileCallback(root, filename);

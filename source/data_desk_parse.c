@@ -49,8 +49,7 @@ ParseContext;
 static void
 ParseContextCleanUp(ParseContext *context)
 {
-    for(ParseContextMemoryBlock *block = context->first_block;
-        block;)
+    for(ParseContextMemoryBlock *block = context->first_block; block;)
     {
         ParseContextMemoryBlock *next = block->next;
         free(block);
@@ -837,7 +836,6 @@ ParseTypeUsage(Tokenizer *tokenizer, ParseContext *context)
         }
         type_name_string = type_name.string;
         type_name_string_length = type_name.string_length;
-        type_definition_type = ParseContextLookUpSymbol(context, type_name_string, type_name_string_length);
     }
     
     type = ParseContextAllocateASTNode(context);
