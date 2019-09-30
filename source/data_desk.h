@@ -124,7 +124,8 @@ enum
 };
 
 // NOTE(rjf): The binary operator precedence table in BinaryOperatorPrecedence
-// must update to match this when this changes.
+// must update to match this when this changes, and also the DataDeskGetBinaryOperatorString
+// procedure in this file.
 enum
 {
     DATA_DESK_BINARY_OPERATOR_TYPE_invalid,
@@ -251,6 +252,7 @@ int DataDeskNodeHasTag(DataDeskASTNode *root, char *tag);
 int DataDeskDeclarationIsType(DataDeskASTNode *root, char *type);
 int DataDeskStructMemberIsType(DataDeskASTNode *root, char *type);
 int DataDeskInterpretNumericExpressionAsInteger(DataDeskASTNode *root);
+inline char *DataDeskGetBinaryOperatorString(int type);
 
 #ifndef DATA_DESK_NO_CRT
 void DataDeskFWriteConstantAsC          (FILE *file, DataDeskConstant        constant_info);
@@ -546,6 +548,27 @@ DataDeskInterpretNumericExpressionAsInteger(DataDeskASTNode *root)
     return result;
 }
 
+inline char *
+DataDeskGetBinaryOperatorString(int type)
+{
+    static char *strings[] =
+    {
+        "",
+        "+",
+        "-",
+        "*",
+        "/",
+        "%",
+        "<<",
+        ">>",
+        "&",
+        "|",
+        "&&",
+        "||",
+    };
+    return strings[type];
+}
+
 #ifndef DATA_DESK_NO_CRT
 inline void
 _DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next, int nest)
@@ -567,24 +590,7 @@ _DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next
             {
                 fprintf(file, "(");
                 _DataDeskFWriteASTFromRootAsC(file, root->binary_operator.left, 0, nest);
-                char *binary_operator_string = "";
-                
-                switch(root->binary_operator.type)
-                {
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_add:            { binary_operator_string = "+";  break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_subtract:       { binary_operator_string = "-";  break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_multiply:       { binary_operator_string = "*";  break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_divide:         { binary_operator_string = "/";  break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_modulus:        { binary_operator_string = "%";  break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_bitshift_left:  { binary_operator_string = "<<"; break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_bitshift_right: { binary_operator_string = ">>"; break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_bitwise_and:    { binary_operator_string = "&"; break;  }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_bitwise_or:     { binary_operator_string = "|"; break;  }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_boolean_and:    { binary_operator_string = "&&"; break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_boolean_or:     { binary_operator_string = "||"; break; }
-                    default: break;
-                }
-                
+                char *binary_operator_string = DataDeskGetBinaryOperatorString(root->binary_operator.type);
                 fprintf(file, "%s", binary_operator_string);
                 _DataDeskFWriteASTFromRootAsC(file, root->binary_operator.right, 0, nest+1);
                 fprintf(file, ")");
