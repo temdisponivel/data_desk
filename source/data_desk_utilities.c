@@ -148,10 +148,10 @@ LoadEntireFileAndNullTerminate(char *filename)
         unsigned int file_size = ftell(file);
         fseek(file, 0, SEEK_SET);
         result = malloc(file_size+1);
-        result[file_size] = 0;
         if(result)
         {
             fread(result, 1, file_size, file);
+            result[file_size] = 0;
         }
         fclose(file);
     }
