@@ -247,7 +247,7 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
     if(token.string)
     {
         token.lines_traversed = 0;
-        for(int i = (intptr_t)tokenizer->at - (intptr_t)token.string;
+        for(int i = (char *)tokenizer->at - (char *)token.string;
             i < token.string_length;
             ++i)
         {
