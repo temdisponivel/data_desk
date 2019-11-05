@@ -1275,8 +1275,8 @@ ParseCode(Tokenizer *tokenizer, ParseContext *context)
                         Tokenizer reset_tokenizer_2 = *tokenizer;
                         
                         // NOTE(rjf): Procedure header definition.
-                        if(RequireToken(tokenizer, "(", 0) &&
-                           (RequireTokenType(tokenizer, TOKEN_alphanumeric_block, 0) && RequireToken(tokenizer, ":", 0)) ||
+                        if((RequireToken(tokenizer, "(", 0) &&
+                            RequireTokenType(tokenizer, TOKEN_alphanumeric_block, 0) && RequireToken(tokenizer, ":", 0)) ||
                            (RequireToken(tokenizer, ")", 0)))
                         {
                             *tokenizer = reset_tokenizer;

@@ -559,7 +559,7 @@ DataDeskInterpretNumericExpressionAsInteger(DataDeskASTNode *root)
 inline char *
 DataDeskGetBinaryOperatorString(int type)
 {
-    static char *strings[] =
+    char *strings[] =
     {
         "",
         "+",
@@ -882,11 +882,11 @@ DataDeskFWriteStringWithSpacesN(FILE *file, char *string, int string_length)
             fprintf(file, "%c", string[i]);
             if(DataDeskCharIsUppercaseAlpha(string[i+1]))
             {
-                fprintf(file, " ", string[i]);
+                fprintf(file, " ");
             }
             else if(string[i+1] == '_')
             {
-                fprintf(file, " ", string[i]);
+                fprintf(file, " ");
             }
         }
     }
@@ -900,7 +900,7 @@ DataDeskFWriteStringAsLowercaseWithUnderscoresN(FILE *file, char *string, int st
         fprintf(file, "%c", DataDeskCharToLower(string[i]));
         if(DataDeskCharIsUppercaseAlpha(string[i+1]))
         {
-            fprintf(file, "_", string[i]);
+            fprintf(file, "_");
         }
     }
 }
@@ -913,7 +913,7 @@ DataDeskFWriteStringAsUppercaseWithUnderscoresN(FILE *file, char *string, int st
         fprintf(file, "%c", DataDeskCharToUpper(string[i]));
         if(DataDeskCharIsUppercaseAlpha(string[i+1]))
         {
-            fprintf(file, "_", string[i]);
+            fprintf(file, "_");
         }
     }
 }
