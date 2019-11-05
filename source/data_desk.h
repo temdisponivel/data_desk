@@ -253,33 +253,33 @@ struct DataDeskASTNode
  | syntax trees.
  */
 
-int DataDeskStringHasSubString(char *string, char *substring);
-DataDeskASTNode *DataDeskGetNodeTag(DataDeskASTNode *root, char *tag);
-DataDeskASTNode *DataDeskGetTagParameter(DataDeskASTNode *tag, int parameter_number);
-int DataDeskNodeHasTag(DataDeskASTNode *root, char *tag);
-int DataDeskDeclarationIsType(DataDeskASTNode *root, char *type);
-int DataDeskStructMemberIsType(DataDeskASTNode *root, char *type);
-int DataDeskInterpretNumericExpressionAsInteger(DataDeskASTNode *root);
+inline int DataDeskStringHasSubString(char *string, char *substring);
+inline DataDeskASTNode *DataDeskGetNodeTag(DataDeskASTNode *root, char *tag);
+inline DataDeskASTNode *DataDeskGetTagParameter(DataDeskASTNode *tag, int parameter_number);
+inline int DataDeskNodeHasTag(DataDeskASTNode *root, char *tag);
+inline int DataDeskDeclarationIsType(DataDeskASTNode *root, char *type);
+inline int DataDeskStructMemberIsType(DataDeskASTNode *root, char *type);
+inline int DataDeskInterpretNumericExpressionAsInteger(DataDeskASTNode *root);
 inline char *DataDeskGetBinaryOperatorString(int type);
 
 #ifndef DATA_DESK_NO_CRT
-void DataDeskFWriteConstantAsC          (FILE *file, DataDeskConstant        constant_info);
-void DataDeskFWriteStructAsC            (FILE *file, DataDeskStruct          struct_info);
-void DataDeskFWriteUnionAsC             (FILE *file, DataDeskUnion           union_info);
-void DataDeskFWriteEnumAsC              (FILE *file, DataDeskEnum            enum_info);
-void DataDeskFWriteFlagsAsC             (FILE *file, DataDeskFlags           flags_info);
-void DataDeskFWriteDeclarationAsC       (FILE *file, DataDeskDeclaration     declaration_info);
-void DataDeskFWriteProcedureHeaderAsC   (FILE *file, DataDeskProcedureHeader procedure_info);
-void DataDeskFWriteStringWithSpaces(FILE *file, char *string);
-void DataDeskFWriteStringAsLowercaseWithUnderscores(FILE *file, char *string);
-void DataDeskFWriteStringAsUppercaseWithUnderscores(FILE *file, char *string);
-void DataDeskFWriteStringAsUpperCamelCase(FILE *file, char *string);
-void DataDeskFWriteStringAsLowerCamelCase(FILE *file, char *string);
-void DataDeskFWriteStringWithSpacesN(FILE *file, char *string, int string_length);
-void DataDeskFWriteStringAsLowercaseWithUnderscoresN(FILE *file, char *string, int string_length);
-void DataDeskFWriteStringAsUppercaseWithUnderscoresN(FILE *file, char *string, int string_length);
-void DataDeskFWriteStringAsUpperCamelCaseN(FILE *file, char *string, int string_length);
-void DataDeskFWriteStringAsLowerCamelCaseN(FILE *file, char *string, int string_length);
+inline void DataDeskFWriteConstantAsC          (FILE *file, DataDeskConstant        constant_info);
+inline void DataDeskFWriteStructAsC            (FILE *file, DataDeskStruct          struct_info);
+inline void DataDeskFWriteUnionAsC             (FILE *file, DataDeskUnion           union_info);
+inline void DataDeskFWriteEnumAsC              (FILE *file, DataDeskEnum            enum_info);
+inline void DataDeskFWriteFlagsAsC             (FILE *file, DataDeskFlags           flags_info);
+inline void DataDeskFWriteDeclarationAsC       (FILE *file, DataDeskDeclaration     declaration_info);
+inline void DataDeskFWriteProcedureHeaderAsC   (FILE *file, DataDeskProcedureHeader procedure_info);
+inline void DataDeskFWriteStringWithSpaces(FILE *file, char *string);
+inline void DataDeskFWriteStringAsLowercaseWithUnderscores(FILE *file, char *string);
+inline void DataDeskFWriteStringAsUppercaseWithUnderscores(FILE *file, char *string);
+inline void DataDeskFWriteStringAsUpperCamelCase(FILE *file, char *string);
+inline void DataDeskFWriteStringAsLowerCamelCase(FILE *file, char *string);
+inline void DataDeskFWriteStringWithSpacesN(FILE *file, char *string, int string_length);
+inline void DataDeskFWriteStringAsLowercaseWithUnderscoresN(FILE *file, char *string, int string_length);
+inline void DataDeskFWriteStringAsUppercaseWithUnderscoresN(FILE *file, char *string, int string_length);
+inline void DataDeskFWriteStringAsUpperCamelCaseN(FILE *file, char *string, int string_length);
+inline void DataDeskFWriteStringAsLowerCamelCaseN(FILE *file, char *string, int string_length);
 #endif
 
 
