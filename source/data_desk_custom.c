@@ -83,7 +83,8 @@ DataDeskCustomUnload(DataDeskCustom *custom)
 #if BUILD_WIN32
     FreeLibrary(custom->custom_dll);
 #elif BUILD_LINUX
-    dlclose(custom->custom_dll);
+    if (custom->custom_dll)
+            dlclose(custom->custom_dll);
 #endif
     
     custom->InitCallback = 0;
