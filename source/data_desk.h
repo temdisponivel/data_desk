@@ -140,8 +140,16 @@ struct DataDeskNode
     DataDeskNodeType type;
     DataDeskNode *next;
 
-    char *string;
     int string_length;
+    union
+    {
+        char *string;
+        char *name;
+    };
+    char *name_lowercase_with_underscores;
+    char *name_uppercase_with_underscores;
+    char *name_upper_camel_case;
+    char *name_lower_camel_case;
 
     DataDeskNode *first_tag;
 

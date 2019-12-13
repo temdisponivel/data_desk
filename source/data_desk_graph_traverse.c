@@ -17,6 +17,10 @@ GenerateGraphNullTerminatedStrings(ParseContext *context, DataDeskNode *root)
             MemoryCopy(new_string, root->string, root->string_length);
             new_string[root->string_length] = 0;
             root->string = new_string;
+            root->name_lowercase_with_underscores = ParseContextAllocateStringCopyLowercaseWithUnderscores(context, root->name);
+            root->name_uppercase_with_underscores = ParseContextAllocateStringCopyUppercaseWithUnderscores(context, root->name);
+            root->name_lower_camel_case = ParseContextAllocateStringCopyLowerCamelCase(context, root->name);
+            root->name_upper_camel_case = ParseContextAllocateStringCopyUpperCamelCase(context, root->name);
         }
         
         switch(root->type)
