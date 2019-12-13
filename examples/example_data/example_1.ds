@@ -1,9 +1,0 @@
-@ImportantTag
-NUMBER_OF_THINGS :: 32;
-
-@Tag1 @Tag2 @Tag3
-struct ThingHolder
-{
-    thing_count : int;
-    things : Thing[NUMBER_OF_THINGS];
-}

@@ -2,17 +2,17 @@
 Data Desk
 
 Author  : Ryan Fleury
-Updated : 15 October 2019
+Updated : 5 December 2019
 License : MIT, at end of file.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
-typedef struct Tokenizer
+typedef struct Tokenizer Tokenizer;
+struct Tokenizer
 {
     char *at;
     char *filename;
     int line;
-}
-Tokenizer;
+};
 
 enum
 {
@@ -25,20 +25,20 @@ enum
     TOKEN_tag,
 };
 
-typedef struct Token
+typedef struct Token Token;
+struct Token
 {
     int type;
     char *string;
     int string_length;
     int lines_traversed;
-}
-Token;
+};
 
 static Token
 GetNextTokenFromBuffer(Tokenizer *tokenizer)
 {
     Token token = {0};
-    
+
     int skip_mode = 0;
     enum
     {
@@ -47,7 +47,7 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
         SKIP_MODE_block_comment,
     };
     int block_comment_nest_level = 0;
-    
+
     char *buffer = tokenizer->at;
     for(int i = 0; buffer[i]; ++i)
     {
@@ -66,9 +66,9 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
             }
             else
             {
-                
+
                 int j = 0;
-                
+
                 // NOTE(rjf): Alphanumeric block
                 if(CharIsAlpha(buffer[i]) || buffer[i] == '_')
                 {
@@ -82,7 +82,7 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                     }
                     token.type = TOKEN_alphanumeric_block;
                 }
-                
+
                 // NOTE(rjf): Numeric block
                 else if(CharIsDigit(buffer[i]))
                 {
@@ -96,11 +96,11 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                     }
                     token.type = TOKEN_numeric_constant;
                 }
-                
+
                 // NOTE(rjf): String constant
                 else if(buffer[i] == '"')
                 {
-                    
+
                     // NOTE(rjf): Multiline string constant
                     if(buffer[i+1] == '"' && buffer[i+2] == '"')
                     {
@@ -113,7 +113,7 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                             }
                         }
                     }
-                    
+
                     // NOTE(rjf): Single line string constant
                     else
                     {
@@ -128,7 +128,7 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                     }
                     token.type = TOKEN_string_constant;
                 }
-                
+
                 // NOTE(rjf): Char constant
                 else if(buffer[i] == '\'')
                 {
@@ -141,7 +141,7 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                     }
                     token.type = TOKEN_char_constant;
                 }
-                
+
                 // NOTE(rjf): Tag block
                 else if(buffer[i] == '@')
                 {
@@ -155,11 +155,12 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                     }
                     token.type = TOKEN_tag;
                 }
-                
+
                 // NOTE(rjf): Symbolic block
                 else if(CharIsSymbol(buffer[i]))
                 {
-                    static char *symbolic_blocks_to_break_out[] = {
+                    static char *symbolic_blocks_to_break_out[] =
+                    {
                         "(",
                         ")",
                         "[",
@@ -176,7 +177,7 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                         "/",
                         ";"
                     };
-                    
+
                     for(j = i+1; buffer[j]; ++j)
                     {
                         if(!CharIsSymbol(buffer[j]))
@@ -184,13 +185,13 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                             break;
                         }
                     }
-                    
+
                     for(int k = 0; k < ArrayCount(symbolic_blocks_to_break_out); ++k)
                     {
                         int string_length = 0;
                         while(symbolic_blocks_to_break_out[k][string_length++]);
                         --string_length;
-                        
+
                         if(StringMatchCaseSensitiveN(symbolic_blocks_to_break_out[k],
                                                      buffer+i,
                                                      string_length))
@@ -199,11 +200,11 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                             goto end_symbolic_block;
                         }
                     }
-                    
+
                     end_symbolic_block:;
                     token.type = TOKEN_symbolic_block;
                 }
-                
+
                 if(j)
                 {
                     token.string = buffer+i;
@@ -219,10 +220,10 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                 skip_mode = 0;
             }
         }
-        
+
         else if(skip_mode == SKIP_MODE_block_comment)
         {
-            
+
             if(buffer[i] == '/' && buffer[i+1] == '*')
             {
                 ++block_comment_nest_level;
@@ -237,9 +238,9 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                 ++i;
             }
         }
-        
+
     }
-    
+
     // NOTE(rjf): This is probably a little slow, but will work
     // for now. Ideally this calculation would happen as a token
     // is being processed, but I'm in a crunch so I'm not going
@@ -257,7 +258,7 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
             }
         }
     }
-    
+
     return token;
 }
 
@@ -324,7 +325,8 @@ RequireTokenType(Tokenizer *tokenizer, int type, Token *token_ptr)
 static char *
 GetBinaryOperatorStringFromType(int type)
 {
-    static char *binary_operator_strings[] = {
+    static char *binary_operator_strings[] =
+    {
         "INVALIDBINARYOPERATOR",
         "+",
         "-",
@@ -338,7 +340,7 @@ GetBinaryOperatorStringFromType(int type)
         "&&",
         "||",
     };
-    
+
     return binary_operator_strings[type];
 }
 
@@ -346,7 +348,7 @@ static int
 GetBinaryOperatorTypeFromToken(Token token)
 {
     int type = DATA_DESK_BINARY_OPERATOR_TYPE_invalid;
-    
+
     for(int i = 1; i < DATA_DESK_BINARY_OPERATOR_TYPE_MAX; ++i)
     {
         if(TokenMatch(token, GetBinaryOperatorStringFromType(i)))
@@ -355,7 +357,7 @@ GetBinaryOperatorTypeFromToken(Token token)
             break;
         }
     }
-    
+
     return type;
 }
 

@@ -2,12 +2,19 @@
 Data Desk
 
 Author  : Ryan Fleury
-Updated : 15 October 2019
+Updated : 5 December 2019
 License : MIT, at end of file.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
 #ifndef DATA_DESK_H_INCLUDED_
 #define DATA_DESK_H_INCLUDED_
+
+#define DATA_DESK_VERSION_MAJOR 1
+#define DATA_DESK_VERSION_MINOR 0
+#define DATA_DESK_VERSION_PATCH 0
+#define DATA_DESK_STRINGIFY_(a) #a
+#define DATA_DESK_STRINGIFY(a) DATA_DESK_STRINGIFY_(a)
+#define DATA_DESK_VERSION_STRING DATA_DESK_STRINGIFY(DATA_DESK_VERSION_MAJOR) "." DATA_DESK_STRINGIFY(DATA_DESK_VERSION_MINOR) "." DATA_DESK_STRINGIFY(DATA_DESK_VERSION_PATCH)
 
 #ifndef DATA_DESK_NO_CRT
 #include <stdio.h>
@@ -33,64 +40,23 @@ License : MIT, at end of file.
 
 /*
 | /////////////////////////////////////////////////////////////////
- |  Callback Structs/Functions
- | /////////////////////////////////////////////////////////////////
- |
- | These are structures and function typedefs that correspond to
- | the callbacks that a custom layer can receive. A custom layer
- | doesn't need to define every possible callback. The symbol
- | names that Data Desk expects for each callback are listed
- | next to the corresponding function typedef.
- */
+|  Callback Structs/Functions
+| /////////////////////////////////////////////////////////////////
+|
+| These are structures and function typedefs that correspond to
+| the callbacks that a custom layer can receive. A custom layer
+| doesn't need to define every possible callback. The symbol
+| names that Data Desk expects for each callback are listed
+| next to the corresponding function typedef.
+*/
 
-typedef struct DataDeskASTNode DataDeskASTNode;
-
-typedef struct DataDeskParsedNode DataDeskParsedNode;
-struct DataDeskParsedNode
-{
-    char *name;
-    char *name_lowercase_with_underscores;
-    char *name_uppercase_with_underscores;
-    char *name_lower_camel_case;
-    char *name_upper_camel_case;
-    char *name_with_spaces;
-    DataDeskASTNode *root;
-};
-
-typedef DataDeskParsedNode DataDeskConstant;
-typedef DataDeskParsedNode DataDeskStruct;
-typedef DataDeskParsedNode DataDeskUnion;
-typedef DataDeskParsedNode DataDeskEnum;
-typedef DataDeskParsedNode DataDeskFlags;
-typedef DataDeskParsedNode DataDeskDeclaration;
-typedef DataDeskParsedNode DataDeskProcedureHeader;
+typedef struct DataDeskNode DataDeskNode;
 
 /* DataDeskCustomInitCallback */
 typedef void DataDeskInitCallback(void);
 
-/* DataDeskCustomFileCallback */
-typedef void DataDeskFileCallback(DataDeskASTNode *root, char *filename);
-
-/* DataDeskCustomConstantCallback */
-typedef void DataDeskConstantCallback(DataDeskConstant constant, char *filename);
-
-/* DataDeskCustomStructCallback */
-typedef void DataDeskStructCallback(DataDeskStruct parsed_struct, char *filename);
-
-/* DataDeskCustomUnionCallback */
-typedef void DataDeskUnionCallback(DataDeskUnion parsed_union, char *filename);
-
-/* DataDeskCustomEnumCallback */
-typedef void DataDeskEnumCallback(DataDeskEnum parsed_enum, char *filename);
-
-/* DataDeskCustomFlagsCallback */
-typedef void DataDeskFlagsCallback(DataDeskFlags parsed_flags, char *filename);
-
-/* DataDeskCustomDeclarationCallback */
-typedef void DataDeskDeclarationCallback(DataDeskDeclaration declaration, char *filename);
-
-/* DataDeskCustomProcedureHeaderCallback */
-typedef void DataDeskProcedureHeaderCallback(DataDeskProcedureHeader procedure, char *filename);
+/* DataDeskCustomParseCallback */
+typedef void DataDeskParseCallback(DataDeskNode *root, char *filename);
 
 /* DataDeskCustomCleanUpCallback */
 typedef void DataDeskCleanUpCallback(void);
@@ -101,40 +67,58 @@ typedef void DataDeskCleanUpCallback(void);
 
 /*
 | /////////////////////////////////////////////////////////////////
- |  Abstract Syntax Tree Representation
- | /////////////////////////////////////////////////////////////////
- |
- | The following code outlines the general structure for the
- | abstract syntax trees that Data Desk generates. Each sub-struct
- | contained inside of the DataDeskASTNode struct is only safe to
- | access if the "int type" variable in the struct is set to the
- | corresponding type value. All of the type constants are defined
- | in the following enum.
- */
+|  Abstract Syntax Tree Representation
+| /////////////////////////////////////////////////////////////////
+|
+| The following code outlines the general structure for the
+| abstract syntax trees that Data Desk generates. Each sub-struct
+| contained inside of the DataDeskNode struct is only safe to
+| access if the "int type" variable in the struct is set to the
+| corresponding type value. All of the type constants are defined
+| in the following enum.
+*/
 
-enum
+typedef enum DataDeskNodeType DataDeskNodeType;
+enum DataDeskNodeType
 {
-    DATA_DESK_AST_NODE_TYPE_invalid,
-    DATA_DESK_AST_NODE_TYPE_identifier,
-    DATA_DESK_AST_NODE_TYPE_numeric_constant,
-    DATA_DESK_AST_NODE_TYPE_string_constant,
-    DATA_DESK_AST_NODE_TYPE_char_constant,
-    DATA_DESK_AST_NODE_TYPE_binary_operator,
-    DATA_DESK_AST_NODE_TYPE_struct_declaration,
-    DATA_DESK_AST_NODE_TYPE_union_declaration,
-    DATA_DESK_AST_NODE_TYPE_enum_declaration,
-    DATA_DESK_AST_NODE_TYPE_flags_declaration,
-    DATA_DESK_AST_NODE_TYPE_declaration,
-    DATA_DESK_AST_NODE_TYPE_type_usage,
-    DATA_DESK_AST_NODE_TYPE_tag,
-    DATA_DESK_AST_NODE_TYPE_constant_definition,
-    DATA_DESK_AST_NODE_TYPE_procedure_header,
+    DATA_DESK_NODE_TYPE_invalid,
+    
+    DATA_DESK_NODE_TYPE_identifier,
+    DATA_DESK_NODE_TYPE_numeric_constant,
+    DATA_DESK_NODE_TYPE_string_constant,
+    DATA_DESK_NODE_TYPE_char_constant,
+    DATA_DESK_NODE_TYPE_unary_operator,
+    DATA_DESK_NODE_TYPE_binary_operator,
+
+    DATA_DESK_NODE_TYPE_struct_declaration,
+    DATA_DESK_NODE_TYPE_union_declaration,
+    DATA_DESK_NODE_TYPE_enum_declaration,
+    DATA_DESK_NODE_TYPE_flags_declaration,
+    DATA_DESK_NODE_TYPE_declaration,
+    DATA_DESK_NODE_TYPE_type_usage,
+    DATA_DESK_NODE_TYPE_tag,
+    DATA_DESK_NODE_TYPE_constant_definition,
+    DATA_DESK_NODE_TYPE_procedure_header,
+};
+
+// NOTE(rjf): The unary operator precedence table in UnaryOperatorPrecedence
+// must update to match this when this changes, and also the DataDeskGetUnaryOperatorString
+// procedure in this file.
+typedef enum DataDeskUnaryOperatorType DataDeskUnaryOperatorType;
+enum DataDeskUnaryOperatorType
+{
+    DATA_DESK_UNARY_OPERATOR_TYPE_invalid,
+    DATA_DESK_UNARY_OPERATOR_TYPE_negative,
+    DATA_DESK_UNARY_OPERATOR_TYPE_not,
+    DATA_DESK_UNARY_OPERATOR_TYPE_bitwise_negate,
+    DATA_DESK_UNARY_OPERATOR_TYPE_MAX
 };
 
 // NOTE(rjf): The binary operator precedence table in BinaryOperatorPrecedence
 // must update to match this when this changes, and also the DataDeskGetBinaryOperatorString
 // procedure in this file.
-enum
+typedef enum DataDeskBinaryOperatorType DataDeskBinaryOperatorType;
+enum DataDeskBinaryOperatorType
 {
     DATA_DESK_BINARY_OPERATOR_TYPE_invalid,
     DATA_DESK_BINARY_OPERATOR_TYPE_add,
@@ -151,89 +135,96 @@ enum
     DATA_DESK_BINARY_OPERATOR_TYPE_MAX
 };
 
-struct DataDeskASTNode
+struct DataDeskNode
 {
-    int type;
-    DataDeskASTNode *next;
-    
+    DataDeskNodeType type;
+    DataDeskNode *next;
+
     char *string;
     int string_length;
-    
-    DataDeskASTNode *first_tag;
-    
+
+    DataDeskNode *first_tag;
+
     union
     {
         struct Identifier
         {
-            DataDeskASTNode *declaration;
+            DataDeskNode *declaration;
         }
         identifier;
-        
+
+        struct UnaryOperator
+        {
+            DataDeskUnaryOperatorType type;
+            DataDeskNode *operand;
+        }
+        unary_operator;
+
         struct BinaryOperator
         {
-            int type;
-            DataDeskASTNode *left;
-            DataDeskASTNode *right;
+            DataDeskBinaryOperatorType type;
+            DataDeskNode *left;
+            DataDeskNode *right;
         }
         binary_operator;
-        
+
         struct StructDeclaration
         {
-            DataDeskASTNode *first_member;
+            DataDeskNode *first_member;
         }
         struct_declaration;
-        
+
         struct UnionDeclaration
         {
-            DataDeskASTNode *first_member;
+            DataDeskNode *first_member;
         }
         union_declaration;
-        
+
         struct EnumDeclaration
         {
-            DataDeskASTNode *first_constant;
+            DataDeskNode *first_constant;
         }
         enum_declaration;
-        
+
         struct FlagsDeclaration
         {
-            DataDeskASTNode *first_flag;
+            DataDeskNode *first_flag;
         }
         flags_declaration;
-        
+
         struct Declaration
         {
-            DataDeskASTNode *type;
-            DataDeskASTNode *initialization;
+            DataDeskNode *type;
+            DataDeskNode *initialization;
         }
         declaration;
-        
+
         struct TypeUsage
         {
             int pointer_count;
-            DataDeskASTNode *first_array_size_expression;
-            DataDeskASTNode *struct_declaration;
-            DataDeskASTNode *union_declaration;
-            DataDeskASTNode *type_definition;
+            DataDeskNode *first_array_size_expression;
+            DataDeskNode *struct_declaration;
+            DataDeskNode *union_declaration;
+            DataDeskNode *type_definition;
         }
         type_usage;
-        
+
         struct Tag
         {
-            DataDeskASTNode *first_tag_parameter;
+            DataDeskNode *first_tag_parameter;
         }
         tag;
-        
+
         struct ConstantDefinition
         {
-            DataDeskASTNode *expression;
+            DataDeskNode *expression;
         }
         constant_definition;
-        
+
         struct ProcedureHeader
         {
-            DataDeskASTNode *return_type;
-            DataDeskASTNode *first_parameter;
+            DataDeskNode *return_type;
+            DataDeskNode *first_parameter;
         }
         procedure_header;
     };
@@ -245,31 +236,25 @@ struct DataDeskASTNode
 
 /*
 | /////////////////////////////////////////////////////////////////
- |  Introspection Helper Functions
- | /////////////////////////////////////////////////////////////////
- |
- | The following function prototypes are convenience utility
- | functions that can be helpful when introspecting upon abstract
- | syntax trees.
- */
+|  Introspection Helper Functions
+| /////////////////////////////////////////////////////////////////
+|
+| The following function prototypes are convenience utility
+| functions that can be helpful when introspecting upon abstract
+| syntax trees.
+*/
 
 inline int DataDeskStringHasSubString(char *string, char *substring);
-inline DataDeskASTNode *DataDeskGetNodeTag(DataDeskASTNode *root, char *tag);
-inline DataDeskASTNode *DataDeskGetTagParameter(DataDeskASTNode *tag, int parameter_number);
-inline int DataDeskNodeHasTag(DataDeskASTNode *root, char *tag);
-inline int DataDeskDeclarationIsType(DataDeskASTNode *root, char *type);
-inline int DataDeskStructMemberIsType(DataDeskASTNode *root, char *type);
-inline int DataDeskInterpretNumericExpressionAsInteger(DataDeskASTNode *root);
+inline DataDeskNode *DataDeskGetNodeTag(DataDeskNode *root, char *tag);
+inline DataDeskNode *DataDeskGetTagParameter(DataDeskNode *tag, int parameter_number);
+inline int DataDeskNodeHasTag(DataDeskNode *root, char *tag);
+inline int DataDeskDeclarationIsType(DataDeskNode *root, char *type);
+inline int DataDeskStructMemberIsType(DataDeskNode *root, char *type);
+inline int DataDeskInterpretNumericExpressionAsInteger(DataDeskNode *root);
 inline char *DataDeskGetBinaryOperatorString(int type);
 
 #ifndef DATA_DESK_NO_CRT
-inline void DataDeskFWriteConstantAsC          (FILE *file, DataDeskConstant        constant_info);
-inline void DataDeskFWriteStructAsC            (FILE *file, DataDeskStruct          struct_info);
-inline void DataDeskFWriteUnionAsC             (FILE *file, DataDeskUnion           union_info);
-inline void DataDeskFWriteEnumAsC              (FILE *file, DataDeskEnum            enum_info);
-inline void DataDeskFWriteFlagsAsC             (FILE *file, DataDeskFlags           flags_info);
-inline void DataDeskFWriteDeclarationAsC       (FILE *file, DataDeskDeclaration     declaration_info);
-inline void DataDeskFWriteProcedureHeaderAsC   (FILE *file, DataDeskProcedureHeader procedure_info);
+inline void DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, int follow_next);
 inline void DataDeskFWriteStringWithSpaces(FILE *file, char *string);
 inline void DataDeskFWriteStringAsLowercaseWithUnderscores(FILE *file, char *string);
 inline void DataDeskFWriteStringAsUppercaseWithUnderscores(FILE *file, char *string);
@@ -332,15 +317,15 @@ inline int
 DataDeskStringHasAlphanumericBlock(char *string, char *substring)
 {
     int matches = 0;
-    
-    if(string)
+
+    if(string && substring)
     {
         for(int i = 0; string[i]; ++i)
         {
             if(string[i] == substring[0])
             {
                 matches = 1;
-                
+
                 int string_i = i+1;
                 int substring_i = 1;
                 for(;;)
@@ -361,25 +346,25 @@ DataDeskStringHasAlphanumericBlock(char *string, char *substring)
                         }
                         break;
                     }
-                    
+
                     if(string[string_i] != substring[substring_i])
                     {
                         matches = 0;
                         break;
                     }
-                    
+
                     ++string_i;
                     ++substring_i;
                 }
             }
-            
+
             if(matches)
             {
                 break;
             }
         }
     }
-    
+
     return matches;
 }
 
@@ -389,11 +374,11 @@ DataDeskStringHasSubString(char *string, char *substring)
     return DataDeskStringHasAlphanumericBlock(string, substring);
 }
 
-inline DataDeskASTNode *
-DataDeskGetNodeTag(DataDeskASTNode *root, char *tag)
+inline DataDeskNode *
+DataDeskGetNodeTag(DataDeskNode *root, char *tag)
 {
-    DataDeskASTNode *found_tag_node = 0;
-    for(DataDeskASTNode *tag_node = root->first_tag;
+    DataDeskNode *found_tag_node = 0;
+    for(DataDeskNode *tag_node = root->first_tag;
         tag_node; tag_node = tag_node->next)
     {
         if(DataDeskStringHasAlphanumericBlock(tag_node->string, tag))
@@ -405,14 +390,14 @@ DataDeskGetNodeTag(DataDeskASTNode *root, char *tag)
     return found_tag_node;
 }
 
-inline DataDeskASTNode *
-DataDeskGetTagParameter(DataDeskASTNode *tag, int parameter_number)
+inline DataDeskNode *
+DataDeskGetTagParameter(DataDeskNode *tag, int parameter_number)
 {
-    DataDeskASTNode *result = 0;
-    if(tag && tag->type == DATA_DESK_AST_NODE_TYPE_tag)
+    DataDeskNode *result = 0;
+    if(tag && tag->type == DATA_DESK_NODE_TYPE_tag)
     {
         int i = 0;
-        for(DataDeskASTNode *parameter = tag->tag.first_tag_parameter;
+        for(DataDeskNode *parameter = tag->tag.first_tag_parameter;
             parameter; parameter = parameter->next)
         {
             if(i == parameter_number)
@@ -427,22 +412,22 @@ DataDeskGetTagParameter(DataDeskASTNode *tag, int parameter_number)
 }
 
 inline int
-DataDeskNodeHasTag(DataDeskASTNode *node, char *tag)
+DataDeskNodeHasTag(DataDeskNode *node, char *tag)
 {
-    DataDeskASTNode *tag_node = DataDeskGetNodeTag(node, tag);
+    DataDeskNode *tag_node = DataDeskGetNodeTag(node, tag);
     return tag_node != 0;
 }
 
 inline int
-DataDeskDeclarationIsType(DataDeskASTNode *root, char *type)
+DataDeskDeclarationIsType(DataDeskNode *root, char *type)
 {
     int matches = 0;
-    
-    if(root->type == DATA_DESK_AST_NODE_TYPE_declaration)
+
+    if(root->type == DATA_DESK_NODE_TYPE_declaration)
     {
         int pointer_count = 0;
         char *type_name = type;
-        
+
         for(int i = 0; type[i]; ++i)
         {
             if(type[i] == '*')
@@ -455,26 +440,31 @@ DataDeskDeclarationIsType(DataDeskASTNode *root, char *type)
                 break;
             }
         }
-        
+
         matches = pointer_count == root->declaration.type->type_usage.pointer_count;
         if(matches)
         {
-            for(int i = 0; type_name[i] && root->declaration.type->string[i]; ++i)
+            matches = 0;
+            if(root->declaration.type->string)
             {
-                if(type_name[i] != root->declaration.type->string[i])
+                matches = 1;
+                for(int i = 0; type_name[i] && root->declaration.type->string[i]; ++i)
                 {
-                    matches = 0;
-                    break;
+                    if(type_name[i] != root->declaration.type->string[i])
+                    {
+                        matches = 0;
+                        break;
+                    }
                 }
             }
         }
     }
-    
+
     return matches;
 }
 
 inline int
-DataDeskStructMemberIsType(DataDeskASTNode *root, char *type)
+DataDeskStructMemberIsType(DataDeskNode *root, char *type)
 {
     return DataDeskDeclarationIsType(root, type);
 }
@@ -483,7 +473,7 @@ inline int
 DataDeskCStringToInt(char *string)
 {
     int value = 0;
-    
+
     char value_str[64] = {0};
     int value_str_write_pos = 0;
     for(int i = 0; string[i]; ++i)
@@ -501,7 +491,7 @@ DataDeskCStringToInt(char *string)
                     break;
                 }
             }
-            
+
             int number_of_digits = value_str_write_pos;
             int multiplier = 1;
             for(int j = 0; j < number_of_digits; ++j)
@@ -509,45 +499,72 @@ DataDeskCStringToInt(char *string)
                 value += (value_str[number_of_digits - j - 1] - '0') * multiplier;
                 multiplier *= 10;
             }
-            
+
             break;
         }
     }
-    
+
     return value;
 }
 
 inline int
-DataDeskInterpretNumericExpressionAsInteger(DataDeskASTNode *root)
+DataDeskInterpretNumericExpressionAsInteger(DataDeskNode *root)
 {
     int result = 0;
     if(root)
     {
         switch(root->type)
         {
-            case DATA_DESK_AST_NODE_TYPE_numeric_constant:
+            case DATA_DESK_NODE_TYPE_numeric_constant:
             {
                 result = DataDeskCStringToInt(root->string);
                 break;
             }
-            case DATA_DESK_AST_NODE_TYPE_binary_operator:
+            case DATA_DESK_NODE_TYPE_unary_operator:
             {
-                int binary_operator_type = root->binary_operator.type;
+                DataDeskUnaryOperatorType unary_operator_type = root->unary_operator.type;
+                int operand = DataDeskInterpretNumericExpressionAsInteger(root->unary_operator.operand);
+
+                switch(unary_operator_type)
+                {
+                    case DATA_DESK_UNARY_OPERATOR_TYPE_not:
+                    {
+                        result = !operand;
+                        break;
+                    }
+                    case DATA_DESK_UNARY_OPERATOR_TYPE_negative:
+                    {
+                        result = -operand;
+                        break;
+                    }
+                    case DATA_DESK_UNARY_OPERATOR_TYPE_bitwise_negate:
+                    {
+                        result = ~operand;
+                        break;
+                    }
+                    default: break;
+                }
+
+                break;
+            }
+            case DATA_DESK_NODE_TYPE_binary_operator:
+            {
+                DataDeskBinaryOperatorType binary_operator_type = root->binary_operator.type;
                 int left_tree = DataDeskInterpretNumericExpressionAsInteger(root->binary_operator.left);
                 int right_tree = DataDeskInterpretNumericExpressionAsInteger(root->binary_operator.right);
-                
+
                 switch(binary_operator_type)
                 {
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_add: { result = left_tree + right_tree; break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_subtract: { result = left_tree - right_tree; break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_multiply: { result = left_tree * right_tree; break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_divide: { result = (right_tree != 0) ? (left_tree / right_tree) : 0; break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_modulus: { result = (right_tree != 0) ? (left_tree % right_tree) : 0; break; }
-                    case DATA_DESK_BINARY_OPERATOR_TYPE_bitshift_left: { result = left_tree << right_tree; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_add:            { result = left_tree + right_tree; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_subtract:       { result = left_tree - right_tree; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_multiply:       { result = left_tree * right_tree; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_divide:         { result = (right_tree != 0) ? (left_tree / right_tree) : 0; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_modulus:        { result = (right_tree != 0) ? (left_tree % right_tree) : 0; break; }
+                    case DATA_DESK_BINARY_OPERATOR_TYPE_bitshift_left:  { result = left_tree << right_tree; break; }
                     case DATA_DESK_BINARY_OPERATOR_TYPE_bitshift_right: { result = left_tree >> right_tree; break; }
                     default: break;
                 }
-                
+
                 break;
             }
             default: break;
@@ -561,7 +578,7 @@ DataDeskGetBinaryOperatorString(int type)
 {
     char *strings[] =
     {
-        "",
+        "(invalid)",
         "+",
         "-",
         "*",
@@ -577,76 +594,156 @@ DataDeskGetBinaryOperatorString(int type)
     return strings[type];
 }
 
+inline char *
+DataDeskGetUnaryOperatorString(int type)
+{
+    char *strings[] =
+    {
+        "(invalid)",
+        "-",
+        "!",
+        "~",
+    };
+    return strings[type];
+}
+
 #ifndef DATA_DESK_NO_CRT
 inline void
-_DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next, int nest)
+_DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, int follow_next, int nest)
 {
     if(root)
     {
+        if(root->first_tag)
+        {
+            fprintf(file, "// ");
+            for(DataDeskNode *tag = root->first_tag; tag; tag = tag->next)
+            {
+                fprintf(file, "%s", tag->string);
+
+                if(tag->tag.first_tag_parameter)
+                {
+                    fprintf(file, "(");
+                    for(DataDeskNode *tag_arg = tag->tag.first_tag_parameter; tag_arg; tag_arg = tag_arg->next)
+                    {
+                        _DataDeskFWriteGraphAsC(file, tag_arg, 0, nest+1);
+                        if(tag_arg->next)
+                        {
+                            fprintf(file, ", ");
+                        }
+                    }
+                    fprintf(file, ")");
+                }
+                fprintf(file, " ");
+            }
+            fprintf(file, "\n");
+        }
+
         switch(root->type)
         {
-            case DATA_DESK_AST_NODE_TYPE_identifier:
-            case DATA_DESK_AST_NODE_TYPE_numeric_constant:
-            case DATA_DESK_AST_NODE_TYPE_string_constant:
-            case DATA_DESK_AST_NODE_TYPE_char_constant:
+            case DATA_DESK_NODE_TYPE_identifier:
+            case DATA_DESK_NODE_TYPE_numeric_constant:
+            case DATA_DESK_NODE_TYPE_string_constant:
+            case DATA_DESK_NODE_TYPE_char_constant:
             {
                 fprintf(file, "%s", root->string);
                 break;
             }
-            
-            case DATA_DESK_AST_NODE_TYPE_binary_operator:
+
+            case DATA_DESK_NODE_TYPE_unary_operator:
             {
                 fprintf(file, "(");
-                _DataDeskFWriteASTFromRootAsC(file, root->binary_operator.left, 0, nest);
-                char *binary_operator_string = DataDeskGetBinaryOperatorString(root->binary_operator.type);
-                fprintf(file, "%s", binary_operator_string);
-                _DataDeskFWriteASTFromRootAsC(file, root->binary_operator.right, 0, nest+1);
+                char *unary_operator_string = DataDeskGetUnaryOperatorString(root->unary_operator.type);
+                fprintf(file, "%s", unary_operator_string);
+                fprintf(file, "(");
+                _DataDeskFWriteGraphAsC(file, root->unary_operator.operand, 0, nest+1);
                 fprintf(file, ")");
-                
+                fprintf(file, ")");
                 break;
             }
-            
-            case DATA_DESK_AST_NODE_TYPE_struct_declaration:
-            case DATA_DESK_AST_NODE_TYPE_union_declaration:
+
+            case DATA_DESK_NODE_TYPE_binary_operator:
             {
-                char *definition_type_string = "";
-                if(root->type == DATA_DESK_AST_NODE_TYPE_struct_declaration)
+                fprintf(file, "(");
+                _DataDeskFWriteGraphAsC(file, root->binary_operator.left, 0, nest);
+                char *binary_operator_string = DataDeskGetBinaryOperatorString(root->binary_operator.type);
+                fprintf(file, "%s", binary_operator_string);
+                _DataDeskFWriteGraphAsC(file, root->binary_operator.right, 0, nest+1);
+                fprintf(file, ")");
+
+                break;
+            }
+
+            case DATA_DESK_NODE_TYPE_struct_declaration:
+            {
+                if(nest == 0)
                 {
-                    definition_type_string = "struct";
+                    fprintf(file, "typedef struct %s %s;\n", root->string, root->string);
                 }
-                else if(root->type == DATA_DESK_AST_NODE_TYPE_union_declaration)
-                {
-                    definition_type_string = "union";
-                }
-                
+
                 if(root->string)
                 {
-                    fprintf(file, "%s %s\n{\n", definition_type_string, root->string);
+                    fprintf(file, "struct %s\n{\n", root->string);
                 }
                 else
                 {
-                    fprintf(file, "%s\n{\n", definition_type_string);
+                    fprintf(file, "struct\n{\n");
                 }
-                
-                for(DataDeskASTNode *member = root->struct_declaration.first_member;
-                    member;
-                    member = member->next)
+
+                for(DataDeskNode *member = root->struct_declaration.first_member;
+                    member; member = member->next)
                 {
-                    _DataDeskFWriteASTFromRootAsC(file, member, 0, nest+1);
+                    _DataDeskFWriteGraphAsC(file, member, 0, nest+1);
                     fprintf(file, ";\n");
                 }
                 fprintf(file, "}");
-                
+
                 if(nest == 0)
                 {
                     fprintf(file, ";\n\n");
                 }
-                
+
                 break;
             }
-            
-            case DATA_DESK_AST_NODE_TYPE_enum_declaration:
+
+            case DATA_DESK_NODE_TYPE_union_declaration:
             {
+                if(nest == 0)
+                {
+                    fprintf(file, "typedef union %s %s;\n", root->string, root->string);
+                }
+
+                if(root->string)
+                {
+                    fprintf(file, "union %s\n{\n", root->string);
+                }
+                else
+                {
+                    fprintf(file, "union\n{\n");
+                }
+
+                for(DataDeskNode *member = root->union_declaration.first_member;
+                    member; member = member->next)
+                {
+                    _DataDeskFWriteGraphAsC(file, member, 0, nest+1);
+                    fprintf(file, ";\n");
+                }
+                fprintf(file, "}");
+
+                if(nest == 0)
+                {
+                    fprintf(file, ";\n\n");
+                }
+
+                break;
+            }
+
+            case DATA_DESK_NODE_TYPE_enum_declaration:
+            {
+                if(nest == 0)
+                {
+                    fprintf(file, "typedef %s %s %s;\n", "enum", root->string, root->string);
+                }
+
                 if(root->string)
                 {
                     fprintf(file, "enum %s\n{\n", root->string);
@@ -655,8 +752,8 @@ _DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next
                 {
                     fprintf(file, "enum\n{\n");
                 }
-                
-                for(DataDeskASTNode *member = root->enum_declaration.first_constant;
+
+                for(DataDeskNode *member = root->enum_declaration.first_constant;
                     member;
                     member = member->next)
                 {
@@ -664,29 +761,29 @@ _DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next
                     fprintf(file, ",\n");
                 }
                 fprintf(file, "}");
-                
+
                 fprintf(file, ";\n\n");
-                
+
                 break;
             }
-            
-            case DATA_DESK_AST_NODE_TYPE_flags_declaration:
+
+            case DATA_DESK_NODE_TYPE_flags_declaration:
             {
                 int needed_bits_for_flag_type = 32;
                 int current_bit = 0;
-                for(DataDeskASTNode *member = root->flags_declaration.first_flag;
+                for(DataDeskNode *member = root->flags_declaration.first_flag;
                     member;
                     member = member->next)
                 {
                     fprintf(file, "#define %s (1<<%i)\n", member->string, current_bit);
                     ++current_bit;
                 }
-                
+
                 if(current_bit >= 31)
                 {
                     needed_bits_for_flag_type = 64;
                 }
-                
+
                 if(root->string)
                 {
                     if(needed_bits_for_flag_type == 32)
@@ -698,52 +795,60 @@ _DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next
                         fprintf(file, "typedef unsigned long int %s;\n\n", root->string);
                     }
                 }
-                
+
                 break;
             }
-            
-            case DATA_DESK_AST_NODE_TYPE_declaration:
+
+            case DATA_DESK_NODE_TYPE_declaration:
             {
-                _DataDeskFWriteASTFromRootAsC(file, root->declaration.type, 0, nest+1);
+                _DataDeskFWriteGraphAsC(file, root->declaration.type, 0, nest+1);
                 fprintf(file, "%s", root->string);
-                
-                for(DataDeskASTNode *array = root->declaration.type->type_usage.first_array_size_expression;
+
+                for(DataDeskNode *array = root->declaration.type->type_usage.first_array_size_expression;
                     array;
                     array = array->next)
                 {
                     fprintf(file, "[");
-                    _DataDeskFWriteASTFromRootAsC(file, array, 0, nest);
+                    _DataDeskFWriteGraphAsC(file, array, 0, nest);
                     fprintf(file, "]");
                 }
-                
+
                 break;
             }
-            
-            case DATA_DESK_AST_NODE_TYPE_type_usage:
+
+            case DATA_DESK_NODE_TYPE_type_usage:
             {
                 if(root->type_usage.struct_declaration)
                 {
-                    _DataDeskFWriteASTFromRootAsC(file, root->type_usage.struct_declaration, 0, nest+1);
+                    _DataDeskFWriteGraphAsC(file, root->type_usage.struct_declaration, 0, nest+1);
                     fprintf(file, "\n");
                 }
                 else
                 {
                     fprintf(file, "%s ", root->string);
                 }
-                
+
                 for(int i = 0; i < root->type_usage.pointer_count; ++i)
                 {
                     fprintf(file, "*");
                 }
-                
+
                 break;
             }
-            
-            case DATA_DESK_AST_NODE_TYPE_procedure_header:
+
+            case DATA_DESK_NODE_TYPE_constant_definition:
+            {
+                fprintf(file, "#define %s (", root->string);
+                DataDeskFWriteGraphAsC(file, root->constant_definition.expression, 0);
+                fprintf(file, ")\n");
+                break;
+            }
+
+            case DATA_DESK_NODE_TYPE_procedure_header:
             {
                 if(root->procedure_header.return_type)
                 {
-                    _DataDeskFWriteASTFromRootAsC(file, root->procedure_header.return_type, 0, nest);
+                    _DataDeskFWriteGraphAsC(file, root->procedure_header.return_type, 0, nest);
                 }
                 else
                 {
@@ -752,10 +857,10 @@ _DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next
                 fprintf(file, " %s(", root->string);
                 if(root->procedure_header.first_parameter)
                 {
-                    for(DataDeskASTNode *parameter = root->procedure_header.first_parameter;
+                    for(DataDeskNode *parameter = root->procedure_header.first_parameter;
                         parameter; parameter = parameter->next)
                     {
-                        _DataDeskFWriteASTFromRootAsC(file, parameter, 0, nest);
+                        _DataDeskFWriteGraphAsC(file, parameter, 0, nest);
                         if(parameter->next)
                         {
                             fprintf(file, ", ");
@@ -769,67 +874,21 @@ _DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next
                 fprintf(file, ");\n");
                 break;
             }
-            
+
             default: break;
         }
-        
+
         if(root->next && follow_next)
         {
-            _DataDeskFWriteASTFromRootAsC(file, root->next, follow_next, nest);
+            _DataDeskFWriteGraphAsC(file, root->next, follow_next, nest);
         }
     }
 }
 
 inline void
-DataDeskFWriteASTFromRootAsC(FILE *file, DataDeskASTNode *root, int follow_next)
+DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, int follow_next)
 {
-    _DataDeskFWriteASTFromRootAsC(file, root, follow_next, 0);
-}
-
-inline void
-DataDeskFWriteConstantAsC(FILE *file, DataDeskConstant constant_info)
-{
-    fprintf(file, "#define %s (", constant_info.name);
-    DataDeskFWriteASTFromRootAsC(file, constant_info.root->constant_definition.expression, 0);
-    fprintf(file, ")\n");
-}
-
-inline void
-DataDeskFWriteStructAsC(FILE *file, DataDeskStruct struct_info)
-{
-    fprintf(file, "typedef struct %s %s;\n", struct_info.name, struct_info.name);
-    DataDeskFWriteASTFromRootAsC(file, struct_info.root, 0);
-}
-
-inline void
-DataDeskFWriteUnionAsC(FILE *file, DataDeskUnion union_info)
-{
-    fprintf(file, "typedef union %s %s;\n", union_info.name, union_info.name);
-    DataDeskFWriteASTFromRootAsC(file, union_info.root, 0);
-}
-
-inline void
-DataDeskFWriteEnumAsC(FILE *file, DataDeskEnum enum_info)
-{
-    DataDeskFWriteASTFromRootAsC(file, enum_info.root, 0);
-}
-
-inline void
-DataDeskFWriteFlagsAsC(FILE *file, DataDeskFlags flags_info)
-{
-    DataDeskFWriteASTFromRootAsC(file, flags_info.root, 0);
-}
-
-inline void
-DataDeskFWriteDeclarationAsC(FILE *file, DataDeskDeclaration declaration_info)
-{
-    DataDeskFWriteASTFromRootAsC(file, declaration_info.root, 0);
-}
-
-inline void
-DataDeskFWriteProcedureHeaderAsC(FILE *file, DataDeskProcedureHeader procedure_info)
-{
-    DataDeskFWriteASTFromRootAsC(file, procedure_info.root, 0);
+    _DataDeskFWriteGraphAsC(file, root, follow_next, 0);
 }
 
 inline void
@@ -931,7 +990,7 @@ DataDeskFWriteStringAsUpperCamelCaseN(FILE *file, char *string, int string_lengt
                 needs_uppercase = 1;
             }
         }
-        
+
         if(needs_uppercase)
         {
             fprintf(file, "%c", DataDeskCharToUpper(string[i]));
@@ -949,7 +1008,7 @@ DataDeskFWriteStringAsLowerCamelCaseN(FILE *file, char *string, int string_lengt
 {
     int needs_uppercase = 0;
     int need_first_lowercase = 1;
-    
+
     for(int i = 0; i < string_length && string[i]; ++i)
     {
         if(string[i] != '_')
@@ -959,7 +1018,7 @@ DataDeskFWriteStringAsLowerCamelCaseN(FILE *file, char *string, int string_lengt
                 needs_uppercase = 1;
             }
         }
-        
+
         if(needs_uppercase)
         {
             fprintf(file, "%c", DataDeskCharToUpper(string[i]));

@@ -1,19 +1,22 @@
+#include <stdio.h>
 #include "data_desk.h"
+
+static FILE *global_header_file = 0;
 
 DATA_DESK_FUNC void
 DataDeskCustomInitCallback(void)
 {
-	// Initialization code goes here.
+	global_header_file = fopen("generated.h", "w");
 }
 
 DATA_DESK_FUNC void
 DataDeskCustomParseCallback(DataDeskNode *root, char *filename)
 {
-	// Called for code that is parsed from a Data Desk file.
+	DataDeskFWriteGraphAsC(global_header_file, root, 0);
 }
 
 DATA_DESK_FUNC void
 DataDeskCustomCleanUpCallback(void)
 {
-	// De-initialization code goes here.
+	fclose(global_header_file);
 }

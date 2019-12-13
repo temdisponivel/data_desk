@@ -1,17 +1,14 @@
-# Data Desk
+# Data Desk v1.0.0
 
 ## Description
 
 Data Desk is a project utility that parses a simple C-like data description format. Input files in this data description format are parsed to create corresponding abstract syntax trees which represent the information extracted from the files. These abstract syntax trees are then sent to project-specific custom code that is written by the user. This custom code is simply a dynamic library with a few exported functions that are used as callbacks for the parser. Below is a list of the callbacks.
 
 * `DataDeskCustomInitCallback(void)` is called when the parser starts.
-* `DataDeskCustomFileCallback(DataDeskASTNode *root, char *filename)` is called when the parser finishes parsing a file.
-* `DataDeskCustomConstantCallback(DataDeskConstant constant_info, char *filename)` is called for every constant definition that is parsed.
-* `DataDeskCustomStructCallback(DataDeskStruct struct_info, char *filename)` is called for every structure that is parsed.
-* `DataDeskCustomDeclarationCallback(DataDeskDeclaration declaration, char *filename)` is called for every declaration that is parsed.
+* `DataDeskCustomParseCallback(DataDeskNode *root, char *filename)` is called for every top-level construct that is parsed.
 * `DataDeskCustomCleanUpCallback(void)` is called before the parser shuts down.
 
-The abstract syntax tree is formed completely by `DataDeskASTNode` structures. This structure can be found in the `data_desk.h` file.
+The abstract syntax graph is formed completely by `DataDeskNode` structures. This structure can be found in the `data_desk.h` file.
 
 Data Desk also offers a number of utility functions for introspecting on abstract syntax trees it passes to your custom code. A list of these is in the `data_desk.h` file, which can be included into your custom layer.
 
@@ -39,7 +36,7 @@ Grab an [example](https://github.com/ryanfleury/data_desk/blob/master/examples/)
 
 1. An easy way to write the code for this is to check out the custom layer template, located [here](https://github.com/ryanfleury/data_desk/blob/master/examples/custom_layer_template/custom_layer_template.c). Fill out the functions in your custom layer code however you want to. There are some helper functions available in `data_desk.h` that might be useful for you here. This can be dropped into your code and used.
 
-2. To build a custom layer, you just need to build a DLL with the function callbacks you've written as the appropriate exported symbols. `data_desk.h` outlines what symbols are used for each callback.
+2. To build a custom layer, you just need to build a DLL (or `.so`  file) with the function callbacks you've written as the appropriate exported symbols. `data_desk.h` outlines what symbols are used for each callback.
 
 ### Step 4: Run Data Desk
 
@@ -49,36 +46,50 @@ To run Data Desk with your custom layer, you can use the following command templ
 
 ## Data Desk (.ds) File Documentation
 
-A valid Data Desk file is defined as a set of zero or more `Declaration`s, `Struct`s, `Enum`s, `Flags`s, `Comment`s, or `Const`s. Each of the following sections defines these (and what they are comprised of).
+A valid Data Desk file is defined as a set of zero or more *Declaration*s, *Struct*s, *Union*s, *Enum*s, *Flags*s, *Const*s, *Procedure Header*s, or *Comment*s. Each of the following sections defines these (and what they are comprised of).
 
 1. [Identifiers](#identifiers)
-2. [Numeric Constants](#numeric-constants)
-3. [String Constants](#string-constants)
-4. [Character Constants](#character-constants)
-5. [Binary Operators](#binary-operators)
-6. [Expressions](#expressions)
-7. [Types](#types)
-8. [Declarations](#declarations)
-9. [Structs](#structs)
-10. [Enums](#enums)
-11. [Flags](#flags)
-12. [Constant Expressions](#constant-expressions)
-13. [Comments](#comments)
-14. [Tags](#tags)
+2. [Keywords](#keywords)
+3. [Numeric Constants](#numeric-constants)
+4. [String Constants](#string-constants)
+5. [Character Constants](#character-constants)
+6. [Unary Operators](#unary-operators)
+7. [Binary Operators](#binary-operators)
+8. [Expressions](#expressions)
+9. [Types](#types)
+10. [Declarations](#declarations)
+11. [Structs](#structs)
+12. [Unions](#unions)
+13. [Enums](#enums)
+14. [Flags](#flags)
+15. [Constant Expressions](#constant-expressions)
+16. [Procedure Headers](#procedure-headers)
+17. [Comments](#comments)
+18. [Tags](#tags)
 
 ### Identifiers
 
-`Identifier`s are defined as a sequence of characters that begin with either an underscore or an alphabetic character, and contain numeric characters, alphabetic characters, or underscores (similar to C).
+**Identifier**s are defined as a non-[keyword](#keywords) sequence of characters that begin with either an underscore or an alphabetic character, and contain numeric characters, alphabetic characters, or underscores (similar to C).
+
+### Keywords
+
+There are a number of reserved keywords in Data Desk files that cannot be used as identifiers. Here is a list of them:
+ * `struct`: Used for defining [struct](#structs)s.
+ * `union`: Used for defining [union](#unions)s.
+ * `enum`: Used for defining [enum](#enum)s.
+ * `flags`: Used for defining [flags](#flags).
+ * `proc`: Used for defining [procedure header](#procedure-headers)s.
+ * `_`: Reserved for blank/unused identifiers.
 
 ### Numeric Constants
 
-Numeric constants (`Number`s) are defined as a sequence of characters that begin with a numeric character, and contain only numeric characters, periods, or alphabetic characters.
+Numeric constants (**Number**s) are defined as a sequence of characters that begin with a numeric character, and contain only numeric characters, periods, or alphabetic characters.
 
-NOTE: Data Desk does not guarantee the correctness as defined by programming languages of your numeric constants. For example, the following will be interpreted by Data Desk as a numeric constant: `1.2.3.a.b.c`. Because Data Desk does not do any evaluation of numeric constants, it will not enforce validity of numeric constants.
+**NOTE**: Data Desk does not guarantee the correctness as defined by programming languages of your numeric constants. For example, the following will be interpreted by Data Desk as a numeric constant: `1.2.3.a.b.c`. Because Data Desk does not do any evaluation of numeric constants, it will not enforce validity of numeric constants.
 
 ### String Constants
 
-String constants (`String`s) can be *single-line* or *multi-line*.
+String constants (**String**s) can be *single-line* or *multi-line*.
 
 A *single-line* string constant is defined similarly to those in C. It begins with a double-quote character, and ends with a *non-escaped* double-quote character. Double-quote characters can be escaped with a backslash.
 
@@ -86,11 +97,19 @@ A *multi-line* string constant is defined as beginning with three double-quote c
 
 ### Character Constants
 
-Character constants (`Char`s) are defined almost identically to single-line string constants, but with single-quote beginning and ending characters instead of double-quote characters.
+Character constants (**Char**s) are defined almost identically to single-line string constants, but with single-quote beginning and ending characters instead of double-quote characters.
+
+### Unary Operators
+
+Data Desk defines a subset of the unary operators found in C:
+
+ * `-`: Numeric Negation
+ * `!`: Boolean Not
+ * `~`: Bitwise Negate
 
 ### Binary Operators
 
-Data Desk defines a subset of the binary operators found in C. It does not define shorthand assignment operators, like `+=` or `>>=`. The following binary operators are defined (in order of ascending precedence):
+Data Desk defines a subset of the binary operators found in C. It does not define shorthand assignment operators, like `+=` or `>>=`, because there is no execution in Data Desk. The following binary operators are defined (in order of ascending precedence):
 
  * `+`: Addition
  * `-`: Subtraction
@@ -106,45 +125,56 @@ Data Desk defines a subset of the binary operators found in C. It does not defin
 
 ### Expressions
 
-An expression (`Expr`) in Data Desk is defined as being one of the following:
- * `Identifier`
- * `Number`
- * `String`
- * `Char`
- * `Expr` `Binary Operator` `Expr`
+An expression (**Expr**) in Data Desk is defined as:
+ 
+**Expr** <- `Identifier`
+	| `Number`
+	| `String`
+	| `Char`
+	| `Expr` `Binary Operator` `Expr`
 
 ### Types
 
-Types are used in declarations. They are defined as being the following:
+**Type**s are used in declarations. They are defined as being the following:
 
-* A group of 0 or more `*` characters, representing the number of layers of indirection
-* A type name, which can be:
-  * Some `Identifier` referring to a type name
-  * A `Struct` definition (refer to next section)
-* A group of 0 or more array size specifiers, being defined as a `[` character, some `Expression`, and a `]` character
+ * A group of 0 or more `*` characters, representing the number of layers of indirection.
+ * A type name, which can be:
+   * Some [**Identifier**](#identifiers) referring to a type name.
+   * A [**Struct**](#structs) definition.
+   * A [**Union**](#unions) definition.
+ * A group of 0 or more array size specifiers, being defined as: `[` `Expr` `]`
 
 ### Declarations
 
-`Declaration`s are defined as follows:
+**Declaration**s are defined as follows:
 
 `Identifier` `:` `Type` `;`
 
 ### Structs
 
-`Struct`s are groups of zero or more declarations. They are defined as:
+**Struct**s are groups of zero or more declarations. They are defined as:
 
-`struct` `Identifier`
+`Identifier` ` :: struct`
 `{`
-Zero or more `Declaration`s
+	Zero or more `Declaration`s, each followed by `,` or `;` characters.
+`}`
+
+### Unions
+
+**Union**s are groups of zero or more declarations. They look almost identical to (**Struct**)[#structs]s, but are meant to correspond to `union`s in C, which imply a different memory layout and intended usage. They are defined as:
+
+`Identifier` ` :: union`
+`{`
+	Zero or more `Declaration`s, each followed by `,` or `;` characters.
 `}`
 
 ### Enums
 
-`Enum`s are groups of one or more identifiers. They are defined as:
+**Enum**s are groups of one or more identifiers. They are defined as:
 
-`enum` `Identifier`
+`Identifier`  ` :: enum`
 `{`
-One or more `Identifier`s, each followed by `,` characters.
+	One or more `Identifier`s, each followed by `,` or `;` characters.
 `}`
 
 When transpiled to C, these will be defined as a normal C `enum`; that is, the first one will be defined as a constant that evaluates to 0, the next to 1, and so on.
@@ -153,18 +183,24 @@ When transpiled to C, these will be defined as a normal C `enum`; that is, the f
 
 `Flags`s are groups of one or more identifiers. They are defined as:
 
-`flags` `Identifier`
+`Identifier` ` :: flags`
 `{`
-One or more `Identifier`s, each followed by `,` characters.
+	One or more `Identifier`s, each followed by `,` or `;` characters.
 `}`
 
-When transpiled to C, these will be defined as several C preprocessor macros that evaluate to unique bits inside of an integral value. These are similar to `Enum`s, but their purpose is to define unique bits instead of unique integral values for a set of constants.
+When transpiled to C, these will be defined as several C preprocessor macros that evaluate to unique bits inside of an integral value. These are similar to [Enum](#enums)s, but their purpose is to define unique bits instead of unique integral values for a set of constants.
 
 ### Constant Expressions
 
-Constant expressions (`Const`s) are defined as:
+Constant expressions (**Const**s) are defined as:
 
-`Identifier` `::` `Expression` `;`
+`Identifier` `::` `Expression`
+
+### Procedure Headers
+
+Procedure headers (**Procedure Header**s) are defined as:
+
+`Identifier` `::` `proc (` `Declaration`, `Declaration`, ..., `Declaration` `)` `[ -> Type ]`
 
 ### Comments
 
@@ -176,4 +212,4 @@ Comments are ignored by the parser. They can be *single-line* or *multi-line*.
 
 ### Tags
 
-`Struct`s, `Declaration`s (including those within `Struct`s), or `Const`s can be preceded with one or more `Tag`s. A `Tag` is defined as beginning with a `@` character, and ending with whitespace. These are used to annotate meta-information about various things. They will be passed to custom-layer code.
+**Struct**s, **Union**s, **Declaration**s (including those within **Struct**s, **Union**s, and **Procedure Header**s), **Const**s, **Identifier**s within **Enum**s or **Flags**, and **Procedure Header**s can be preceded with one or more **Tag**s. A **Tag** is defined as beginning with a `@` character, followed by an **Identifier**, with an optional set of parentheses, with an optional set of comma-separated expressions. These are used to annotate meta-information about various things. They will be passed to custom-layer code.
