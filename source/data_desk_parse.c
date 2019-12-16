@@ -1003,6 +1003,10 @@ ParseCode(ParseContext *context, Tokenizer *tokenizer)
             new_node = ParseExpression(context, tokenizer);
             if(new_node != 0)
             {
+                if(!RequireToken(tokenizer, ";", 0))
+                {
+                    ParseContextPushError(context, tokenizer, "Expected ';'.");
+                }
                 new_node->first_tag = tag_list;
                 *node_store_target = new_node;
                 node_store_target = &(*node_store_target)->next;
