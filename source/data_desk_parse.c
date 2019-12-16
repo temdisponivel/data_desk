@@ -848,7 +848,7 @@ ParseTypeUsage(ParseContext *context, Tokenizer *tokenizer)
     {
         if(RequireToken(tokenizer, "[", 0))
         {
-            *array_size_target = ParseExpression(context, tokenizer);
+        *array_size_target = ParseExpression(context, tokenizer);
             array_size_target = &(*array_size_target)->next;
 
             if(!RequireToken(tokenizer, "]", 0))
@@ -886,6 +886,8 @@ ParseCode(ParseContext *context, Tokenizer *tokenizer)
             break;
         }
 
+        DataDeskNode *new_node = 0;
+
         Token name = {0};
         if(RequireTokenType(tokenizer, TOKEN_alphanumeric_block, &name))
         {
@@ -894,7 +896,6 @@ ParseCode(ParseContext *context, Tokenizer *tokenizer)
             // NOTE(rjf): Constant/immutable things (structs/functions/etc.).
             if(RequireToken(tokenizer, "::", 0))
             {
-                DataDeskNode *new_node = 0;
 
                 // NOTE(rjf): Struct.
                 if(RequireToken(tokenizer, "struct", 0))
@@ -951,13 +952,14 @@ ParseCode(ParseContext *context, Tokenizer *tokenizer)
                 else
                 {
                     break;
-                }                 
+                }
+
             }
 
             // NOTE(rjf): Global declaration.
             else if(RequireToken(tokenizer, ":", 0))
             {
-                DataDeskNode *new_node = ParseDeclarationBody(context, tokenizer, name);
+                new_node = ParseDeclarationBody(context, tokenizer, name);
 
                 if(new_node != 0)
                 {
@@ -988,14 +990,27 @@ ParseCode(ParseContext *context, Tokenizer *tokenizer)
                     break;
                 }
             }
+            
+            else
+            {
+                *tokenizer = reset_tokenizer;
+            }
 
         }
-        else
+        
+        if(new_node == 0)
         {
-            Token token = PeekToken(tokenizer);
-            ParseContextPushError(context, tokenizer, "Unexpected token '%.*s'.",
-                                  token.string_length, token.string);
-            NextToken(tokenizer);
+            new_node = ParseExpression(context, tokenizer);
+            if(new_node != 0)
+            {
+                new_node->first_tag = tag_list;
+                *node_store_target = new_node;
+                node_store_target = &(*node_store_target)->next;
+            }
+            else
+            {
+                break;
+            }
         }
 
         if(context->error_stack_size)
