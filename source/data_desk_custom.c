@@ -12,20 +12,20 @@ struct DataDeskCustom
     DataDeskInitCallback    *InitCallback;
     DataDeskParseCallback   *ParseCallback;
     DataDeskCleanUpCallback *CleanUpCallback;
-
+    
 #if BUILD_WIN32
     HANDLE custom_dll;
 #elif BUILD_LINUX
     void *custom_dll;
 #endif
-
+    
 };
 
 static DataDeskCustom
 DataDeskCustomLoad(char *custom_dll_path)
 {
     DataDeskCustom custom = {0};
-
+    
 #if BUILD_WIN32
     custom.custom_dll = LoadLibraryA(custom_dll_path);
     if(custom.custom_dll)
@@ -45,19 +45,19 @@ DataDeskCustomLoad(char *custom_dll_path)
         custom.CleanUpCallback   = dlsym(custom.custom_dll, "DataDeskCustomCleanUpCallback");
     }
 #endif
-
+    
     if(!custom.InitCallback && !custom.ParseCallback && !custom.CleanUpCallback)
     {
-        fprintf(stdout, "WARNING: No callbacks successfully loaded in custom layer\n");
+        LogError("WARNING: No callbacks successfully loaded in custom layer.");
     }
-
+    
     return custom;
 }
 
 static void
 DataDeskCustomUnload(DataDeskCustom *custom)
 {
-
+    
 #if BUILD_WIN32
     FreeLibrary(custom->custom_dll);
 #elif BUILD_LINUX
@@ -66,7 +66,7 @@ DataDeskCustomUnload(DataDeskCustom *custom)
         dlclose(custom->custom_dll);
     }
 #endif
-
+    
     custom->InitCallback = 0;
     custom->ParseCallback = 0;
     custom->CleanUpCallback = 0;

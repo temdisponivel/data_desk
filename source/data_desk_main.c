@@ -51,10 +51,10 @@ ParseFile(ParseContext *context, char *file, char *filename)
         tokenizer.filename = filename;
         tokenizer.line = 1;
     }
-
+    
     DataDeskNode *root = ParseCode(context, &tokenizer);
     PrintAndResetParseContextErrors(context);
-
+    
     // NOTE(rjf): ParseContextCleanUp shouldn't be called, because often time, code
     // will depend on ASTs persisting between files (which should totally work).
     // So, we won't clean up anything, and let the operating system do it ond
@@ -66,10 +66,10 @@ ParseFile(ParseContext *context, char *file, char *filename)
     // frees the memory on exit, and for this reason, there is literally no reason
     // to care about AST clean-up at all.
     // ParseContextCleanUp(&context);
-
+    
     // NOTE(rjf): This is a reason why non-nuanced and non-context-specific programming
     // rules suck.
-
+    
     return root;
 }
 
@@ -105,7 +105,7 @@ main(int argument_count, char **arguments)
             DataDeskCustom custom = {0};
             char *custom_layer_dll_path = 0;
             int expected_number_of_files = 0;
-
+            
             // NOTE(rjf): Load command line arguments and set all non-file arguments
             // to zero, so that we know the arguments to process in the file-processing
             // loop.
@@ -116,7 +116,7 @@ main(int argument_count, char **arguments)
                     ARGUMENT_READ_MODE_files,
                     ARGUMENT_READ_MODE_custom_layer_dll,
                 };
-
+                
                 for(int i = 1; i < argument_count; ++i)
                 {
                     if(argument_read_mode == ARGUMENT_READ_MODE_files)
@@ -146,27 +146,27 @@ main(int argument_count, char **arguments)
                     }
                 }
             }
-
+            
             Log("Data Desk v" DATA_DESK_VERSION_STRING);
-
+            
             // NOTE(rjf): Load custom code DLL if needed.
             if(custom_layer_dll_path)
             {
-                Log("Loading custom layer from \"%s\"", custom_layer_dll_path);
+                Log("Loading custom layer from \"%s\".", custom_layer_dll_path);
                 custom = DataDeskCustomLoad(custom_layer_dll_path);
             }
             else
             {
-                Log("WARNING: No custom layer loaded");
+                LogError("WARNING: No custom layer loaded.");
             }
-
+            
             if(custom.InitCallback)
             {
                 custom.InitCallback();
             }
-
+            
             ParseContext parse_context = {0};
-
+            
             int number_of_parsed_files = 0;
             struct
             {
@@ -174,15 +174,15 @@ main(int argument_count, char **arguments)
                 char *filename;
             }
             *parsed_files = ParseContextAllocateMemory(&parse_context, sizeof(*parsed_files) * expected_number_of_files);
-
+            
             Assert(parsed_files != 0);
-
+            
             for(int i = 1; i < argument_count; ++i)
             {
                 if(arguments[i] != 0)
                 {
                     char *filename = arguments[i];
-                    Log("Processing file at \"%s\"", filename);
+                    Log("Processing file at \"%s\".", filename);
                     char *file = LoadEntireFileAndNullTerminate(filename);
                     if(file)
                     {
@@ -193,30 +193,30 @@ main(int argument_count, char **arguments)
                     }
                     else
                     {
-                        Log("ERROR: Could not load \"%s\"", filename);
+                        LogError("ERROR: Could not load \"%s\".", filename);
                     }
                 }
             }
-
+            
             for(int i = 0; i < number_of_parsed_files; ++i)
             {
                 ProcessParsedGraph(parsed_files[i].filename, parsed_files[i].root, &parse_context, custom);
             }
-
+            
             if(custom.CleanUpCallback)
             {
                 custom.CleanUpCallback();
             }
-
+            
             DataDeskCustomUnload(&custom);
         }
     }
     else
     {
-        fprintf(stderr, "USAGE: %s [-c|--custom <path to custom layer DLL>] [-l|--log] <files to process>\n",
-                arguments[0]);
+        LogError("USAGE: %s [-c|--custom <path to custom layer DLL>] [-l|--log] <files to process>",
+                 arguments[0]);
     }
-
+    
     return 0;
 }
 

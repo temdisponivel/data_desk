@@ -22,6 +22,7 @@ _AssertFailure(char *condition, int line, char *file, int crash)
 
 static int global_log_enabled = 0;
 #define Log(...) if(global_log_enabled) { fprintf(stdout, __VA_ARGS__); fprintf(stdout, "\n"); }
+#define LogError(...) do { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while(0);
 
 /*
 Copyright 2019 Ryan Fleury
