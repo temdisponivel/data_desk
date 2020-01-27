@@ -326,8 +326,7 @@ ParseContextAllocateMemory(ParseContext *context, unsigned int size)
         }
 
         ParseContextMemoryBlock *new_block = 0;
-        new_block = calloc(1, sizeof(ParseContextMemoryBlock) +
-                           PARSE_CONTEXT_MEMORY_BLOCK_SIZE_DEFAULT);
+        new_block = calloc(1, sizeof(ParseContextMemoryBlock) + needed_bytes);
         Assert(new_block != 0);
         new_block->memory = (char *)new_block + sizeof(ParseContextMemoryBlock);
         new_block->memory_size = needed_bytes;
