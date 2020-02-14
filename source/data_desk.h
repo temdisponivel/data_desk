@@ -2,7 +2,7 @@
 Data Desk
 
 Author  : Ryan Fleury
-Updated : 5 December 2019
+Updated : 14 February 2020
 License : MIT, at end of file.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
@@ -33,7 +33,8 @@ License : MIT, at end of file.
 #endif
 
 #define DATA_DESK_FUNC DATA_DESK_EXPORT DATA_DESK_EXTERN_C
-
+#define DATA_DESK_PROC DATA_DESK_FUNC
+#define DATA_DESK_HEADER_PROC static inline
 
 
 
@@ -252,27 +253,27 @@ struct DataDeskNode
 | syntax trees.
 */
 
-inline int DataDeskStringHasSubString(char *string, char *substring);
-inline DataDeskNode *DataDeskGetNodeTag(DataDeskNode *root, char *tag);
-inline DataDeskNode *DataDeskGetTagParameter(DataDeskNode *tag, int parameter_number);
-inline int DataDeskNodeHasTag(DataDeskNode *root, char *tag);
-inline int DataDeskDeclarationIsType(DataDeskNode *root, char *type);
-inline int DataDeskStructMemberIsType(DataDeskNode *root, char *type);
-inline int DataDeskInterpretNumericExpressionAsInteger(DataDeskNode *root);
-inline char *DataDeskGetBinaryOperatorString(int type);
+DATA_DESK_HEADER_PROC int DataDeskStringHasSubString(char *string, char *substring);
+DATA_DESK_HEADER_PROC DataDeskNode *DataDeskGetNodeTag(DataDeskNode *root, char *tag);
+DATA_DESK_HEADER_PROC DataDeskNode *DataDeskGetTagParameter(DataDeskNode *tag, int parameter_number);
+DATA_DESK_HEADER_PROC int DataDeskNodeHasTag(DataDeskNode *root, char *tag);
+DATA_DESK_HEADER_PROC int DataDeskDeclarationIsType(DataDeskNode *root, char *type);
+DATA_DESK_HEADER_PROC int DataDeskStructMemberIsType(DataDeskNode *root, char *type);
+DATA_DESK_HEADER_PROC int DataDeskInterpretNumericExpressionAsInteger(DataDeskNode *root);
+DATA_DESK_HEADER_PROC char *DataDeskGetBinaryOperatorString(int type);
 
 #ifndef DATA_DESK_NO_CRT
-inline void DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, int follow_next);
-inline void DataDeskFWriteStringWithSpaces(FILE *file, char *string);
-inline void DataDeskFWriteStringAsLowercaseWithUnderscores(FILE *file, char *string);
-inline void DataDeskFWriteStringAsUppercaseWithUnderscores(FILE *file, char *string);
-inline void DataDeskFWriteStringAsUpperCamelCase(FILE *file, char *string);
-inline void DataDeskFWriteStringAsLowerCamelCase(FILE *file, char *string);
-inline void DataDeskFWriteStringWithSpacesN(FILE *file, char *string, int string_length);
-inline void DataDeskFWriteStringAsLowercaseWithUnderscoresN(FILE *file, char *string, int string_length);
-inline void DataDeskFWriteStringAsUppercaseWithUnderscoresN(FILE *file, char *string, int string_length);
-inline void DataDeskFWriteStringAsUpperCamelCaseN(FILE *file, char *string, int string_length);
-inline void DataDeskFWriteStringAsLowerCamelCaseN(FILE *file, char *string, int string_length);
+DATA_DESK_HEADER_PROC void DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, int follow_next);
+DATA_DESK_HEADER_PROC void DataDeskFWriteStringWithSpaces(FILE *file, char *string);
+DATA_DESK_HEADER_PROC void DataDeskFWriteStringAsLowercaseWithUnderscores(FILE *file, char *string);
+DATA_DESK_HEADER_PROC void DataDeskFWriteStringAsUppercaseWithUnderscores(FILE *file, char *string);
+DATA_DESK_HEADER_PROC void DataDeskFWriteStringAsUpperCamelCase(FILE *file, char *string);
+DATA_DESK_HEADER_PROC void DataDeskFWriteStringAsLowerCamelCase(FILE *file, char *string);
+DATA_DESK_HEADER_PROC void DataDeskFWriteStringWithSpacesN(FILE *file, char *string, int string_length);
+DATA_DESK_HEADER_PROC void DataDeskFWriteStringAsLowercaseWithUnderscoresN(FILE *file, char *string, int string_length);
+DATA_DESK_HEADER_PROC void DataDeskFWriteStringAsUppercaseWithUnderscoresN(FILE *file, char *string, int string_length);
+DATA_DESK_HEADER_PROC void DataDeskFWriteStringAsUpperCamelCaseN(FILE *file, char *string, int string_length);
+DATA_DESK_HEADER_PROC void DataDeskFWriteStringAsLowerCamelCaseN(FILE *file, char *string, int string_length);
 #endif
 
 
@@ -285,43 +286,43 @@ inline void DataDeskFWriteStringAsLowerCamelCaseN(FILE *file, char *string, int 
 | /////////////////////////////////////////////////////////////////
 */
 
-inline int
+DATA_DESK_HEADER_PROC int
 DataDeskCharIsAlpha(int c)
 {
     return ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'));
 }
 
-inline int
+DATA_DESK_HEADER_PROC int
 DataDeskCharIsDigit(int c)
 {
     return (c >= '0' && c <= '9');
 }
 
-inline int
+DATA_DESK_HEADER_PROC int
 DataDeskCharIsLowercaseAlpha(int c)
 {
     return (c >= 'a' && c <= 'z');
 }
 
-inline int
+DATA_DESK_HEADER_PROC int
 DataDeskCharIsUppercaseAlpha(int c)
 {
     return (c >= 'A' && c <= 'Z');
 }
 
-inline int
+DATA_DESK_HEADER_PROC int
 DataDeskCharToLower(int c)
 {
     return (DataDeskCharIsUppercaseAlpha(c) ? c + 32 : c);
 }
 
-inline int
+DATA_DESK_HEADER_PROC int
 DataDeskCharToUpper(int c)
 {
     return (DataDeskCharIsLowercaseAlpha(c) ? c - 32 : c);
 }
 
-inline int
+DATA_DESK_HEADER_PROC int
 DataDeskStringHasAlphanumericBlock(char *string, char *substring)
 {
     int matches = 0;
@@ -376,13 +377,13 @@ DataDeskStringHasAlphanumericBlock(char *string, char *substring)
     return matches;
 }
 
-inline int
+DATA_DESK_HEADER_PROC int
 DataDeskStringHasSubString(char *string, char *substring)
 {
     return DataDeskStringHasAlphanumericBlock(string, substring);
 }
 
-inline DataDeskNode *
+DATA_DESK_HEADER_PROC DataDeskNode *
 DataDeskGetNodeTag(DataDeskNode *root, char *tag)
 {
     DataDeskNode *found_tag_node = 0;
@@ -398,7 +399,7 @@ DataDeskGetNodeTag(DataDeskNode *root, char *tag)
     return found_tag_node;
 }
 
-inline DataDeskNode *
+DATA_DESK_HEADER_PROC DataDeskNode *
 DataDeskGetTagParameter(DataDeskNode *tag, int parameter_number)
 {
     DataDeskNode *result = 0;
@@ -419,14 +420,14 @@ DataDeskGetTagParameter(DataDeskNode *tag, int parameter_number)
     return result;
 }
 
-inline int
+DATA_DESK_HEADER_PROC int
 DataDeskNodeHasTag(DataDeskNode *node, char *tag)
 {
     DataDeskNode *tag_node = DataDeskGetNodeTag(node, tag);
     return tag_node != 0;
 }
 
-inline int
+DATA_DESK_HEADER_PROC int
 DataDeskDeclarationIsType(DataDeskNode *root, char *type)
 {
     int matches = 0;
@@ -471,13 +472,13 @@ DataDeskDeclarationIsType(DataDeskNode *root, char *type)
     return matches;
 }
 
-inline int
+DATA_DESK_HEADER_PROC int
 DataDeskStructMemberIsType(DataDeskNode *root, char *type)
 {
     return DataDeskDeclarationIsType(root, type);
 }
 
-inline int
+DATA_DESK_HEADER_PROC int
 DataDeskCStringToInt(char *string)
 {
     int value = 0;
@@ -515,7 +516,7 @@ DataDeskCStringToInt(char *string)
     return value;
 }
 
-inline int
+DATA_DESK_HEADER_PROC int
 DataDeskInterpretNumericExpressionAsInteger(DataDeskNode *root)
 {
     int result = 0;
@@ -581,7 +582,7 @@ DataDeskInterpretNumericExpressionAsInteger(DataDeskNode *root)
     return result;
 }
 
-inline char *
+DATA_DESK_HEADER_PROC char *
 DataDeskGetBinaryOperatorString(int type)
 {
     char *strings[] =
@@ -602,7 +603,7 @@ DataDeskGetBinaryOperatorString(int type)
     return strings[type];
 }
 
-inline char *
+DATA_DESK_HEADER_PROC char *
 DataDeskGetUnaryOperatorString(int type)
 {
     char *strings[] =
@@ -616,7 +617,7 @@ DataDeskGetUnaryOperatorString(int type)
 }
 
 #ifndef DATA_DESK_NO_CRT
-inline void
+DATA_DESK_HEADER_PROC void
 _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, int follow_next, int nest)
 {
     if(root)
@@ -893,13 +894,13 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, int follow_next, int nes
     }
 }
 
-inline void
+DATA_DESK_HEADER_PROC void
 DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, int follow_next)
 {
     _DataDeskFWriteGraphAsC(file, root, follow_next, 0);
 }
 
-inline void
+DATA_DESK_HEADER_PROC void
 DataDeskFWriteStringWithSpaces(FILE *file, char *string)
 {
     int string_length = 0;
@@ -907,7 +908,7 @@ DataDeskFWriteStringWithSpaces(FILE *file, char *string)
     DataDeskFWriteStringWithSpacesN(file, string, string_length);
 }
 
-inline void
+DATA_DESK_HEADER_PROC void
 DataDeskFWriteStringAsLowercaseWithUnderscores(FILE *file, char *string)
 {
     int string_length = 0;
@@ -915,7 +916,7 @@ DataDeskFWriteStringAsLowercaseWithUnderscores(FILE *file, char *string)
     DataDeskFWriteStringAsLowercaseWithUnderscoresN(file, string, string_length);
 }
 
-inline void
+DATA_DESK_HEADER_PROC void
 DataDeskFWriteStringAsUppercaseWithUnderscores(FILE *file, char *string)
 {
     int string_length = 0;
@@ -923,7 +924,7 @@ DataDeskFWriteStringAsUppercaseWithUnderscores(FILE *file, char *string)
     DataDeskFWriteStringAsUppercaseWithUnderscoresN(file, string, string_length);
 }
 
-inline void
+DATA_DESK_HEADER_PROC void
 DataDeskFWriteStringAsUpperCamelCase(FILE *file, char *string)
 {
     int string_length = 0;
@@ -931,7 +932,7 @@ DataDeskFWriteStringAsUpperCamelCase(FILE *file, char *string)
     DataDeskFWriteStringAsUpperCamelCaseN(file, string, string_length);
 }
 
-inline void
+DATA_DESK_HEADER_PROC void
 DataDeskFWriteStringAsLowerCamelCase(FILE *file, char *string)
 {
     int string_length = 0;
@@ -939,7 +940,7 @@ DataDeskFWriteStringAsLowerCamelCase(FILE *file, char *string)
     DataDeskFWriteStringAsLowerCamelCaseN(file, string, string_length);
 }
 
-inline void
+DATA_DESK_HEADER_PROC void
 DataDeskFWriteStringWithSpacesN(FILE *file, char *string, int string_length)
 {
     for(int i = 0; i < string_length && string[i]; ++i)
@@ -959,7 +960,7 @@ DataDeskFWriteStringWithSpacesN(FILE *file, char *string, int string_length)
     }
 }
 
-inline void
+DATA_DESK_HEADER_PROC void
 DataDeskFWriteStringAsLowercaseWithUnderscoresN(FILE *file, char *string, int string_length)
 {
     for(int i = 0; i < string_length && string[i]; ++i)
@@ -972,7 +973,7 @@ DataDeskFWriteStringAsLowercaseWithUnderscoresN(FILE *file, char *string, int st
     }
 }
 
-inline void
+DATA_DESK_HEADER_PROC void
 DataDeskFWriteStringAsUppercaseWithUnderscoresN(FILE *file, char *string, int string_length)
 {
     for(int i = 0; i < string_length && string[i]; ++i)
@@ -985,7 +986,7 @@ DataDeskFWriteStringAsUppercaseWithUnderscoresN(FILE *file, char *string, int st
     }
 }
 
-inline void
+DATA_DESK_HEADER_PROC void
 DataDeskFWriteStringAsUpperCamelCaseN(FILE *file, char *string, int string_length)
 {
     int needs_uppercase = 1;
@@ -1011,7 +1012,7 @@ DataDeskFWriteStringAsUpperCamelCaseN(FILE *file, char *string, int string_lengt
     }
 }
 
-inline void
+DATA_DESK_HEADER_PROC void
 DataDeskFWriteStringAsLowerCamelCaseN(FILE *file, char *string, int string_length)
 {
     int needs_uppercase = 0;
@@ -1052,7 +1053,7 @@ DataDeskFWriteStringAsLowerCamelCaseN(FILE *file, char *string, int string_lengt
 #endif // DATA_DESK_H_INCLUDED_
 
 /*
-Copyright 2019 Ryan Fleury
+Copyright 2020 Ryan Fleury
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
