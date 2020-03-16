@@ -22,8 +22,15 @@ License : MIT, at end of file.
 
 #if defined(_MSC_VER)
 #define DATA_DESK_EXPORT __declspec(dllexport)
+#if _MSC_VER < 1900
+#define MSVC2013_C 1
+#endif
 #else
 #define DATA_DESK_EXPORT
+#endif
+
+#if !defined(MSVC2013_C)
+#define MSVC2013_C 0
 #endif
 
 #if defined(__cplusplus)
@@ -34,7 +41,11 @@ License : MIT, at end of file.
 
 #define DATA_DESK_FUNC DATA_DESK_EXPORT DATA_DESK_EXTERN_C
 #define DATA_DESK_PROC DATA_DESK_FUNC
+#if MSVC2013_C
+#define DATA_DESK_HEADER_PROC static
+#else
 #define DATA_DESK_HEADER_PROC static inline
+#endif
 
 
 
