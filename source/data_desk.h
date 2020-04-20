@@ -2,7 +2,7 @@
 Data Desk
 
 Author  : Ryan Fleury
-Updated : 14 February 2020
+Updated : 20 April 2020
 License : MIT, at end of file.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
@@ -22,8 +22,15 @@ License : MIT, at end of file.
 
 #if defined(_MSC_VER)
 #define DATA_DESK_EXPORT __declspec(dllexport)
+#if _MSC_VER < 1900
+#define MSVC2013_C 1
+#endif
 #else
 #define DATA_DESK_EXPORT
+#endif
+
+#if !defined(MSVC2013_C)
+#define MSVC2013_C 0
 #endif
 
 #if defined(__cplusplus)
@@ -34,7 +41,11 @@ License : MIT, at end of file.
 
 #define DATA_DESK_FUNC DATA_DESK_EXPORT DATA_DESK_EXTERN_C
 #define DATA_DESK_PROC DATA_DESK_FUNC
+#if MSVC2013_C
+#define DATA_DESK_HEADER_PROC static
+#else
 #define DATA_DESK_HEADER_PROC static inline
+#endif
 
 
 
@@ -79,8 +90,7 @@ typedef void DataDeskCleanUpCallback(void);
 | in the following enum.
 */
 
-typedef enum DataDeskNodeType DataDeskNodeType;
-enum DataDeskNodeType
+typedef enum DataDeskNodeType
 {
     DATA_DESK_NODE_TYPE_invalid,
     
@@ -100,26 +110,24 @@ enum DataDeskNodeType
     DATA_DESK_NODE_TYPE_tag,
     DATA_DESK_NODE_TYPE_constant_definition,
     DATA_DESK_NODE_TYPE_procedure_header,
-};
+} DataDeskNodeType;
 
 // NOTE(rjf): The unary operator precedence table in UnaryOperatorPrecedence
 // must update to match this when this changes, and also the DataDeskGetUnaryOperatorString
 // procedure in this file.
-typedef enum DataDeskUnaryOperatorType DataDeskUnaryOperatorType;
-enum DataDeskUnaryOperatorType
+typedef enum DataDeskUnaryOperatorType
 {
     DATA_DESK_UNARY_OPERATOR_TYPE_invalid,
     DATA_DESK_UNARY_OPERATOR_TYPE_negative,
     DATA_DESK_UNARY_OPERATOR_TYPE_not,
     DATA_DESK_UNARY_OPERATOR_TYPE_bitwise_negate,
     DATA_DESK_UNARY_OPERATOR_TYPE_MAX
-};
+} DataDeskUnaryOperatorType;
 
 // NOTE(rjf): The binary operator precedence table in BinaryOperatorPrecedence
 // must update to match this when this changes, and also the DataDeskGetBinaryOperatorString
 // procedure in this file.
-typedef enum DataDeskBinaryOperatorType DataDeskBinaryOperatorType;
-enum DataDeskBinaryOperatorType
+typedef enum DataDeskBinaryOperatorType
 {
     DATA_DESK_BINARY_OPERATOR_TYPE_invalid,
     DATA_DESK_BINARY_OPERATOR_TYPE_add,
@@ -134,7 +142,7 @@ enum DataDeskBinaryOperatorType
     DATA_DESK_BINARY_OPERATOR_TYPE_boolean_and,
     DATA_DESK_BINARY_OPERATOR_TYPE_boolean_or,
     DATA_DESK_BINARY_OPERATOR_TYPE_MAX
-};
+} DataDeskBinaryOperatorType;
 
 struct DataDeskNode
 {
@@ -156,20 +164,20 @@ struct DataDeskNode
     
     union
     {
-        struct Identifier
+        struct
         {
             DataDeskNode *declaration;
         }
         identifier;
         
-        struct UnaryOperator
+        struct
         {
             DataDeskUnaryOperatorType type;
             DataDeskNode *operand;
         }
         unary_operator;
         
-        struct BinaryOperator
+        struct
         {
             DataDeskBinaryOperatorType type;
             DataDeskNode *left;
@@ -177,38 +185,38 @@ struct DataDeskNode
         }
         binary_operator;
         
-        struct StructDeclaration
+        struct
         {
             DataDeskNode *first_member;
         }
         struct_declaration;
         
-        struct UnionDeclaration
+        struct
         {
             DataDeskNode *first_member;
         }
         union_declaration;
         
-        struct EnumDeclaration
+        struct
         {
             DataDeskNode *first_constant;
         }
         enum_declaration;
         
-        struct FlagsDeclaration
+        struct
         {
             DataDeskNode *first_flag;
         }
         flags_declaration;
         
-        struct Declaration
+        struct
         {
             DataDeskNode *type;
             DataDeskNode *initialization;
         }
         declaration;
         
-        struct TypeUsage
+        struct
         {
             int pointer_count;
             DataDeskNode *first_array_size_expression;
@@ -218,19 +226,19 @@ struct DataDeskNode
         }
         type_usage;
         
-        struct Tag
+        struct
         {
             DataDeskNode *first_tag_parameter;
         }
         tag;
         
-        struct ConstantDefinition
+        struct
         {
             DataDeskNode *expression;
         }
         constant_definition;
         
-        struct ProcedureHeader
+        struct
         {
             DataDeskNode *return_type;
             DataDeskNode *first_parameter;
