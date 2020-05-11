@@ -146,12 +146,12 @@ static DataDeskNode *
 ParseContextLookUpSymbol(ParseContext *context, char *key, int key_length)
 {
     DataDeskNode *symbol_value = 0;
-
+    
     if(context->symbol_table_max)
     {
         unsigned int key_hash = ParseContextSymbolTableHash(key, key_length) % context->symbol_table_max;
         unsigned int original_hash = key_hash;
-
+        
         for(;;)
         {
             if(context->symbol_table_keys[key_hash].key)
@@ -179,7 +179,7 @@ ParseContextLookUpSymbol(ParseContext *context, char *key, int key_length)
             }
         }
     }
-
+    
     return symbol_value;
 }
 
@@ -194,7 +194,7 @@ static int
 ParseContextAddSymbol(ParseContext *context, char *key, int key_length, DataDeskNode *root)
 {
     int result = PARSE_CONTEXT_ADD_SYMBOL_MEMORY_FAILURE;
-
+    
     // NOTE(rjf): Reallocate symbol table if necessary (if the count we have is 75%+ of
     // the allocated size of the symbol table).
     if(context->symbol_table_count >= (context->symbol_table_max * 3) / 4)
@@ -206,10 +206,10 @@ ParseContextAddSymbol(ParseContext *context, char *key, int key_length, DataDesk
         {
             new_symbol_table_max = 1024;
         }
-
+        
         ParseContextSymbolTableKey *new_symbol_table_keys = calloc(sizeof(ParseContextSymbolTableKey), new_symbol_table_max);
         ParseContextSymbolTableValue *new_symbol_table_values = calloc(sizeof(ParseContextSymbolTableValue), new_symbol_table_max);
-
+        
         // NOTE(rjf): Re-hash all current keys to the new table memory.
         // TODO(rjf): Can this be done more intelligently?
         for(unsigned int i = 0; i < context->symbol_table_max; ++i)
@@ -219,10 +219,10 @@ ParseContextAddSymbol(ParseContext *context, char *key, int key_length, DataDesk
                 char *old_key = context->symbol_table_keys[i].key;
                 int old_key_length = context->symbol_table_keys[i].key_length;
                 DataDeskNode *old_root = context->symbol_table_values[i].root;
-
+                
                 unsigned int new_hash = ParseContextSymbolTableHash(old_key, old_key_length) % new_symbol_table_max;
                 unsigned int original_new_hash = new_hash;
-
+                
                 for(;;)
                 {
                     if(new_symbol_table_keys[new_hash].key)
@@ -238,7 +238,7 @@ ParseContextAddSymbol(ParseContext *context, char *key, int key_length, DataDesk
                             {
                                 new_hash = 0;
                             }
-
+                            
                             if(new_hash == original_new_hash)
                             {
                                 // NOTE(rjf): This case should really never happen, when we don't find
@@ -258,17 +258,17 @@ ParseContextAddSymbol(ParseContext *context, char *key, int key_length, DataDesk
                 }
             }
         }
-
+        
         free(context->symbol_table_keys);
         free(context->symbol_table_values);
         context->symbol_table_keys   = new_symbol_table_keys;
         context->symbol_table_values = new_symbol_table_values;
         context->symbol_table_max    = new_symbol_table_max;
     }
-
+    
     unsigned int key_hash = ParseContextSymbolTableHash(key, key_length) % context->symbol_table_max;
     unsigned int original_hash = key_hash;
-
+    
     for(;;)
     {
         if(context->symbol_table_keys[key_hash].key)
@@ -309,7 +309,7 @@ ParseContextAddSymbol(ParseContext *context, char *key, int key_length, DataDesk
             break;
         }
     }
-
+    
     return result;
 }
 
@@ -324,14 +324,14 @@ ParseContextAllocateMemory(ParseContext *context, unsigned int size)
         {
             needed_bytes = size;
         }
-
+        
         ParseContextMemoryBlock *new_block = 0;
         new_block = calloc(1, sizeof(ParseContextMemoryBlock) + needed_bytes);
         Assert(new_block != 0);
         new_block->memory = (char *)new_block + sizeof(ParseContextMemoryBlock);
         new_block->memory_size = needed_bytes;
         new_block->next = 0;
-
+        
         if(context->active_block)
         {
             context->active_block->next = new_block;
@@ -343,21 +343,23 @@ ParseContextAllocateMemory(ParseContext *context, unsigned int size)
             context->active_block = new_block;
         }
     }
-
+    
     Assert(context->active_block &&
            context->active_block->memory_alloc_position + size <=
            context->active_block->memory_size);
-
+    
     void *memory = context->active_block->memory + context->active_block->memory_alloc_position;
     context->active_block->memory_alloc_position += size;
     return memory;
 }
 
 static DataDeskNode *
-ParseContextAllocateNode(ParseContext *context)
+ParseContextAllocateNode(ParseContext *context, Tokenizer *tokenizer)
 {
     DataDeskNode *node = ParseContextAllocateMemory(context, sizeof(DataDeskNode));
     MemorySet(node, 0, sizeof(*node));
+    node->file = tokenizer->filename;
+    node->line = tokenizer->line;
     return node;
 }
 
@@ -384,7 +386,7 @@ ParseContextAllocateStringCopyLowercaseWithUnderscores(ParseContext *context, ch
     {
         int last_character_was_lowercase = 0;
         int bytes_needed = 0;
-
+        
         for(int i = 0; string[i]; ++i)
         {
             if(string[i] >= 'a' && string[i] <= 'z')
@@ -398,14 +400,14 @@ ParseContextAllocateStringCopyLowercaseWithUnderscores(ParseContext *context, ch
             }
             ++bytes_needed;
         }
-
+        
         ++bytes_needed;
-
+        
         new_string = ParseContextAllocateMemory(context, bytes_needed);
         int new_string_write_pos = 0;
-
+        
         last_character_was_lowercase = 0;
-
+        
         for(int i = 0; string[i]; ++i)
         {
             if(string[i] >= 'a' && string[i] <= 'z')
@@ -418,7 +420,7 @@ ParseContextAllocateStringCopyLowercaseWithUnderscores(ParseContext *context, ch
                 new_string[new_string_write_pos++] = '_';
                 last_character_was_lowercase = 0;
             }
-
+            
             new_string[new_string_write_pos++] = CharToLower(string[i]);
         }
     }
@@ -483,27 +485,27 @@ ParseContextAllocateStringCopyLowerCamelCase(ParseContext *context, char *string
     {
         int bytes_needed = 0;
         int found_alpha = 0;
-
+        
         for(int i = 0; string[i]; ++i)
         {
             if(!found_alpha || string[i] != '_')
             {
                 ++bytes_needed;
             }
-
+            
             if(CharIsAlpha(string[i]))
             {
                 found_alpha = 1;
             }
         }
-
+        
         ++bytes_needed;
-
+        
         new_string = ParseContextAllocateMemory(context, bytes_needed);
         int new_string_write_pos = 0;
         found_alpha = 0;
         int need_capital = 0;
-
+        
         for(int i = 0; string[i]; ++i)
         {
             if(string[i] == '_' && found_alpha)
@@ -513,12 +515,12 @@ ParseContextAllocateStringCopyLowerCamelCase(ParseContext *context, char *string
             else
             {
                 new_string[new_string_write_pos++] = need_capital ? CharToUpper(string[i]) : string[i];
-
+                
                 if(CharIsAlpha(string[i]))
                 {
                     found_alpha = 1;
                 }
-
+                
                 need_capital = 0;
             }
         }
@@ -554,7 +556,7 @@ ParseContextPushError(ParseContext *context, Tokenizer *tokenizer, char *msg, ..
         context->error_stack = ParseContextAllocateMemory(context,
                                                           sizeof(ParseError) * context->error_stack_max);
     }
-
+    
     if(context->error_stack_size < context->error_stack_max)
     {
         va_list args;
@@ -566,7 +568,7 @@ ParseContextPushError(ParseContext *context, Tokenizer *tokenizer, char *msg, ..
         Assert(stored_msg != 0);
         vsnprintf(stored_msg, msg_bytes, msg, args);
         va_end(args);
-
+        
         ParseError error =
         {
             stored_msg,
@@ -580,6 +582,8 @@ ParseContextPushError(ParseContext *context, Tokenizer *tokenizer, char *msg, ..
 static DataDeskNode *
 ParseExpression(ParseContext *context, Tokenizer *tokenizer);
 
+static DataDeskNode *ParseCode(ParseContext *context, Tokenizer *tokenizer);
+
 static void
 ParseTagList(ParseContext *context, Tokenizer *tokenizer)
 {
@@ -589,7 +593,7 @@ ParseTagList(ParseContext *context, Tokenizer *tokenizer)
         DataDeskNode *tag_node = 0;
         if(RequireTokenType(tokenizer, TOKEN_tag, &tag))
         {
-            tag_node = ParseContextAllocateNode(context);
+            tag_node = ParseContextAllocateNode(context, tokenizer);
             tag_node->type = DATA_DESK_NODE_TYPE_tag;
             tag_node->string = tag.string;
             tag_node->string_length = tag.string_length;
@@ -627,7 +631,7 @@ static int
 BinaryOperatorPrecedence(int type)
 {
     int precedence = 0;
-
+    
     static int precedence_table[DATA_DESK_BINARY_OPERATOR_TYPE_MAX] =
     {
         0, // Invalid
@@ -643,12 +647,12 @@ BinaryOperatorPrecedence(int type)
         5, // Boolean And
         5, // Boolean Or
     };
-
+    
     if(type >= 0 && type < DATA_DESK_BINARY_OPERATOR_TYPE_MAX)
     {
         precedence = precedence_table[type];
     }
-
+    
     return precedence;
 }
 
@@ -656,7 +660,7 @@ static int
 UnaryOperatorPrecedence(int type)
 {
     int precedence = 0;
-
+    
     static int precedence_table[DATA_DESK_UNARY_OPERATOR_TYPE_MAX] =
     {
         0, // Invalid
@@ -664,12 +668,12 @@ UnaryOperatorPrecedence(int type)
         6, // Not
         6, // Bitwise negate
     };
-
+    
     if(type >= 0 && type < DATA_DESK_UNARY_OPERATOR_TYPE_MAX)
     {
         precedence = precedence_table[type];
     }
-
+    
     return precedence;
 }
 
@@ -677,9 +681,9 @@ static DataDeskNode *
 ParseUnaryExpression(ParseContext *context, Tokenizer *tokenizer)
 {
     DataDeskNode *expression = 0;
-
+    
     Token token = PeekToken(tokenizer);
-
+    
     if(TokenMatch(token, "("))
     {
         NextToken(tokenizer);
@@ -692,7 +696,7 @@ ParseUnaryExpression(ParseContext *context, Tokenizer *tokenizer)
     else if(token.type == TOKEN_numeric_constant)
     {
         NextToken(tokenizer);
-        expression = ParseContextAllocateNode(context);
+        expression = ParseContextAllocateNode(context, tokenizer);
         expression->type = DATA_DESK_NODE_TYPE_numeric_constant;
         expression->string = token.string;
         expression->string_length = token.string_length;
@@ -700,7 +704,7 @@ ParseUnaryExpression(ParseContext *context, Tokenizer *tokenizer)
     else if(token.type == TOKEN_alphanumeric_block)
     {
         NextToken(tokenizer);
-        expression = ParseContextAllocateNode(context);
+        expression = ParseContextAllocateNode(context, tokenizer);
         expression->type = DATA_DESK_NODE_TYPE_identifier;
         expression->string = token.string;
         expression->string_length = token.string_length;
@@ -708,7 +712,7 @@ ParseUnaryExpression(ParseContext *context, Tokenizer *tokenizer)
     else if(token.type == TOKEN_string_constant)
     {
         NextToken(tokenizer);
-        expression = ParseContextAllocateNode(context);
+        expression = ParseContextAllocateNode(context, tokenizer);
         expression->type = DATA_DESK_NODE_TYPE_string_constant;
         expression->string = token.string;
         expression->string_length = token.string_length;
@@ -716,12 +720,12 @@ ParseUnaryExpression(ParseContext *context, Tokenizer *tokenizer)
     else if(token.type == TOKEN_char_constant)
     {
         NextToken(tokenizer);
-        expression = ParseContextAllocateNode(context);
+        expression = ParseContextAllocateNode(context, tokenizer);
         expression->type = DATA_DESK_NODE_TYPE_char_constant;
         expression->string = token.string;
         expression->string_length = token.string_length;
     }
-
+    
     return expression;
 }
 
@@ -729,15 +733,15 @@ static DataDeskNode *
 ParseExpression_(ParseContext *context, Tokenizer *tokenizer, int precedence_in)
 {
     DataDeskNode *expression = ParseUnaryExpression(context, tokenizer);
-
+    
     if(!expression)
     {
         goto end_parse;
     }
-
+    
     Token token = PeekToken(tokenizer);
     DataDeskBinaryOperatorType operator_type = GetBinaryOperatorTypeFromToken(token);
-
+    
     if(operator_type != DATA_DESK_BINARY_OPERATOR_TYPE_invalid)
     {
         for(int precedence = BinaryOperatorPrecedence(operator_type); precedence >= precedence_in;
@@ -748,19 +752,19 @@ ParseExpression_(ParseContext *context, Tokenizer *tokenizer, int precedence_in)
                 token = PeekToken(tokenizer);
                 operator_type = GetBinaryOperatorTypeFromToken(token);
                 int operator_precedence = BinaryOperatorPrecedence(operator_type);
-
+                
                 if(operator_precedence != precedence)
                 {
                     break;
                 }
-
+                
                 if(operator_type == DATA_DESK_BINARY_OPERATOR_TYPE_invalid)
                 {
                     break;
                 }
-
+                
                 NextToken(tokenizer);
-
+                
                 DataDeskNode *right = ParseExpression_(context, tokenizer, precedence+1);
                 if(!right)
                 {
@@ -768,7 +772,7 @@ ParseExpression_(ParseContext *context, Tokenizer *tokenizer, int precedence_in)
                     goto end_parse;
                 }
                 DataDeskNode *existing_expression = expression;
-                expression = ParseContextAllocateNode(context);
+                expression = ParseContextAllocateNode(context, tokenizer);
                 expression->type = DATA_DESK_NODE_TYPE_binary_operator;
                 expression->binary_operator.type = operator_type;
                 expression->binary_operator.left = existing_expression;
@@ -776,7 +780,7 @@ ParseExpression_(ParseContext *context, Tokenizer *tokenizer, int precedence_in)
             }
         }
     }
-
+    
     end_parse:;
     return expression;
 }
@@ -798,7 +802,7 @@ static DataDeskNode *
 ParseTypeUsage(ParseContext *context, Tokenizer *tokenizer)
 {
     DataDeskNode *type = 0;
-
+    
     // NOTE(rjf): Find number of layers of indirection.
     int pointer_count = 0;
     for(;; ++pointer_count)
@@ -808,12 +812,12 @@ ParseTypeUsage(ParseContext *context, Tokenizer *tokenizer)
             break;
         }
     }
-
+    
     DataDeskNode *struct_declaration = 0;
     DataDeskNode *union_declaration = 0;
     char *type_name_string = 0;
     int type_name_string_length = 0;
-
+    
     if(RequireToken(tokenizer, "struct", 0))
     {
         struct_declaration = ParseStructBody(context, tokenizer, (Token){0});
@@ -833,23 +837,23 @@ ParseTypeUsage(ParseContext *context, Tokenizer *tokenizer)
         type_name_string = type_name.string;
         type_name_string_length = type_name.string_length;
     }
-
-    type = ParseContextAllocateNode(context);
+    
+    type = ParseContextAllocateNode(context, tokenizer);
     type->type = DATA_DESK_NODE_TYPE_type_usage;
     type->type_usage.pointer_count = pointer_count;
     type->type_usage.struct_declaration = struct_declaration;
     type->type_usage.union_declaration = union_declaration;
     type->string = type_name_string;
     type->string_length = type_name_string_length;
-
+    
     DataDeskNode **array_size_target = &type->type_usage.first_array_size_expression;
     for(;;)
     {
         if(RequireToken(tokenizer, "[", 0))
         {
-        *array_size_target = ParseExpression(context, tokenizer);
+            *array_size_target = ParseExpression(context, tokenizer);
             array_size_target = &(*array_size_target)->next;
-
+            
             if(!RequireToken(tokenizer, "]", 0))
             {
                 ParseContextPushError(context, tokenizer, "Missing ]");
@@ -861,7 +865,7 @@ ParseTypeUsage(ParseContext *context, Tokenizer *tokenizer)
             break;
         }
     }
-
+    
     end_parse:;
     return type;
 }
@@ -872,72 +876,72 @@ ParseCode(ParseContext *context, Tokenizer *tokenizer)
     DataDeskNode *root = 0;
     DataDeskNode **node_store_target = &root;
     Token token = {0};
-
+    
     do
     {
         ParseTagList(context, tokenizer);
         DataDeskNode *tag_list = ParseContextPopAllTags(context);
-
+        
         token = PeekToken(tokenizer);
-
+        
         if(token.type == TOKEN_invalid)
         {
             break;
         }
-
+        
         DataDeskNode *new_node = 0;
-
+        
         Token name = {0};
         if(RequireTokenType(tokenizer, TOKEN_alphanumeric_block, &name))
         {
             Tokenizer reset_tokenizer = *tokenizer;
-
+            
             // NOTE(rjf): Constant/immutable things (structs/functions/etc.).
             if(RequireToken(tokenizer, "::", 0))
             {
-
+                
                 // NOTE(rjf): Struct.
                 if(RequireToken(tokenizer, "struct", 0))
                 {
                     new_node = ParseStructBody(context, tokenizer, name);
                 }
-
+                
                 // NOTE(rjf): Union.
                 else if(RequireToken(tokenizer, "union", 0))
                 {
                     new_node = ParseUnionBody(context, tokenizer, name);
                 }
-
+                
                 // NOTE(rjf): Enum.
                 else if(RequireToken(tokenizer, "enum", 0))
                 {
                     new_node = ParseEnumBody(context, tokenizer, name);
                 }
-
+                
                 // NOTE(rjf): Flags.
                 else if(RequireToken(tokenizer, "flags", 0))
                 {
                     new_node = ParseFlagsBody(context, tokenizer, name);
                 }
-
+                
                 // NOTE(rjf): Procedure header.
                 else if(RequireToken(tokenizer, "proc", 0))
                 {
                     new_node = ParseProcedureHeaderBody(context, tokenizer, name);
                 }
-
+                
                 // NOTE(rjf): Some constant expression.
                 else
                 {
-                    new_node = ParseContextAllocateNode(context);
+                    new_node = ParseContextAllocateNode(context, tokenizer);
                     new_node->type = DATA_DESK_NODE_TYPE_constant_definition;
                     new_node->string = name.string;
                     new_node->string_length = name.string_length;
                     new_node->constant_definition.expression = ParseExpression(context, tokenizer);
                 }
-
+                
                 RequireToken(tokenizer, ";", 0);
-
+                
                 if(new_node != 0)
                 {
                     new_node->first_tag = tag_list;
@@ -952,14 +956,14 @@ ParseCode(ParseContext *context, Tokenizer *tokenizer)
                 {
                     break;
                 }
-
+                
             }
-
+            
             // NOTE(rjf): Global declaration.
             else if(RequireToken(tokenizer, ":", 0))
             {
                 new_node = ParseDeclarationBody(context, tokenizer, name);
-
+                
                 if(new_node != 0)
                 {
                     DataDeskNode *initialization = 0;
@@ -968,7 +972,7 @@ ParseCode(ParseContext *context, Tokenizer *tokenizer)
                         initialization = ParseExpression(context, tokenizer);
                     }
                     new_node->declaration.initialization = initialization;
-
+                    
                     if(RequireToken(tokenizer, ";", 0))
                     {
                         new_node->first_tag = tag_list;
@@ -994,7 +998,7 @@ ParseCode(ParseContext *context, Tokenizer *tokenizer)
             {
                 *tokenizer = reset_tokenizer;
             }
-
+            
         }
         
         if(new_node == 0)
@@ -1015,21 +1019,21 @@ ParseCode(ParseContext *context, Tokenizer *tokenizer)
                 break;
             }
         }
-
+        
         if(context->error_stack_size)
         {
             break;
         }
     }
     while(token.type != TOKEN_invalid);
-
+    
     return root;
 }
 
 static DataDeskNode *
 ParseDeclarationBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 {
-    DataDeskNode *root = ParseContextAllocateNode(context);
+    DataDeskNode *root = ParseContextAllocateNode(context, tokenizer);
     root->type = DATA_DESK_NODE_TYPE_declaration;
     root->string = name.string;
     root->string_length = name.string_length;
@@ -1048,10 +1052,10 @@ ParseDeclarationList(ParseContext *context, Tokenizer *tokenizer)
         {
             break;
         }
-
+        
         ParseTagList(context, tokenizer);
         DataDeskNode *tag_list = ParseContextPopAllTags(context);
-
+        
         Token name = {0};
         if(RequireTokenType(tokenizer, TOKEN_alphanumeric_block, &name) &&
            RequireToken(tokenizer, ":", 0))
@@ -1060,7 +1064,7 @@ ParseDeclarationList(ParseContext *context, Tokenizer *tokenizer)
             declaration->first_tag = tag_list;
             *target = declaration;
             target = &(*target)->next;
-
+            
             if(!(TokenMatch(PeekToken(tokenizer), "}") || TokenMatch(PeekToken(tokenizer), ")")) &&
                !RequireToken(tokenizer, ";", 0) && !RequireToken(tokenizer, ",", 0))
             {
@@ -1088,21 +1092,21 @@ ParseIdentifierList(ParseContext *context, Tokenizer *tokenizer)
         {
             break;
         }
-
+        
         ParseTagList(context, tokenizer);
         DataDeskNode *tag_list = ParseContextPopAllTags(context);
-
+        
         Token name = {0};
         if(RequireTokenType(tokenizer, TOKEN_alphanumeric_block, &name))
         {
-            DataDeskNode *identifier = ParseContextAllocateNode(context);
+            DataDeskNode *identifier = ParseContextAllocateNode(context, tokenizer);
             identifier->type = DATA_DESK_NODE_TYPE_identifier;
             identifier->string = name.string;
             identifier->string_length = name.string_length;
             identifier->first_tag = tag_list;
             *target = identifier;
             target = &(*target)->next;
-
+            
             if(!RequireToken(tokenizer, ";", 0) && !RequireToken(tokenizer, ",", 0))
             {
                 ParseContextPushError(context, tokenizer, "Expected ';' or ',' after constant.");
@@ -1121,25 +1125,25 @@ ParseIdentifierList(ParseContext *context, Tokenizer *tokenizer)
 static DataDeskNode *
 ParseStructBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 {
-    DataDeskNode *root = ParseContextAllocateNode(context);
+    DataDeskNode *root = ParseContextAllocateNode(context, tokenizer);
     root->type = DATA_DESK_NODE_TYPE_struct_declaration;
     root->string = name.string;
     root->string_length = name.string_length;
-
+    
     if(!RequireToken(tokenizer, "{", 0))
     {
         ParseContextPushError(context, tokenizer, "Expected '{'.");
         goto end_parse;
     }
-
+    
     root->struct_declaration.first_member = ParseDeclarationList(context, tokenizer);
-
+    
     if(!RequireToken(tokenizer, "}", 0))
     {
         ParseContextPushError(context, tokenizer, "Expected '}'.");
         goto end_parse;
     }
-
+    
     end_parse:;
     return root;
 }
@@ -1147,25 +1151,25 @@ ParseStructBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 static DataDeskNode *
 ParseUnionBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 {
-    DataDeskNode *root = ParseContextAllocateNode(context);
+    DataDeskNode *root = ParseContextAllocateNode(context, tokenizer);
     root->type = DATA_DESK_NODE_TYPE_union_declaration;
     root->string = name.string;
     root->string_length = name.string_length;
-
+    
     if(!RequireToken(tokenizer, "{", 0))
     {
         ParseContextPushError(context, tokenizer, "Expected '{'.");
         goto end_parse;
     }
-
+    
     root->union_declaration.first_member = ParseDeclarationList(context, tokenizer);
-
+    
     if(!RequireToken(tokenizer, "}", 0))
     {
         ParseContextPushError(context, tokenizer, "Expected '}'.");
         goto end_parse;
     }
-
+    
     end_parse:;
     return root;
 }
@@ -1173,25 +1177,25 @@ ParseUnionBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 static DataDeskNode *
 ParseEnumBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 {
-    DataDeskNode *root = ParseContextAllocateNode(context);
+    DataDeskNode *root = ParseContextAllocateNode(context, tokenizer);
     root->type = DATA_DESK_NODE_TYPE_enum_declaration;
     root->string = name.string;
     root->string_length = name.string_length;
-
+    
     if(!RequireToken(tokenizer, "{", 0))
     {
         ParseContextPushError(context, tokenizer, "Expected '{'.");
         goto end_parse;
     }
-
+    
     root->enum_declaration.first_constant = ParseIdentifierList(context, tokenizer);
-
+    
     if(!RequireToken(tokenizer, "}", 0))
     {
         ParseContextPushError(context, tokenizer, "Expected '}'.");
         goto end_parse;
     }
-
+    
     end_parse:;
     return root;
 }
@@ -1199,25 +1203,25 @@ ParseEnumBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 static DataDeskNode *
 ParseFlagsBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 {
-    DataDeskNode *root = ParseContextAllocateNode(context);
+    DataDeskNode *root = ParseContextAllocateNode(context, tokenizer);
     root->type = DATA_DESK_NODE_TYPE_flags_declaration;
     root->string = name.string;
     root->string_length = name.string_length;
-
+    
     if(!RequireToken(tokenizer, "{", 0))
     {
         ParseContextPushError(context, tokenizer, "Expected '{'.");
         goto end_parse;
     }
-
+    
     root->flags_declaration.first_flag = ParseIdentifierList(context, tokenizer);
-
+    
     if(!RequireToken(tokenizer, "}", 0))
     {
         ParseContextPushError(context, tokenizer, "Expected '}'.");
         goto end_parse;
     }
-
+    
     end_parse:;
     return root;
 }
@@ -1225,30 +1229,30 @@ ParseFlagsBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 static DataDeskNode *
 ParseProcedureHeaderBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 {
-    DataDeskNode *root = ParseContextAllocateNode(context);
+    DataDeskNode *root = ParseContextAllocateNode(context, tokenizer);
     root->type = DATA_DESK_NODE_TYPE_procedure_header;
     root->string = name.string;
     root->string_length = name.string_length;
-
+    
     if(!RequireToken(tokenizer, "(", 0))
     {
         ParseContextPushError(context, tokenizer, "Expected '('.");
         goto end_parse;
     }
-
+    
     root->procedure_header.first_parameter = ParseDeclarationList(context, tokenizer);
-
+    
     if(!RequireToken(tokenizer, ")", 0))
     {
         ParseContextPushError(context, tokenizer, "Expected ')'.");
         goto end_parse;
     }
-
+    
     if(RequireToken(tokenizer, "->", 0))
     {
         root->procedure_header.return_type = ParseTypeUsage(context, tokenizer);
     }
-
+    
     end_parse:;
     return root;
 }

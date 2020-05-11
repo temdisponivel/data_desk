@@ -2,7 +2,7 @@
 Data Desk
 
 Author  : Ryan Fleury
-Updated : 20 April 2020
+Updated : 11 May 2020
 License : MIT, at end of file.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
@@ -11,13 +11,14 @@ License : MIT, at end of file.
 
 #define DATA_DESK_VERSION_MAJOR 1
 #define DATA_DESK_VERSION_MINOR 0
-#define DATA_DESK_VERSION_PATCH 0
+#define DATA_DESK_VERSION_PATCH 1
 #define DATA_DESK_STRINGIFY_(a) #a
 #define DATA_DESK_STRINGIFY(a) DATA_DESK_STRINGIFY_(a)
 #define DATA_DESK_VERSION_STRING DATA_DESK_STRINGIFY(DATA_DESK_VERSION_MAJOR) "." DATA_DESK_STRINGIFY(DATA_DESK_VERSION_MINOR) "." DATA_DESK_STRINGIFY(DATA_DESK_VERSION_PATCH)
 
 #ifndef DATA_DESK_NO_CRT
 #include <stdio.h>
+#include <stdarg.h>
 #endif
 
 #if defined(_MSC_VER)
@@ -85,7 +86,7 @@ typedef void DataDeskCleanUpCallback(void);
 | The following code outlines the general structure for the
 | abstract syntax trees that Data Desk generates. Each sub-struct
 | contained inside of the DataDeskNode struct is only safe to
-| access if the "int type" variable in the struct is set to the
+| access if the "type" variable in the struct is set to the
 | corresponding type value. All of the type constants are defined
 | in the following enum.
 */
@@ -110,7 +111,8 @@ typedef enum DataDeskNodeType
     DATA_DESK_NODE_TYPE_tag,
     DATA_DESK_NODE_TYPE_constant_definition,
     DATA_DESK_NODE_TYPE_procedure_header,
-} DataDeskNodeType;
+}
+DataDeskNodeType;
 
 // NOTE(rjf): The unary operator precedence table in UnaryOperatorPrecedence
 // must update to match this when this changes, and also the DataDeskGetUnaryOperatorString
@@ -122,7 +124,8 @@ typedef enum DataDeskUnaryOperatorType
     DATA_DESK_UNARY_OPERATOR_TYPE_not,
     DATA_DESK_UNARY_OPERATOR_TYPE_bitwise_negate,
     DATA_DESK_UNARY_OPERATOR_TYPE_MAX
-} DataDeskUnaryOperatorType;
+}
+DataDeskUnaryOperatorType;
 
 // NOTE(rjf): The binary operator precedence table in BinaryOperatorPrecedence
 // must update to match this when this changes, and also the DataDeskGetBinaryOperatorString
@@ -142,7 +145,8 @@ typedef enum DataDeskBinaryOperatorType
     DATA_DESK_BINARY_OPERATOR_TYPE_boolean_and,
     DATA_DESK_BINARY_OPERATOR_TYPE_boolean_or,
     DATA_DESK_BINARY_OPERATOR_TYPE_MAX
-} DataDeskBinaryOperatorType;
+}
+DataDeskBinaryOperatorType;
 
 struct DataDeskNode
 {
@@ -159,6 +163,9 @@ struct DataDeskNode
     char *name_uppercase_with_underscores;
     char *name_upper_camel_case;
     char *name_lower_camel_case;
+    
+    char *file;
+    int line;
     
     DataDeskNode *first_tag;
     
@@ -269,6 +276,9 @@ DATA_DESK_HEADER_PROC int DataDeskDeclarationIsType(DataDeskNode *root, char *ty
 DATA_DESK_HEADER_PROC int DataDeskStructMemberIsType(DataDeskNode *root, char *type);
 DATA_DESK_HEADER_PROC int DataDeskInterpretNumericExpressionAsInteger(DataDeskNode *root);
 DATA_DESK_HEADER_PROC char *DataDeskGetBinaryOperatorString(int type);
+DATA_DESK_HEADER_PROC char *DataDeskGetUnaryOperatorString(int type);
+DATA_DESK_HEADER_PROC void DataDeskError(DataDeskNode *node, char *format, ...);
+DATA_DESK_HEADER_PROC void DataDeskWarning(DataDeskNode *node, char *format, ...);
 
 #ifndef DATA_DESK_NO_CRT
 DATA_DESK_HEADER_PROC void DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, int follow_next);
@@ -622,6 +632,50 @@ DataDeskGetUnaryOperatorString(int type)
         "~",
     };
     return strings[type];
+}
+
+DATA_DESK_HEADER_PROC void
+DataDeskError(DataDeskNode *node, char *format, ...)
+{
+#ifndef DATA_DESK_NO_CRT
+    char *filename = "";
+    int line = 0;
+    
+    if(node)
+    {
+        filename = node->file;
+        line = node->line;
+    }
+    
+    va_list args;
+    va_start(args, format);
+    fprintf(stderr, "ERROR (%s:%i): ", filename, line);
+    vfprintf(stderr, format, args);
+    fprintf(stderr, "\n");
+    va_end(args);
+#endif
+}
+
+DATA_DESK_HEADER_PROC void
+DataDeskWarning(DataDeskNode *node, char *format, ...)
+{
+#ifndef DATA_DESK_NO_CRT
+    char *filename = "";
+    int line = 0;
+    
+    if(node)
+    {
+        filename = node->file;
+        line = node->line;
+    }
+    
+    va_list args;
+    va_start(args, format);
+    fprintf(stderr, "WARNING (%s:%i): ", filename, line);
+    vfprintf(stderr, format, args);
+    fprintf(stderr, "\n");
+    va_end(args);
+#endif
 }
 
 #ifndef DATA_DESK_NO_CRT
