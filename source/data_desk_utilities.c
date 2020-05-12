@@ -11,6 +11,74 @@ License : MIT, at end of file.
 #define MemoryCopy memcpy
 #define CalculateCStringLength strlen
 
+#define MEMORY_ARENA_BLOCK_SIZE_DEFAULT 4096
+typedef struct MemoryArenaBlock MemoryArenaBlock;
+struct MemoryArenaBlock
+{
+    char *memory;
+    int memory_size;
+    int memory_alloc_position;
+    MemoryArenaBlock *next;
+};
+
+typedef struct MemoryArena MemoryArena;
+struct MemoryArena
+{
+    MemoryArenaBlock *first_block;
+    MemoryArenaBlock *active_block;
+};
+
+static void *
+MemoryArenaAllocate(MemoryArena *arena, unsigned int size)
+{
+    if(!arena->active_block ||
+       arena->active_block->memory_alloc_position + size > arena->active_block->memory_size)
+    {
+        unsigned int needed_bytes = MEMORY_ARENA_BLOCK_SIZE_DEFAULT;
+        if(size > needed_bytes)
+        {
+            needed_bytes = size;
+        }
+        
+        MemoryArenaBlock *new_block = 0;
+        new_block = calloc(1, sizeof(MemoryArenaBlock) + needed_bytes);
+        Assert(new_block != 0);
+        new_block->memory = (char *)new_block + sizeof(MemoryArenaBlock);
+        new_block->memory_size = needed_bytes;
+        new_block->next = 0;
+        
+        if(arena->active_block)
+        {
+            arena->active_block->next = new_block;
+            arena->active_block = new_block;
+        }
+        else
+        {
+            arena->first_block = new_block;
+            arena->active_block = new_block;
+        }
+    }
+    
+    Assert(arena->active_block &&
+           arena->active_block->memory_alloc_position + size <=
+           arena->active_block->memory_size);
+    
+    void *memory = arena->active_block->memory + arena->active_block->memory_alloc_position;
+    arena->active_block->memory_alloc_position += size;
+    return memory;
+}
+
+static void
+MemoryArenaClear(MemoryArena *arena)
+{
+    for(MemoryArenaBlock *block = arena->first_block; block;)
+    {
+        MemoryArenaBlock *next = block->next;
+        free(block);
+        block = next;
+    }
+}
+
 static int
 StringMatchCaseSensitiveN(char *a, char *b, int n)
 {

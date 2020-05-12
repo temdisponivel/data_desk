@@ -20,7 +20,11 @@ _AssertFailure(char *condition, int line, char *file, int crash)
     }
 }
 
-static int global_log_enabled = 0;
+#ifndef ENABLE_LOG_BY_DEFAULT
+#define ENABLE_LOG_BY_DEFAULT 0
+#endif
+
+static int global_log_enabled = ENABLE_LOG_BY_DEFAULT;
 #define Log(...) if(global_log_enabled) { fprintf(stdout, __VA_ARGS__); fprintf(stdout, "\n"); }
 #define LogError(...) do { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while(0);
 

@@ -14,15 +14,6 @@ struct ParseError
     int line;
 };
 
-typedef struct ParseContextMemoryBlock ParseContextMemoryBlock;
-struct ParseContextMemoryBlock
-{
-    char *memory;
-    int memory_size;
-    int memory_alloc_position;
-    ParseContextMemoryBlock *next;
-};
-
 typedef struct ParseContextSymbolTableKey ParseContextSymbolTableKey;
 struct ParseContextSymbolTableKey
 {
@@ -36,12 +27,10 @@ struct ParseContextSymbolTableValue
     DataDeskNode *root;
 };
 
-#define PARSE_CONTEXT_MEMORY_BLOCK_SIZE_DEFAULT 4096
 typedef struct ParseContext ParseContext;
 struct ParseContext
 {
-    ParseContextMemoryBlock *first_block;
-    ParseContextMemoryBlock *active_block;
+    MemoryArena arena;
     int error_stack_size;
     int error_stack_max;
     ParseError *error_stack;
@@ -56,12 +45,7 @@ struct ParseContext
 static void
 ParseContextCleanUp(ParseContext *context)
 {
-    for(ParseContextMemoryBlock *block = context->first_block; block;)
-    {
-        ParseContextMemoryBlock *next = block->next;
-        free(block);
-        block = next;
-    }
+    MemoryArenaClear(&context->arena);
 }
 
 static unsigned int global_crc32_table[] =
@@ -317,41 +301,7 @@ ParseContextAddSymbol(ParseContext *context, char *key, int key_length, DataDesk
 static void *
 ParseContextAllocateMemory(ParseContext *context, unsigned int size)
 {
-    if(!context->active_block ||
-       context->active_block->memory_alloc_position + size > context->active_block->memory_size)
-    {
-        unsigned int needed_bytes = PARSE_CONTEXT_MEMORY_BLOCK_SIZE_DEFAULT;
-        if(size > needed_bytes)
-        {
-            needed_bytes = size;
-        }
-        
-        ParseContextMemoryBlock *new_block = 0;
-        new_block = calloc(1, sizeof(ParseContextMemoryBlock) + needed_bytes);
-        Assert(new_block != 0);
-        new_block->memory = (char *)new_block + sizeof(ParseContextMemoryBlock);
-        new_block->memory_size = needed_bytes;
-        new_block->next = 0;
-        
-        if(context->active_block)
-        {
-            context->active_block->next = new_block;
-            context->active_block = new_block;
-        }
-        else
-        {
-            context->first_block = new_block;
-            context->active_block = new_block;
-        }
-    }
-    
-    Assert(context->active_block &&
-           context->active_block->memory_alloc_position + size <=
-           context->active_block->memory_size);
-    
-    void *memory = context->active_block->memory + context->active_block->memory_alloc_position;
-    context->active_block->memory_alloc_position += size;
-    return memory;
+    return MemoryArenaAllocate(&context->arena, size);
 }
 
 static DataDeskNode *

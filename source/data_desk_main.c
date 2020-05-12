@@ -23,8 +23,8 @@ License : MIT, at end of file.
 // NOTE(rjf): Data Desk Code
 #define DATA_DESK_USE_OLD_NAMES 0
 #include "data_desk.h"
-#include "data_desk_utilities.c"
 #include "data_desk_debug.c"
+#include "data_desk_utilities.c"
 #include "data_desk_tokenizer.c"
 #include "data_desk_custom.c"
 #include "data_desk_parse.c"
