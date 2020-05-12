@@ -369,10 +369,12 @@ DATA_DESK_HEADER_PROC int DataDeskRequireTagParameters(DataDeskNode *root, char 
 // NOTE(rjf): Takes a string representing a type in the form "*[]name" (with any
 // number of *'s and []'s, in any order). Returns if the AST matches the form
 // specified by the string.
-DATA_DESK_HEADER_PROC int DataDeskDeclarationIsType(DataDeskNode *root, char *type);
-DATA_DESK_HEADER_PROC char *DataDeskGetAccessStringForType(DataDeskNode *node);
-DATA_DESK_HEADER_PROC char *DataDeskGetAccessStringForDeclaration(DataDeskNode *node);
-
+DATA_DESK_HEADER_PROC int DataDeskMatchType(DataDeskNode *root, char *type);
+DATA_DESK_HEADER_PROC char *DataDeskGetTypeAccessString(DataDeskNode *node);
+DATA_DESK_HEADER_PROC DataDeskNode *DataDeskEvaluateType(DataDeskNode *root);
+DATA_DESK_HEADER_PROC DataDeskNode *DataDeskEvaluateBaseType(DataDeskNode *root);
+DATA_DESK_HEADER_PROC int DataDeskIsArrayType(DataDeskNode *root, DataDeskNode **base_type, DataDeskNode **array_size_expression);
+DATA_DESK_HEADER_PROC int DataDeskIsPointerType(DataDeskNode *root, DataDeskNode **base_type);
 
 // NOTE(rjf): Interpretation
 DATA_DESK_HEADER_PROC int DataDeskInterpretNumericExpressionAsInteger(DataDeskNode *root);
@@ -678,13 +680,11 @@ DataDeskTypeMatchesString(DataDeskNode *type, char *type_string)
 }
 
 DATA_DESK_HEADER_PROC int
-DataDeskDeclarationIsType(DataDeskNode *root, char *type)
+DataDeskMatchType(DataDeskNode *root, char *type)
 {
     int matches = 0;
-    if(root->type == DataDeskNodeType_Declaration)
-    {
-        matches = DataDeskTypeMatchesString(root->declaration.type, type);
-    }
+    DataDeskNode *type_node = DataDeskEvaluateType(root);
+    matches = DataDeskTypeMatchesString(type_node, type);
     return matches;
 }
 
@@ -900,6 +900,149 @@ DATA_DESK_HEADER_PROC char *
 DataDeskGetAccessStringForDeclaration(DataDeskNode *node)
 {
     return DataDeskGetAccessStringForType(node->declaration.type);
+}
+
+DATA_DESK_HEADER_PROC DataDeskNode *
+DataDeskEvaluateType(DataDeskNode *root)
+{
+    DataDeskNode *type = 0;
+    
+    for(;root;)
+    {
+        if(root->type == DataDeskNodeType_TypeDecorator)
+        {
+            type = root;
+            break;
+        }
+        else if(root->type == DataDeskNodeType_Identifier)
+        {
+            DataDeskNode *referenced = root->reference;
+            if(referenced == 0)
+            {
+                type = root;
+                break;
+            }
+            else
+            {
+                if(referenced->type == DataDeskNodeType_Declaration)
+                {
+                    root = referenced;
+                }
+                else
+                {
+                    type = root;
+                    break;
+                }
+            }
+        }
+        else if(root->type == DataDeskNodeType_Declaration)
+        {
+            type = root->declaration.type;
+            break;
+        }
+    }
+    
+    return type;
+}
+
+DATA_DESK_HEADER_PROC DataDeskNode *
+DataDeskEvaluateBaseType(DataDeskNode *root)
+{
+    DataDeskNode *base_type = 0;
+    DataDeskNode *type = DataDeskEvaluateType(root);
+    for(DataDeskNode *type_piece = type; type_piece; type_piece = type_piece->children_list_head)
+    {
+        if(type_piece->type == DataDeskNodeType_Identifier ||
+           type_piece->type == DataDeskNodeType_StructDeclaration ||
+           type_piece->type == DataDeskNodeType_EnumDeclaration ||
+           type_piece->type == DataDeskNodeType_FlagsDeclaration)
+        {
+            base_type = type_piece;
+            break;
+        }
+    }
+    return base_type;
+}
+
+DATA_DESK_HEADER_PROC int
+DataDeskIsArrayType(DataDeskNode *root, DataDeskNode **base_type_ptr, DataDeskNode **array_size_expression_ptr)
+{
+    int result = 0;
+    
+    DataDeskNode *type = DataDeskEvaluateType(root);
+    DataDeskNode *base_type = DataDeskEvaluateBaseType(type);
+    DataDeskNode *last_array_type_decorator = 0;
+    
+    for(DataDeskNode *type_piece = type; type_piece; type_piece = type_piece->children_list_head)
+    {
+        if(type_piece->type == DataDeskNodeType_TypeDecorator &&
+           type_piece->sub_type == DataDeskTypeDecoratorType_Array)
+        {
+            if(last_array_type_decorator == 0)
+            {
+                last_array_type_decorator = type_piece;
+                result = 1;
+            }
+            else
+            {
+                result = 0;
+                break;
+            }
+        }
+    }
+    
+    if(result && last_array_type_decorator)
+    {
+        DataDeskNode *array_size_expression = last_array_type_decorator->children_list_head ? last_array_type_decorator->children_list_head->next : 0;
+        if(array_size_expression_ptr)
+        {
+            *array_size_expression_ptr = array_size_expression;
+        }
+        if(base_type_ptr)
+        {
+            *base_type_ptr = base_type;
+        }
+    }
+    
+    return result;
+}
+
+DATA_DESK_HEADER_PROC int
+DataDeskIsPointerType(DataDeskNode *root, DataDeskNode **base_type_ptr)
+{
+    int result = 0;
+    
+    DataDeskNode *type = DataDeskEvaluateType(root);
+    DataDeskNode *base_type = DataDeskEvaluateBaseType(type);
+    DataDeskNode *last_pointer_type_decorator = 0;
+    
+    for(DataDeskNode *type_piece = type; type_piece; type_piece = type_piece->children_list_head)
+    {
+        if(type_piece->type == DataDeskNodeType_TypeDecorator &&
+           type_piece->sub_type == DataDeskTypeDecoratorType_Pointer)
+        {
+            if(last_pointer_type_decorator == 0)
+            {
+                last_pointer_type_decorator = type_piece;
+                result = 1;
+            }
+            else
+            {
+                result = 0;
+                break;
+            }
+        }
+    }
+    
+    if(result)
+    {
+        if(base_type_ptr)
+        {
+            *base_type_ptr = base_type;
+        }
+    }
+    
+    return result;
 }
 
 DATA_DESK_HEADER_PROC void

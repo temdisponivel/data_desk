@@ -63,39 +63,39 @@ GeneratePrintCode(FILE *file, DataDeskNode *root, char *access_string)
 	{
 		if(!DataDeskNodeHasTag(node, "NoPrint") && node->type == DataDeskNodeType_Declaration)
 		{
-			if(DataDeskDeclarationIsType(node, "int"     ) || DataDeskDeclarationIsType(node, "uint") ||
-			   DataDeskDeclarationIsType(node, "int32_t" ) || DataDeskDeclarationIsType(node, "i32" ) ||
-			   DataDeskDeclarationIsType(node, "int16_t" ) || DataDeskDeclarationIsType(node, "i16" ) ||
-			   DataDeskDeclarationIsType(node, "int8_t"  ) || DataDeskDeclarationIsType(node, "i8"  ) ||
-			   DataDeskDeclarationIsType(node, "uint32_t") || DataDeskDeclarationIsType(node, "u32" ) ||
-			   DataDeskDeclarationIsType(node, "uint16_t") || DataDeskDeclarationIsType(node, "u16" ) ||
-			   DataDeskDeclarationIsType(node, "uint8_t" ) || DataDeskDeclarationIsType(node, "u8"  ))
+			if(DataDeskMatchType(node, "int"     ) || DataDeskMatchType(node, "uint") ||
+			   DataDeskMatchType(node, "int32_t" ) || DataDeskMatchType(node, "i32" ) ||
+			   DataDeskMatchType(node, "int16_t" ) || DataDeskMatchType(node, "i16" ) ||
+			   DataDeskMatchType(node, "int8_t"  ) || DataDeskMatchType(node, "i8"  ) ||
+			   DataDeskMatchType(node, "uint32_t") || DataDeskMatchType(node, "u32" ) ||
+			   DataDeskMatchType(node, "uint16_t") || DataDeskMatchType(node, "u16" ) ||
+			   DataDeskMatchType(node, "uint8_t" ) || DataDeskMatchType(node, "u8"  ))
 			{
 				fprintf(file, "printf(\"%%i\", %s%s);\n", access_string, node->string);
 			}
             
-			else if(DataDeskDeclarationIsType(node, "float" ) || DataDeskDeclarationIsType(node, "double") ||
-			        DataDeskDeclarationIsType(node, "f32"   ) || DataDeskDeclarationIsType(node, "f64"   ))
+			else if(DataDeskMatchType(node, "float" ) || DataDeskMatchType(node, "double") ||
+			        DataDeskMatchType(node, "f32"   ) || DataDeskMatchType(node, "f64"   ))
 			{
 				fprintf(file, "printf(\"%%f\", %s%s);\n", access_string, node->string);
 			}
             
-			else if(DataDeskDeclarationIsType(node, "[]char"))
+			else if(DataDeskMatchType(node, "[]char"))
 			{
 				fprintf(file, "printf(\"%%s\", %s%s);\n", access_string, node->string);
 			}
             
-			else if(DataDeskDeclarationIsType(node, "char"))
+			else if(DataDeskMatchType(node, "char"))
 			{
 				fprintf(file, "printf(\"%%c\", %s%s);\n", access_string, node->string);
 			}
             
-			else if(DataDeskDeclarationIsType(node, "*char"))
+			else if(DataDeskMatchType(node, "*char"))
 			{
 				fprintf(file, "printf(\"%%s\", %s%s);\n", access_string, node->string);
 			}
             
-			else if(DataDeskDeclarationIsType(node, "*void"))
+			else if(DataDeskMatchType(node, "*void"))
 			{
 				fprintf(file, "printf(\"%%p\", %s%s);\n", access_string, node->string);
 			}
