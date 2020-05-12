@@ -347,9 +347,9 @@ GetBinaryOperatorStringFromType(int type)
 static int
 GetBinaryOperatorTypeFromToken(Token token)
 {
-    int type = DATA_DESK_BINARY_OPERATOR_TYPE_invalid;
+    int type = DataDeskBinaryOperatorType_Invalid;
     
-    for(int i = 1; i < DATA_DESK_BINARY_OPERATOR_TYPE_MAX; ++i)
+    for(int i = 1; i < DataDeskBinaryOperatorType_Max; ++i)
     {
         if(TokenMatch(token, GetBinaryOperatorStringFromType(i)))
         {

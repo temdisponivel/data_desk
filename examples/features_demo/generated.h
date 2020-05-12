@@ -1,5 +1,5 @@
 #define SOME_CONSTANT (16)
-// @TagB @TagA 
+// @TagA @TagB 
 typedef struct MyStructA MyStructA;
 struct MyStructA
 {
@@ -19,11 +19,10 @@ float y;
 struct
 {
 int foo[16];
-void *bar;
+void* bar;
 // @Tag 
 float baz[8][SOME_CONSTANT];
-}
-sub_struct;
+} sub_struct;
 };
 
 // @SameAsStructs 
@@ -35,17 +34,19 @@ MyStructB struct_b;
 };
 
 // @Tag 
-typedef enum MyEnum MyEnum;
-enum MyEnum
+typedef enum MyEnum
 {
-ENUM_VALUE_1,
-ENUM_VALUE_2,
-ENUM_VALUE_3,
-};
+// @Tag1 
+MyEnum_Value1,
+// @Tag2 
+MyEnum_Value2,
+// @Tag3 
+MyEnum_Value3,
+} MyEnum;
 
 // @Tag 
-#define FLAGS_VALUE_1 (1<<0)
-#define FLAGS_VALUE_2 (1<<1)
-#define FLAGS_VALUE_3 (1<<2)
+#define MyFlags_Value1 (1<<0)
+#define MyFlags_Value2 (1<<1)
+#define MyFlags_Value3 (1<<2)
 typedef unsigned int MyFlags;
 
