@@ -16,6 +16,8 @@ License : MIT, at end of file.
 #define DATA_DESK_STRINGIFY(a) DATA_DESK_STRINGIFY_(a)
 #define DATA_DESK_VERSION_STRING DATA_DESK_STRINGIFY(DATA_DESK_VERSION_MAJOR) "." DATA_DESK_STRINGIFY(DATA_DESK_VERSION_MINOR) "." DATA_DESK_STRINGIFY(DATA_DESK_VERSION_PATCH)
 
+// NOTE(rjf): Enables definition of old DATA_DESK_NODE_TYPE_* and similar names. This will eventually
+// go away in favor of the new DataDeskNodeType_* names.
 #ifndef DATA_DESK_USE_OLD_NAMES
 #define DATA_DESK_USE_OLD_NAMES 1
 #endif
@@ -51,6 +53,13 @@ License : MIT, at end of file.
 #define DATA_DESK_HEADER_PROC static inline
 #endif
 
+// NOTE(rjf): Documentation macros that are evaluated by external tool.
+#define DataDeskDoc_Callback(...)
+#define DataDeskDoc_Procedure(...)
+#define DataDeskDoc_Parameter(...)
+#define DataDeskDoc_NodeType(...)
+#define DataDeskDoc_NodeMember(...)
+
 
 
 
@@ -68,13 +77,17 @@ License : MIT, at end of file.
 
 typedef struct DataDeskNode DataDeskNode;
 
-/* DataDeskCustomInitCallback */
+DataDeskDoc_Callback("Defines the expected format for the callback that Data Desk calls when it first starts up. Loaded from custom layers as the symbol \"DataDeskCustomInitCallback\".")
 typedef void DataDeskInitCallback(void);
 
-/* DataDeskCustomParseCallback */
-typedef void DataDeskParseCallback(DataDeskNode *root, char *filename);
+DataDeskDoc_Callback("Defines the expected format for the callback that Data Desk calls for each top-level structure that it parses. Loaded from custom layers as the symbol \"DataDeskCustomParseCallback\".")
+typedef void DataDeskParseCallback(DataDeskDoc_Parameter("The root node of the abstract-syntax-tree that was parsed.")
+                                   DataDeskNode *root,
+                                   
+                                   DataDeskDoc_Parameter("The name of the file from which the tree was parsed.")
+                                   char *filename);
 
-/* DataDeskCustomCleanUpCallback */
+DataDeskDoc_Callback("Defines the expected format for the callback that Data Desk calls when it shuts down. Loaded from custom layers as the symbol \"DataDeskCleanUpCallback\".")
 typedef void DataDeskCleanUpCallback(void);
 
 
@@ -96,23 +109,56 @@ typedef void DataDeskCleanUpCallback(void);
 
 typedef enum DataDeskNodeType
 {
-    DataDeskNodeType_Invalid,
-    DataDeskNodeType_Null = DataDeskNodeType_Invalid,
-    DataDeskNodeType_Identifier,
-    DataDeskNodeType_NumericConstant,
-    DataDeskNodeType_StringConstant,
-    DataDeskNodeType_CharConstant,
-    DataDeskNodeType_UnaryOperator,
-    DataDeskNodeType_BinaryOperator,
-    DataDeskNodeType_StructDeclaration,
-    DataDeskNodeType_UnionDeclaration,
-    DataDeskNodeType_EnumDeclaration,
-    DataDeskNodeType_FlagsDeclaration,
-    DataDeskNodeType_ConstantDefinition,
-    DataDeskNodeType_ProcedureHeader,
-    DataDeskNodeType_Declaration,
-    DataDeskNodeType_TypeDecorator,
-    DataDeskNodeType_Tag,
+    DataDeskDoc_NodeType("Invalid node type, produced by either invalid code or a bug in the parser.")
+        DataDeskNodeType_Invalid,
+    
+    DataDeskDoc_NodeType("An alias for the invalid type.")
+        DataDeskNodeType_Null = DataDeskNodeType_Invalid,
+    
+    DataDeskDoc_NodeType("An identifier node that might reference another abstract-syntax-tree, or just being used as a block of alphanumeric text (like when referencing something in the host language). You can check the @NodeMember(reference) member in nodes of this type to see if Data Desk parsed an abstract-syntax-tree that this node is referring to.")
+        DataDeskNodeType_Identifier,
+    
+    DataDeskDoc_NodeType("An identifier node that represents a numeric constant in the code. The textual contents representing the intended numeric value are stored in the node's @NodeMember(string) member.")
+        DataDeskNodeType_NumericConstant,
+    
+    DataDeskDoc_NodeType("An identifier node that represents a string constant in the code. The textual contents representing the intended string value are stored in the node's @NodeMember(string) member.")
+        DataDeskNodeType_StringConstant,
+    
+    DataDeskDoc_NodeType("An identifier node that represents a character constant in the code. The textual contents representing the intended character value are stored in the node's @NodeMember(string) member.")
+        DataDeskNodeType_CharConstant,
+    
+    DataDeskDoc_NodeType("A node that represents an operation that is performed on a single child node. The type of operation is stored in the @NodeMember(sub_type) member. The child node being operated on is pointed at by either the @NodeMember(operand) member, or the @NodeMember(children_list_head) member.")
+        DataDeskNodeType_UnaryOperator,
+    
+    DataDeskDoc_NodeType("A node that represents an operation that is performed on two children nodes. The type of operation is stored in the @NodeMember(sub_type) member. The children nodes being operated on are pointed at by either the @NodeMember(left) and @NodeMember(right) members, or the @NodeMember(children_list_head) and @NodeMember(children_list_tail) members.")
+        DataDeskNodeType_BinaryOperator,
+    
+    DataDeskDoc_NodeType("A node that represents a product-type that includes a set of declarations. The list of declarations is pointed at by the @NodeMember(children_list_head) member.")
+        DataDeskNodeType_StructDeclaration,
+    
+    DataDeskDoc_NodeType("A node that represents a sum-type that includes a set of declarations. The list of declarations is pointed at by the @NodeMember(children_list_head) member.")
+        DataDeskNodeType_UnionDeclaration,
+    
+    DataDeskDoc_NodeType("A node that represents a sum-type constant that includes a set of constants. The list of constants is pointed at by the @NodeMember(children_list_head) member.")
+        DataDeskNodeType_EnumDeclaration,
+    
+    DataDeskDoc_NodeType("A node that represents a product-type constant that includes a set of constants. The list of constants is pointed at by the @NodeMember(children_list_head) member.")
+        DataDeskNodeType_FlagsDeclaration,
+    
+    DataDeskDoc_NodeType("A node that binds some name (referenced by nodes of type @NodeType(Identifier)) to some expression. The expression is pointed at by the @NodeMember(children_list_head) member.")
+        DataDeskNodeType_ConstantDefinition,
+    
+    DataDeskDoc_NodeType("A node that represents the header of some procedure. The return type can be accessed through the @NodeMember(procedure_header.return_type) member. The list of parameters can be accessed through the @NodeMember(procedure_header.first_parameter) member.")
+        DataDeskNodeType_ProcedureHeader,
+    
+    DataDeskDoc_NodeType("A node that represents the declaration of some variable. This variable includes a name (referenced by @NodeType(Identifier) nodes) which is stored in the @NodeMember(string) member, a type expression that is pointed at by the @NodeMember(declaration.type) member, and an optional initialization.")
+        DataDeskNodeType_Declaration,
+    
+    DataDeskDoc_NodeType("A node that forms a type expression. The type of type-decorator that this node is, or how it alters the type it is helping to define, is stored in the @NodeMember(sub_type) member. This node stores arrays and pointers.")
+        DataDeskNodeType_TypeDecorator,
+    
+    DataDeskDoc_NodeType("A node that specifies a piece of metadata on a node. This node can take a set of parameters (pointed at by the @NodeMember(children_list_head) member) and can be used to document information that cannot be expressed through other node types.")
+        DataDeskNodeType_Tag,
     
 #if DATA_DESK_USE_OLD_NAMES
     DATA_DESK_NODE_TYPE_invalid = DataDeskNodeType_Invalid,
@@ -235,11 +281,17 @@ DataDeskWordSeparator;
 struct DataDeskNode
 {
     //~ NOTE(rjf): AST Relationship Data
-    DataDeskNode *next;
-    DataDeskNode *prev;
-    DataDeskNode *parent;
-    DataDeskNodeType type;
-    DataDeskNodeSubType sub_type;
+    
+    DataDeskDoc_NodeMember("Points at the next node in the graph, when in a list.")
+        DataDeskNode *next;
+    DataDeskDoc_NodeMember("Points at the previous node in the graph, when in a list.")
+        DataDeskNode *prev;
+    DataDeskDoc_NodeMember("Points at the parent node in the graph, when in a list.")
+        DataDeskNode *parent;
+    DataDeskDoc_NodeMember("Determines the node type.")
+        DataDeskNodeType type;
+    DataDeskDoc_NodeMember("Determines the node sub-type, which form categories within node types.")
+        DataDeskNodeSubType sub_type;
     
     //~ NOTE(rjf): String
     union
@@ -249,8 +301,10 @@ struct DataDeskNode
     };
     union
     {
-        char *string;
-        char *name;
+        DataDeskDoc_NodeMember("Stores a string for a given node, if one is applicable.")
+            char *string;
+        DataDeskDoc_NodeMember("An alias for the @NodeMember(string) member.")
+            char *name;
     };
     
     //~ NOTE(rjf): String Transforms
