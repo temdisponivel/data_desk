@@ -402,52 +402,96 @@ struct DataDeskNode
 */
 
 
-// NOTE(rjf): Name Introspection
+//~ NOTE(rjf): Name Introspection
+DataDeskDoc_Procedure("Returns 1 if @Parameter(0) contains the substring @Parameter(1).")
 DATA_DESK_HEADER_PROC int DataDeskStringHasSubString(char *string, char *substring);
+DataDeskDoc_Procedure("Returns a text-transformed name of the passed node matching the passed word style and separator.")
 DATA_DESK_HEADER_PROC char *DataDeskGetTransformedString(DataDeskNode *root, DataDeskWordStyle style, DataDeskWordSeparator separator);
+DataDeskDoc_Procedure("Returns a text-transformed name of the passed node matching the passed word style and separator, with a different style for the first word.")
 DATA_DESK_HEADER_PROC char *DataDeskGetTransformedStringDifferentFirstWord(DataDeskNode *root,
                                                                            DataDeskWordStyle first_word_style,
                                                                            DataDeskWordStyle style, DataDeskWordSeparator separator);
 
 
-// NOTE(rjf): Tag Introspection
+//~ NOTE(rjf): Tag Introspection
+DataDeskDoc_Procedure("Searches through the tags of the passed node to find one that matches the passed string, and returns a pointer to it, or 0 if it was not found on the passed node.")
 DATA_DESK_HEADER_PROC DataDeskNode *DataDeskGetNodeTag(DataDeskNode *root, char *tag);
+
+DataDeskDoc_Procedure("Given a tag node, finds the nth tag parameter (where n is @Parameter(2)) and returns a pointer to it.")
 DATA_DESK_HEADER_PROC DataDeskNode *DataDeskGetTagParameter(DataDeskNode *tag, int parameter_number);
+
+DataDeskDoc_Procedure("Returns 1 if the passed node has a tag that matches the passed string, or 0 otherwise.")
 DATA_DESK_HEADER_PROC int DataDeskNodeHasTag(DataDeskNode *root, char *tag);
+
+DataDeskDoc_Procedure("Searches for a tag on @Parameter(0) that matches @Parameter(1), retrieves the tag parameter indexed at @Parameter(2), and returns a pointer to the tag argument in @Parameter(3). Returns nonzero if the tag and parameter were found, and 0 otherwise.")
 DATA_DESK_HEADER_PROC int DataDeskRequireTagParameter(DataDeskNode *root, char *tag, int index, DataDeskNode **result);
+
+DataDeskDoc_Procedure("Searches for a tag on @Parameter(0) that matches @Parameter(1), retrieves the tag parameters until @Parameter(2) tag parameters are found, and returns a pointer to the tag arguments in @Parameter(3). Returns nonzero if the tag and parameters were found, and 0 otherwise.")
 DATA_DESK_HEADER_PROC int DataDeskRequireTagParameters(DataDeskNode *root, char *tag, int count, DataDeskNode **array);
 
 
-// NOTE(rjf): Type Introspection
+
+//~ NOTE(rjf): Type Introspection
 
 // NOTE(rjf): Takes a string representing a type in the form "*[]name" (with any
 // number of *'s and []'s, in any order). Returns if the AST matches the form
 // specified by the string.
+DataDeskDoc_Procedure("Determines if the type-evaluation of @Parameter(0) matches the form specified by the passed @Parameter(1) parameter, which is to be of similar form to the Data Desk grammar (e.g. \"*[]type\"), but without array size expressions. Returns nonzero if the types seem to match, and 0 otherwise.")
 DATA_DESK_HEADER_PROC int DataDeskMatchType(DataDeskNode *root, char *type);
+
+DataDeskDoc_Procedure("Evaluates the type of @Parameter(0). Returns \".\" if the type is not a pointer type, and \"->\" otherwise.")
 DATA_DESK_HEADER_PROC char *DataDeskGetTypeAccessString(DataDeskNode *node);
+
+DataDeskDoc_Procedure("Finds the type-expression of @Parameter(0).")
 DATA_DESK_HEADER_PROC DataDeskNode *DataDeskEvaluateType(DataDeskNode *root);
+DataDeskDoc_Procedure("Finds the base type of the type-expression of @Parameter(0), which discounts any type decorators.")
 DATA_DESK_HEADER_PROC DataDeskNode *DataDeskEvaluateBaseType(DataDeskNode *root);
+
+DataDeskDoc_Procedure("Returns nonzero if @Parameter(0) is an array type, and 0 otherwise. If it is found that @Parameter(0) is an array type, the base type of the array is returned to @Parameter(1), and the size-expression of the array is returned to @Parameter(2).")
 DATA_DESK_HEADER_PROC int DataDeskIsArrayType(DataDeskNode *root, DataDeskNode **base_type, DataDeskNode **array_size_expression);
+
+DataDeskDoc_Procedure("Returns nonzero if @Parameter(0) is a pointer type, and 0 otherwise. If it is found that @Parameter(0) is a pointer type, the base type of the array is returned to @Parameter(1).")
 DATA_DESK_HEADER_PROC int DataDeskIsPointerType(DataDeskNode *root, DataDeskNode **base_type);
 
-// NOTE(rjf): Interpretation
+
+//~ NOTE(rjf): Interpretation
+DataDeskDoc_Procedure("Tries to interpret and evaluate the tree pointed to by @Parameter(0) as an integer.")
 DATA_DESK_HEADER_PROC int DataDeskInterpretNumericExpressionAsInteger(DataDeskNode *root);
 
 
-// NOTE(rjf): Output
-DATA_DESK_HEADER_PROC char *DataDeskGetBinaryOperatorString(int type);
-DATA_DESK_HEADER_PROC char *DataDeskGetUnaryOperatorString(int type);
+//~ NOTE(rjf): Output
+DataDeskDoc_Procedure("Returns the string that encodes the passed binary operator type.")
+DATA_DESK_HEADER_PROC char *DataDeskGetBinaryOperatorString(DataDeskBinaryOperatorType type);
+
+DataDeskDoc_Procedure("Returns the string that encodes the passed unary operator type.")
+DATA_DESK_HEADER_PROC char *DataDeskGetUnaryOperatorString(DataDeskUnaryOperatorType type);
+
+DataDeskDoc_Procedure("Prints out an error message that is attached to @Parameter(0).")
 DATA_DESK_HEADER_PROC void DataDeskError(DataDeskNode *node, char *format, ...);
+
+DataDeskDoc_Procedure("Prints out a warning message that is attached to @Parameter(0).")
 DATA_DESK_HEADER_PROC void DataDeskWarning(DataDeskNode *node, char *format, ...);
 
 
-// NOTE(rjf): CRT Generation Functions
+//~ NOTE(rjf): CRT Generation Functions
+DataDeskDoc_Procedure("Prints out the graph pointed to by @Parameter(1) to the file-stream pointed to by @Parameter(0). @Parameter(2) determines whether or not to do the same for the siblings of the passed node.")
 DATA_DESK_HEADER_PROC void DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, int follow_next);
+
+DataDeskDoc_Procedure("Prints out the @Parameter(1) string to the file-stream pointed to by @Parameter(0), but trying to do so as a string with words separated by spaces.")
 DATA_DESK_HEADER_PROC void DataDeskFWriteStringWithSpaces(FILE *file, char *string);
+
+DataDeskDoc_Procedure("Prints out the @Parameter(1) string to the file-stream pointed to by @Parameter(0), but trying to do so as a string with lowercase words separated by underscores (snake_case).")
 DATA_DESK_HEADER_PROC void DataDeskFWriteStringAsLowercaseWithUnderscores(FILE *file, char *string);
+
+DataDeskDoc_Procedure("Prints out the @Parameter(1) string to the file-stream pointed to by @Parameter(0), but trying to do so as a string with uppercase words separated by underscores (UPPER_SNAKE_CASE).")
 DATA_DESK_HEADER_PROC void DataDeskFWriteStringAsUppercaseWithUnderscores(FILE *file, char *string);
+
+DataDeskDoc_Procedure("Prints out the @Parameter(1) string to the file-stream pointed to by @Parameter(0), but trying to do so as a string with uppercase words separated by nothing (UpperCamelCase).")
 DATA_DESK_HEADER_PROC void DataDeskFWriteStringAsUpperCamelCase(FILE *file, char *string);
+
+DataDeskDoc_Procedure("Prints out the @Parameter(1) string to the file-stream pointed to by @Parameter(0), but trying to do so as a string with uppercase words separated by nothing, with a lowercase first word (lowerCamelCase).")
 DATA_DESK_HEADER_PROC void DataDeskFWriteStringAsLowerCamelCase(FILE *file, char *string);
+
 DATA_DESK_HEADER_PROC void DataDeskFWriteStringWithSpacesN(FILE *file, char *string, int string_length);
 DATA_DESK_HEADER_PROC void DataDeskFWriteStringAsLowercaseWithUnderscoresN(FILE *file, char *string, int string_length);
 DATA_DESK_HEADER_PROC void DataDeskFWriteStringAsUppercaseWithUnderscoresN(FILE *file, char *string, int string_length);
@@ -848,7 +892,7 @@ DataDeskInterpretNumericExpressionAsInteger(DataDeskNode *root)
 }
 
 DATA_DESK_HEADER_PROC char *
-DataDeskGetBinaryOperatorString(int type)
+DataDeskGetBinaryOperatorString(DataDeskBinaryOperatorType type)
 {
     char *strings[] =
     {
@@ -869,7 +913,7 @@ DataDeskGetBinaryOperatorString(int type)
 }
 
 DATA_DESK_HEADER_PROC char *
-DataDeskGetUnaryOperatorString(int type)
+DataDeskGetUnaryOperatorString(DataDeskUnaryOperatorType type)
 {
     char *strings[] =
     {
