@@ -23,8 +23,10 @@ typedef struct CType CType;
 struct CType
 {
     Token string;
-    CType *operand;
     CTypeDecoratorType decorator;
+    CType *operand;
+    CType *parameter_list;
+    CType *return_type;
 };
 
 typedef enum DocsType
@@ -84,6 +86,15 @@ AppendDocsList(DocsList *list, DocsList *new_list)
     }
 }
 
+static void
+ParseDocsCode(Tokenizer *tokenizer, Docs *docs)
+{
+    RequireToken(tokenizer, "typedef", 0);
+    RequireToken(tokenizer, "DATA_DESK_HEADER_PROC", 0);
+    RequireToken(tokenizer, "static", 0);
+    RequireToken(tokenizer, "inline", 0);
+}
+
 static DocsList
 ParseFile(MemoryArena *arena, char *file, char *filename)
 {
@@ -140,11 +151,8 @@ ParseFile(MemoryArena *arena, char *file, char *filename)
                 Docs *docs = MemoryArenaAllocate(arena, sizeof(*docs));
                 docs->type = docs_type;
                 docs->description = docs_string;
+                ParseDocsCode(tokenizer, docs);
                 AppendDocs(&docs_list, docs);
-                
-                printf("%.*s\n\n", docs->description.string_length, docs->description.string);
-                
-                // TODO(rjf): Parse out name + type info
             }
         }
         
