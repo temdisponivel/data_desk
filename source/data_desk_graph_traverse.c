@@ -59,7 +59,7 @@ GenerateGraphNullTerminatedStrings(ParseContext *context, DataDeskNode *root)
                             }
                             
                             if(node->string[j] == '_' ||
-                               (node->string[j] >= 'A' && node->string[j] <= 'Z' && 
+                               (node->string[j] >= 'A' && node->string[j] <= 'Z' &&
                                 found_first_lowercase) ||
                                j == node->string_length)
                             {
@@ -214,6 +214,10 @@ PatchGraphSymbols(ParseContext *context, DataDeskNode *root)
 {
     for(DataDeskNode *node = root; node; node = node->next)
     {
+        if(root->type == DataDeskNodeType_Identifier)
+        {
+            root->reference = ParseContextLookUpSymbol(context, root->string, root->string_length);
+        }
         PatchGraphSymbols(context, node->children_list_head);
         PatchGraphSymbols(context, node->tag_list_head);
     }

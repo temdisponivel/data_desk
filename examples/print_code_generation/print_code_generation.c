@@ -121,6 +121,11 @@ GeneratePrintCode(FILE *file, DataDeskNode *root, char *access_string)
                                   next_access_string);
             }
             
+            else
+            {
+                DataDeskError(node, "Unhandled type for printing code generation.");
+            }
+            
 			fprintf(file, "printf(\", \");\n");
 		}
 	}

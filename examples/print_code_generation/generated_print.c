@@ -18,6 +18,12 @@ printf("%s", object->e.c);
 printf(", ");
 printf("}");
 printf(", ");
+printf("{ ");
+printf("%i", object->f.g);
+printf(", ");
+printf("%f", object->f.h);
+printf(", ");
+printf("}");
 printf(", ");
 printf("}");
 }
