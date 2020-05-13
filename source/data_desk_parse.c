@@ -305,10 +305,12 @@ ParseContextAllocateMemory(ParseContext *context, unsigned int size)
 }
 
 static DataDeskNode *
-ParseContextAllocateNode(ParseContext *context, Tokenizer *tokenizer, Token token)
+ParseContextAllocateNode(ParseContext *context, Tokenizer *tokenizer, Token token,
+                         DataDeskNodeType type)
 {
     DataDeskNode *node = ParseContextAllocateMemory(context, sizeof(DataDeskNode));
     MemorySet(node, 0, sizeof(*node));
+    node->type = type;
     node->file = tokenizer->filename;
     node->line = tokenizer->line;
     node->string = token.string;
@@ -579,8 +581,7 @@ ParseTagList(ParseContext *context, Tokenizer *tokenizer)
         DataDeskNode *tag_node = 0;
         if(RequireTokenType(tokenizer, Token_Tag, &tag))
         {
-            tag_node = ParseContextAllocateNode(context, tokenizer, tag);
-            tag_node->type = DataDeskNodeType_Tag;
+            tag_node = ParseContextAllocateNode(context, tokenizer, tag, DataDeskNodeType_Tag);
             
             if(RequireToken(tokenizer, "(", 0))
             {
@@ -683,26 +684,26 @@ ParseUnaryExpression(ParseContext *context, Tokenizer *tokenizer)
     else if(token.type == Token_NumericConstant)
     {
         NextToken(tokenizer);
-        expression = ParseContextAllocateNode(context, tokenizer, token);
-        expression->type = DataDeskNodeType_NumericConstant;
+        expression = ParseContextAllocateNode(context, tokenizer, token,
+                                              DataDeskNodeType_NumericConstant);
     }
     else if(token.type == Token_AlphanumericBlock)
     {
         NextToken(tokenizer);
-        expression = ParseContextAllocateNode(context, tokenizer, token);
-        expression->type = DataDeskNodeType_Identifier;
+        expression = ParseContextAllocateNode(context, tokenizer, token,
+                                              DataDeskNodeType_Identifier);
     }
     else if(token.type == Token_StringConstant)
     {
         NextToken(tokenizer);
-        expression = ParseContextAllocateNode(context, tokenizer, token);
-        expression->type = DataDeskNodeType_StringConstant;
+        expression = ParseContextAllocateNode(context, tokenizer, token,
+                                              DataDeskNodeType_StringConstant);
     }
     else if(token.type == Token_CharConstant)
     {
         NextToken(tokenizer);
-        expression = ParseContextAllocateNode(context, tokenizer, token);
-        expression->type = DataDeskNodeType_CharConstant;
+        expression = ParseContextAllocateNode(context, tokenizer, token,
+                                              DataDeskNodeType_CharConstant);
     }
     
     return expression;
@@ -753,8 +754,8 @@ ParseExpression_(ParseContext *context, Tokenizer *tokenizer, int precedence_in)
                 
                 DataDeskNode *left = expression;
                 
-                expression = ParseContextAllocateNode(context, tokenizer, token);
-                expression->type = DataDeskNodeType_BinaryOperator;
+                expression = ParseContextAllocateNode(context, tokenizer, token,
+                                                      DataDeskNodeType_BinaryOperator);
                 expression->sub_type = operator_type;
                 InsertChild(left, expression);
                 InsertChild(right, expression);
@@ -787,8 +788,8 @@ ParseType(ParseContext *context, Tokenizer *tokenizer)
     Token token = {0};
     if(RequireToken(tokenizer, "*", &token))
     {
-        type = ParseContextAllocateNode(context, tokenizer, token);
-        type->type = DataDeskNodeType_TypeDecorator;
+        type = ParseContextAllocateNode(context, tokenizer, token,
+                                        DataDeskNodeType_TypeDecorator);
         type->sub_type = DataDeskTypeDecoratorType_Pointer;
         
         DataDeskNode *operand = ParseType(context, tokenizer);
@@ -796,8 +797,8 @@ ParseType(ParseContext *context, Tokenizer *tokenizer)
     }
     else if(RequireToken(tokenizer, "[", &token))
     {
-        type = ParseContextAllocateNode(context, tokenizer, token);
-        type->type = DataDeskNodeType_TypeDecorator;
+        type = ParseContextAllocateNode(context, tokenizer, token,
+                                        DataDeskNodeType_TypeDecorator);
         type->sub_type = DataDeskTypeDecoratorType_Array;
         
         DataDeskNode *array_expr = ParseExpression(context, tokenizer);
@@ -822,8 +823,8 @@ ParseType(ParseContext *context, Tokenizer *tokenizer)
     }
     else if(RequireTokenType(tokenizer, Token_AlphanumericBlock, &token))
     {
-        type = ParseContextAllocateNode(context, tokenizer, token);
-        type->type = DataDeskNodeType_Identifier;
+        type = ParseContextAllocateNode(context, tokenizer, token,
+                                        DataDeskNodeType_Identifier);
     }
     
     end_parse:;
@@ -894,8 +895,8 @@ ParseCode(ParseContext *context, Tokenizer *tokenizer)
                 // NOTE(rjf): Some constant expression.
                 else
                 {
-                    new_node = ParseContextAllocateNode(context, tokenizer, name);
-                    new_node->type = DataDeskNodeType_ConstantDefinition;
+                    new_node = ParseContextAllocateNode(context, tokenizer, name,
+                                                        DataDeskNodeType_ConstantDefinition);
                     InsertChild(ParseExpression(context, tokenizer), new_node);
                 }
                 
@@ -984,8 +985,8 @@ ParseCode(ParseContext *context, Tokenizer *tokenizer)
 static DataDeskNode *
 ParseDeclarationBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 {
-    DataDeskNode *root = ParseContextAllocateNode(context, tokenizer, name);
-    root->type = DataDeskNodeType_Declaration;
+    DataDeskNode *root = ParseContextAllocateNode(context, tokenizer, name,
+                                                  DataDeskNodeType_Declaration);
     DataDeskNode *type = ParseType(context, tokenizer);
     root->declaration.type = InsertChild(type, root);
     if(RequireToken(tokenizer, "=", 0))
@@ -1067,8 +1068,8 @@ ParseIdentifierList(ParseContext *context, Tokenizer *tokenizer)
         Token name = {0};
         if(RequireTokenType(tokenizer, Token_AlphanumericBlock, &name))
         {
-            DataDeskNode *identifier = ParseContextAllocateNode(context, tokenizer, name);
-            identifier->type = DataDeskNodeType_Identifier;
+            DataDeskNode *identifier = ParseContextAllocateNode(context, tokenizer, name,
+                                                                DataDeskNodeType_Identifier);
             identifier->first_tag = tag_list;
             
             if(tail == 0)
@@ -1101,8 +1102,8 @@ ParseIdentifierList(ParseContext *context, Tokenizer *tokenizer)
 static DataDeskNode *
 ParseStructBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 {
-    DataDeskNode *root = ParseContextAllocateNode(context, tokenizer, name);
-    root->type = DataDeskNodeType_StructDeclaration;
+    DataDeskNode *root = ParseContextAllocateNode(context, tokenizer, name,
+                                                  DataDeskNodeType_StructDeclaration);
     
     if(!RequireToken(tokenizer, "{", 0))
     {
@@ -1127,8 +1128,8 @@ ParseStructBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 static DataDeskNode *
 ParseUnionBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 {
-    DataDeskNode *root = ParseContextAllocateNode(context, tokenizer, name);
-    root->type = DataDeskNodeType_UnionDeclaration;
+    DataDeskNode *root = ParseContextAllocateNode(context, tokenizer, name,
+                                                  DataDeskNodeType_UnionDeclaration);
     
     if(!RequireToken(tokenizer, "{", 0))
     {
@@ -1151,8 +1152,8 @@ ParseUnionBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 static DataDeskNode *
 ParseEnumBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 {
-    DataDeskNode *root = ParseContextAllocateNode(context, tokenizer, name);
-    root->type = DataDeskNodeType_EnumDeclaration;
+    DataDeskNode *root = ParseContextAllocateNode(context, tokenizer, name,
+                                                  DataDeskNodeType_EnumDeclaration);
     
     if(!RequireToken(tokenizer, "{", 0))
     {
@@ -1175,8 +1176,8 @@ ParseEnumBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 static DataDeskNode *
 ParseFlagsBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 {
-    DataDeskNode *root = ParseContextAllocateNode(context, tokenizer, name);
-    root->type = DataDeskNodeType_FlagsDeclaration;
+    DataDeskNode *root = ParseContextAllocateNode(context, tokenizer, name,
+                                                  DataDeskNodeType_FlagsDeclaration);
     
     if(!RequireToken(tokenizer, "{", 0))
     {
@@ -1199,8 +1200,8 @@ ParseFlagsBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 static DataDeskNode *
 ParseProcedureHeaderBody(ParseContext *context, Tokenizer *tokenizer, Token name)
 {
-    DataDeskNode *root = ParseContextAllocateNode(context, tokenizer, name);
-    root->type = DataDeskNodeType_ProcedureHeader;
+    DataDeskNode *root = ParseContextAllocateNode(context, tokenizer, name,
+                                                  DataDeskNodeType_ProcedureHeader);
     
     DataDeskNode *declaration_list = 0;
     DataDeskNode *return_type = 0;

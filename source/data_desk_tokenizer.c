@@ -117,12 +117,24 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                     // NOTE(rjf): Single line string constant
                     else
                     {
+                        int escaped = 0;
                         for(j = i+1; buffer[j]; ++j)
                         {
-                            if(buffer[j] == '"')
+                            if(escaped)
                             {
-                                ++j;
-                                break;
+                                escaped = 0;
+                            }
+                            else
+                            {
+                                if(buffer[j] == '"')
+                                {
+                                    ++j;
+                                    break;
+                                }
+                                else if(buffer[j] == '\\')
+                                {
+                                    escaped = 1;
+                                }
                             }
                         }
                     }
@@ -132,11 +144,23 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                 // NOTE(rjf): Char constant
                 else if(buffer[i] == '\'')
                 {
+                    int escaped = 0;
                     for(j = i+1; buffer[j]; ++j)
                     {
-                        if(buffer[j] == '\'')
+                        if(escaped)
                         {
-                            break;
+                            escaped = 0;
+                        }
+                        else
+                        {
+                            if(buffer[j] == '\'')
+                            {
+                                break;
+                            }
+                            else if(buffer[j] == '\\')
+                            {
+                                escaped = 1;
+                            }
                         }
                     }
                     token.type = Token_CharConstant;

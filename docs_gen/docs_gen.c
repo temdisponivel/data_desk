@@ -10,93 +10,352 @@
 #include "data_desk_debug.c"
 #include "data_desk_utilities.c"
 #include "data_desk_tokenizer.c"
+#include "data_desk_parse.c"
 
-typedef enum CTypeDecoratorType
-{
-    CTypeDecoratorType_None,
-    CTypeDecoratorType_Pointer,
-    CTypeDecoratorType_Array,
-}
-CTypeDecoratorType;
+#define DataDeskNodeType_Docs (0xffffffff)
 
-typedef struct CType CType;
-struct CType
+static int
+GetNextDocs(Tokenizer *tokenizer, Token *docs_string)
 {
-    Token string;
-    CTypeDecoratorType decorator;
-    CType *operand;
-    CType *parameter_list;
-    CType *return_type;
-};
-
-typedef enum DocsType
-{
-    DocsType_Null,
-    DocsType_Callback,
-    DocsType_Procedure,
-    DocsType_Parameter,
-    DocsType_NodeType,
-    DocsType_NodeMember,
-}
-DocsType;
-
-typedef struct Docs Docs;
-struct Docs
-{
-    DocsType type;
-    Token name;
-    Token description;
-    CType *type_information;
-    Docs *next;
-};
-
-typedef struct DocsList DocsList;
-struct DocsList
-{
-    Docs *head;
-    Docs *tail;
-};
-
-static void
-AppendDocs(DocsList *list, Docs *docs)
-{
-    if(list->tail == 0)
+    int result = 0;
+    if(RequireToken(tokenizer, "DataDeskDoc", 0) &&
+       RequireToken(tokenizer, "(", 0) &&
+       RequireTokenType(tokenizer, Token_StringConstant, docs_string) &&
+       RequireToken(tokenizer, ")", 0))
     {
-        list->head = list->tail = docs;
+        result = 1;
     }
-    else
-    {
-        list->tail->next = docs;
-        list->tail = docs;
-    }
+    return result;
 }
 
-static void
-AppendDocsList(DocsList *list, DocsList *new_list)
+static DataDeskNode *
+ParseDocs(ParseContext *context, Tokenizer *tokenizer, DataDeskNode **result_ptr)
 {
-    if(list->tail == 0)
+    DataDeskNode *node = 0;
+    
+    Token docs_str = {0};
+    if(GetNextDocs(tokenizer, &docs_str))
     {
-        list->head = new_list->head;
-        list->tail = new_list->tail;
+        node = ParseContextAllocateNode(context, tokenizer, docs_str, DataDeskNodeType_Docs);
     }
-    else
+    
+    if(result_ptr)
     {
-        list->tail->next = new_list->head;
-        list->tail = new_list->tail;
+        *result_ptr = node;
     }
+    return node;
 }
 
-static void
-ParseDocsCode(Tokenizer *tokenizer, Docs *docs)
+static DataDeskNode *
+ParseCDeclarationList(ParseContext *context, Tokenizer *tokenizer);
+
+static DataDeskNode *
+ParseCTypeThatComesBeforeNameBecauseCIsATerribleLanguage(ParseContext *context, Tokenizer *tokenizer)
 {
+    DataDeskNode *type = 0;
+    
+    Token base_type_name = {0};
+    
+    if(RequireToken(tokenizer, "struct", 0))
+    {
+        if(!RequireToken(tokenizer, "{", 0))
+        {
+            goto end_parse;
+        }
+        
+        type = ParseContextAllocateNode(context, tokenizer, (Token){0}, DataDeskNodeType_StructDeclaration);
+        DataDeskNode *decl_list = ParseCDeclarationList(context, tokenizer);
+        InsertChild(decl_list, type);
+        
+        if(!RequireToken(tokenizer, "}", 0))
+        {
+            goto end_parse;
+        }
+    }
+    else if(RequireToken(tokenizer, "union", 0))
+    {
+        if(!RequireToken(tokenizer, "{", 0))
+        {
+            goto end_parse;
+        }
+        
+        type = ParseContextAllocateNode(context, tokenizer, (Token){0}, DataDeskNodeType_UnionDeclaration);
+        DataDeskNode *decl_list = ParseCDeclarationList(context, tokenizer);
+        InsertChild(decl_list, type);
+        
+        if(!RequireToken(tokenizer, "}", 0))
+        {
+            goto end_parse;
+        }
+    }
+    else if(RequireTokenType(tokenizer, Token_AlphanumericBlock, &base_type_name))
+    {
+        DataDeskNode *base_type = ParseContextAllocateNode(context, tokenizer, base_type_name, DataDeskNodeType_Identifier);
+        
+        type = base_type;
+        
+        for(;RequireToken(tokenizer, "*", 0);)
+        {
+            DataDeskNode *decorator = ParseContextAllocateNode(context, tokenizer, base_type_name, DataDeskNodeType_TypeDecorator);
+            decorator->sub_type = DataDeskTypeDecoratorType_Pointer;
+            InsertChild(type, decorator);
+            type = decorator;
+        }
+    }
+    
+    end_parse:;
+    return type;
+}
+
+static DataDeskNode *
+ParseCDeclaration(ParseContext *context, Tokenizer *tokenizer)
+{
+    DataDeskNode *decl = 0;
+    DataDeskNode *type = 0;
+    DataDeskNode *docs = ParseDocs(context, tokenizer, 0);
+    
+    type = ParseCTypeThatComesBeforeNameBecauseCIsATerribleLanguage(context, tokenizer);
+    
+    if(type)
+    {
+        Token decl_name = {0};
+        RequireTokenType(tokenizer, Token_AlphanumericBlock, &decl_name);
+        decl = ParseContextAllocateNode(context, tokenizer, decl_name, DataDeskNodeType_Declaration);
+        decl->declaration.type = InsertChild(type, decl);
+        decl->tag_list_head = docs;
+        
+        
+        for(;;)
+        {
+            if(RequireToken(tokenizer, "[", 0))
+            {
+                DataDeskNode *array = ParseContextAllocateNode(context, tokenizer, (Token){0}, DataDeskNodeType_TypeDecorator);
+                array->sub_type = DataDeskTypeDecoratorType_Array;
+                DataDeskNode *array_size = ParseExpression(context, tokenizer);
+                InsertChild(type, array);
+                InsertChild(array_size, array);
+                decl->children_list_head = decl->children_list_tail = 0;
+                decl->declaration.type = InsertChild(array, decl);
+                type = array;
+                if(!RequireToken(tokenizer, "]", 0))
+                {
+                    goto end_parse;
+                }
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+    
+    end_parse:;
+    return decl;
+}
+
+static DataDeskNode *
+ParseCDeclarationList(ParseContext *context, Tokenizer *tokenizer)
+{
+    DataDeskNode *head = 0;
+    DataDeskNode *tail = 0;
+    
+    for(;;)
+    {
+        DataDeskNode *decl = ParseCDeclaration(context, tokenizer);
+        RequireToken(tokenizer, ";", 0);
+        RequireToken(tokenizer, ",", 0);
+        
+        if(decl)
+        {
+            if(tail == 0)
+            {
+                head = tail = decl;
+            }
+            else
+            {
+                tail->next = decl;
+                decl->prev = tail;
+                tail = tail->next;
+            }
+        }
+        else
+        {
+            break;
+        }
+        
+        if(TokenMatch(PeekToken(tokenizer), "}") ||
+           TokenMatch(PeekToken(tokenizer), ")") ||
+           PeekToken(tokenizer).type == Token_Invalid ||
+           PeekToken(tokenizer).type != Token_AlphanumericBlock)
+        {
+            break;
+        }
+    }
+    
+    return head;
+}
+
+static DataDeskNode *
+ParseCConstantList(ParseContext *context, Tokenizer *tokenizer)
+{
+    DataDeskNode *head = 0;
+    DataDeskNode *tail = 0;
+    
+    for(;;)
+    {
+        if(RequireToken(tokenizer, "#", 0) &&
+           RequireToken(tokenizer, "if", 0))
+        {
+            for(;;)
+            {
+                if(RequireToken(tokenizer, "#", 0) &&
+                   RequireToken(tokenizer, "endif", 0))
+                {
+                    break;
+                }
+                else if(PeekToken(tokenizer).type == Token_Invalid)
+                {
+                    break;
+                }
+                NextToken(tokenizer);
+            }
+        }
+        
+        DataDeskNode *constant = 0;
+        DataDeskNode *docs = ParseDocs(context, tokenizer, 0);
+        
+        Token name = {0};
+        if(RequireTokenType(tokenizer, Token_AlphanumericBlock, &name))
+        {
+            constant = ParseContextAllocateNode(context, tokenizer, name, DataDeskNodeType_ConstantDefinition);
+            constant->tag_list_head = docs;
+            
+            if(RequireToken(tokenizer, "=", 0))
+            {
+                InsertChild(ParseExpression(context, tokenizer), constant);
+            }
+            
+            RequireToken(tokenizer, ",", 0);
+            
+            if(tail == 0)
+            {
+                head = tail = constant;
+            }
+            else
+            {
+                tail->next = constant;
+                constant->prev = tail;
+                tail = tail->next;
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+    
+    return head;
+}
+
+static DataDeskNode *
+ParseCCode(ParseContext *context, Tokenizer *tokenizer)
+{
+    DataDeskNode *root = 0;
+    
+    DataDeskNode *docs = ParseDocs(context, tokenizer, 0);
+    
     RequireToken(tokenizer, "typedef", 0);
-    RequireToken(tokenizer, "DATA_DESK_HEADER_PROC", 0);
-    RequireToken(tokenizer, "static", 0);
-    RequireToken(tokenizer, "inline", 0);
+    
+    // NOTE(rjf): Struct.
+    if(RequireToken(tokenizer, "struct", 0))
+    {
+        Token name = {0};
+        if(RequireTokenType(tokenizer, Token_AlphanumericBlock, &name))
+        {
+            if(!RequireToken(tokenizer, "{", 0))
+            {
+                goto end_parse;
+            }
+            
+            root = ParseContextAllocateNode(context, tokenizer, name, DataDeskNodeType_StructDeclaration);
+            DataDeskNode *declaration_list = ParseCDeclarationList(context, tokenizer);
+            InsertChild(declaration_list, root);
+            
+            if(!RequireToken(tokenizer, "}", 0))
+            {
+                goto end_parse;
+            }
+        }
+    }
+    
+    // NOTE(rjf): Enum.
+    else if(RequireToken(tokenizer, "enum", 0))
+    {
+        Token name = {0};
+        if(RequireTokenType(tokenizer, Token_AlphanumericBlock, &name))
+        {
+            if(!RequireToken(tokenizer, "{", 0))
+            {
+                goto end_parse;
+            }
+            
+            root = ParseContextAllocateNode(context, tokenizer, name, DataDeskNodeType_EnumDeclaration);
+            DataDeskNode *constant_list = ParseCConstantList(context, tokenizer);
+            InsertChild(constant_list, root);
+            
+            if(!RequireToken(tokenizer, "}", 0))
+            {
+                goto end_parse;
+            }
+        }
+    }
+    
+    // NOTE(rjf): Procedure.
+    else if(RequireToken(tokenizer, "DATA_DESK_HEADER_PROC", 0))
+    {
+        DataDeskNode *return_type = ParseCTypeThatComesBeforeNameBecauseCIsATerribleLanguage(context, tokenizer);
+        
+        if(return_type)
+        {
+            Token proc_name = {0};
+            if(!RequireTokenType(tokenizer, Token_AlphanumericBlock, &proc_name))
+            {
+                goto end_parse;
+            }
+            
+            if(!RequireToken(tokenizer, "(", 0))
+            {
+                goto end_parse;
+            }
+            DataDeskNode *declaration_list = ParseCDeclarationList(context, tokenizer);
+            if(!RequireToken(tokenizer, ")", 0))
+            {
+                goto end_parse;
+            }
+            
+            DataDeskNode *proc = ParseContextAllocateNode(context, tokenizer, proc_name, DataDeskNodeType_ProcedureHeader);
+            proc->procedure_header.return_type = InsertChild(return_type, proc);
+            proc->procedure_header.first_parameter = InsertChild(declaration_list, proc);
+            root = proc;
+        }
+    }
+    
+    // NOTE(rjf): Other... skip.
+    else
+    {
+        NextToken(tokenizer);
+    }
+    
+    if(root)
+    {
+        root->tag_list_head = docs;
+    }
+    end_parse:;
+    return root;
 }
 
-static DocsList
-ParseFile(MemoryArena *arena, char *file, char *filename)
+static DataDeskNode *
+ParseFile(ParseContext *context, char *file, char *filename)
 {
     Tokenizer tokenizer_ = {0};
     Tokenizer *tokenizer = &tokenizer_;
@@ -106,7 +365,8 @@ ParseFile(MemoryArena *arena, char *file, char *filename)
         tokenizer->line = 1;
     }
     
-    DocsList docs_list = {0};
+    DataDeskNode *head = 0;
+    DataDeskNode *tail = 0;
     
     for(;;)
     {
@@ -119,62 +379,219 @@ ParseFile(MemoryArena *arena, char *file, char *filename)
             }
         }
         
-        DocsType docs_type = DocsType_Null;
-        if(RequireToken(tokenizer, "DataDeskDoc_Callback", 0))
+        Tokenizer reset_tokenizer = *tokenizer;
+        Token docs_string = {0};
+        if(GetNextDocs(tokenizer, &docs_string))
         {
-            docs_type = DocsType_Callback;
-        }
-        else if(RequireToken(tokenizer, "DataDeskDoc_Procedure", 0))
-        {
-            docs_type = DocsType_Procedure;
-        }
-        else if(RequireToken(tokenizer, "DataDeskDoc_Parameter", 0))
-        {
-            docs_type = DocsType_Parameter;
-        }
-        else if(RequireToken(tokenizer, "DataDeskDoc_NodeType", 0))
-        {
-            docs_type = DocsType_NodeType;
-        }
-        else if(RequireToken(tokenizer, "DataDeskDoc_NodeMember", 0))
-        {
-            docs_type = DocsType_NodeMember;
-        }
-        
-        if(docs_type)
-        {
-            Token docs_string = {0};
-            if(RequireToken(tokenizer, "(", 0) &&
-               RequireTokenType(tokenizer, Token_StringConstant, &docs_string) &&
-               RequireToken(tokenizer, ")", 0))
+            *tokenizer = reset_tokenizer;
+            DataDeskNode *root = ParseCCode(context, tokenizer);
+            
+            if(root)
             {
-                Docs *docs = MemoryArenaAllocate(arena, sizeof(*docs));
-                docs->type = docs_type;
-                docs->description = docs_string;
-                ParseDocsCode(tokenizer, docs);
-                AppendDocs(&docs_list, docs);
+                if(tail == 0)
+                {
+                    tail = head = root;
+                }
+                else
+                {
+                    tail->next = root;
+                    root->prev = tail;
+                    tail = tail->next;
+                }
             }
         }
         
         NextToken(tokenizer);
     }
     
-    return docs_list;
+    return head;
+}
+
+static void
+GenerateDocsString(FILE *file, DataDeskNode *docs)
+{
+    if(docs)
+    {
+        fprintf(file, "<p>");
+        for(int i = 1; i < docs->string_length-1; ++i)
+        {
+            fprintf(file, "%c", docs->string[i]);
+        }
+        fprintf(file, "</p>\n");
+    }
+}
+
+static void
+GenerateCodeHeaderHTML(FILE *file, DataDeskNode *node)
+{
+    fprintf(file, "<h1>%.*s</h1>\n", node->string_length, node->string);
+    if(node->tag_list_head)
+    {
+        DataDeskNode *docs = node->tag_list_head;
+        GenerateDocsString(file, docs);
+    }
+    if(node->parent == 0)
+    {
+        fprintf(file, "<h2>C Specification</h2>\n");
+        fprintf(file, "<div class=\"code\">\n");
+        fprintf(file, "<pre>\n");
+        DataDeskFWriteGraphAsC(file, node);
+        fprintf(file, "</pre>\n");
+        fprintf(file, "</div>\n");
+    }
+}
+
+static void
+GenerateDocsHTML(FILE *file, DataDeskNode *node)
+{
+    switch(node->type)
+    {
+        
+        case DataDeskNodeType_Declaration:
+        {
+            fprintf(file, "<div class=\"minicode\"><pre>");
+            DataDeskFWriteGraphAsC(file, node);
+            fprintf(file, "</pre></div>\n");
+            GenerateDocsString(file, node->tag_list_head);
+            break;
+        }
+        
+        case DataDeskNodeType_ConstantDefinition:
+        {
+            fprintf(file, "<div class=\"minicode\"><pre>%.*s</pre></div>\n", node->string_length, node->string);
+            GenerateDocsString(file, node->tag_list_head);
+            break;
+        }
+        
+        case DataDeskNodeType_EnumDeclaration:
+        {
+            GenerateCodeHeaderHTML(file, node);
+            fprintf(file, "<h2>Values</h2>\n");
+            fprintf(file, "<ul>\n");
+            for(DataDeskNode *child = node->children_list_head; child; child = child->next)
+            {
+                fprintf(file, "<li>\n");
+                GenerateDocsHTML(file, child);
+                fprintf(file, "</li>\n");
+            }
+            fprintf(file, "</ul>\n");
+            break;
+        }
+        
+        case DataDeskNodeType_StructDeclaration:
+        {
+            GenerateCodeHeaderHTML(file, node);
+            fprintf(file, "<h2>Members</h2>\n");
+            fprintf(file, "<ul>\n");
+            for(DataDeskNode *child = node->children_list_head; child; child = child->next)
+            {
+                fprintf(file, "<li>\n");
+                GenerateDocsHTML(file, child);
+                fprintf(file, "</li>\n");
+            }
+            fprintf(file, "</ul>\n");
+            break;
+        }
+        
+        case DataDeskNodeType_ProcedureHeader:
+        {
+            GenerateCodeHeaderHTML(file, node);
+            fprintf(file, "<h2>Parameters</h2>\n");
+            fprintf(file, "<ul>\n");
+            for(DataDeskNode *child = node->procedure_header.first_parameter; child; child = child->next)
+            {
+                fprintf(file, "<li>\n");
+                GenerateDocsHTML(file, child);
+                fprintf(file, "</li>\n");
+            }
+            fprintf(file, "</ul>\n");
+            break;
+        }
+        
+        default:
+        {
+            fprintf(file, "<ul>\n");
+            for(DataDeskNode *child = node->children_list_head; child; child = child->next)
+            {
+                fprintf(file, "<li>\n");
+                GenerateDocsHTML(file, child);
+                fprintf(file, "</li>\n");
+            }
+            fprintf(file, "</ul>\n");
+            break;
+        }
+    }
+    
 }
 
 int main(int argument_count, char **arguments)
 {
     if(argument_count > 1)
     {
-        MemoryArena arena = {0};
-        DocsList docs_list = {0};
+        ParseContext context = {0};
+        
+        DataDeskNode *head = 0;
+        DataDeskNode *tail = 0;
         
         for(int argument_index = 1; argument_index < argument_count; ++argument_index)
         {
             Log("Loading file \"%s\".", arguments[argument_index]);
             char *file = LoadEntireFileAndNullTerminate(arguments[argument_index]);
-            DocsList new_docs_list = ParseFile(&arena, file, arguments[argument_index]);
-            AppendDocsList(&docs_list, &new_docs_list);
+            DataDeskNode *root = ParseFile(&context, file, arguments[argument_index]);
+            if(tail == 0)
+            {
+                head = tail = root;
+                for(DataDeskNode *node = root; node; node = node->next)
+                {
+                    tail = node;
+                }
+            }
+            else
+            {
+                tail->next = root;
+                root->prev = tail;
+                root->next = 0;
+                tail = root;
+            }
+        }
+        
+        FILE *output_file = fopen("documentation.html", "w");
+        if(output_file)
+        {
+            fprintf(output_file, "<script type=\"text/javascript\"/ src=\"search.js\"></script>\n");
+            fprintf(output_file, "<input class=\"docs_searcher\" id=\"search_input\" oninput=\"SearchInput(event)\" onkeydown=\"SearchKeyDown(event)\" placeholder=\"Filter\"></input>\n");
+            fprintf(output_file, "<ul id=\"docs_menu\" class=\"doc_menu_list\">\n");
+            for(DataDeskNode *node = head; node; node = node->next)
+            {
+                char *node_type_string = 0;
+                
+                switch(node->type)
+                {
+                    case DataDeskNodeType_ProcedureHeader: { node_type_string = "Procedure"; break; }
+                    case DataDeskNodeType_StructDeclaration: { node_type_string = "Struct"; break; }
+                    case DataDeskNodeType_UnionDeclaration: { node_type_string = "Union"; break; }
+                    case DataDeskNodeType_EnumDeclaration: { node_type_string = "Enum"; break; }
+                    
+                    default: break;
+                }
+                
+                fprintf(output_file, "<li class=\"doc_menu_link\"><a>%s%s%s%.*s</a></li>\n",
+                        node_type_string ? "(" : "",
+                        node_type_string ? node_type_string : "",
+                        node_type_string ? ") " : "",
+                        node->string_length, node->string);
+            }
+            fprintf(output_file, "</ul>\n");
+            
+            for(DataDeskNode *node = head; node; node = node->next)
+            {
+                GenerateDocsHTML(output_file, node);
+                if(node->next)
+                {
+                    fprintf(output_file, "<hr>\n");
+                }
+            }
+            fclose(output_file);
         }
     }
     else
