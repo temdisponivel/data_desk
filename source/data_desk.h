@@ -1382,7 +1382,10 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                    root->parent &&
                    ((root->parent->type == DataDeskNodeType_TypeDecorator &&
                      root->parent->sub_type != DataDeskTypeDecoratorType_Array) ||
-                    root->parent->type == DataDeskNodeType_Declaration))
+                    root->parent->type == DataDeskNodeType_Declaration ||
+                    (root->parent->type == DataDeskNodeType_ProcedureHeader &&
+                     root->parent->children_list_head == root)
+                    ))
                 {
                     _DataDeskFWriteC(file, context, " ");
                 }
@@ -1497,7 +1500,7 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                         _DataDeskFWriteC(file, context, ",\n");
                     }
                 }
-                _DataDeskFWriteC(file, context, "%.*s;\n\n", root->string_length, root->string);
+                _DataDeskFWriteC(file, context, "\n%.*s;\n\n", root->string_length, root->string);
                 break;
             }
             
@@ -1595,7 +1598,7 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                 {
                     _DataDeskFWriteC(file, context, "void");
                 }
-                _DataDeskFWriteC(file, context, " %.*s(", root->string_length, root->string);
+                _DataDeskFWriteC(file, context, "%.*s(", root->string_length, root->string);
                 if(root->procedure_header.first_parameter)
                 {
                     for(DataDeskNode *parameter = root->procedure_header.first_parameter;
@@ -1612,7 +1615,7 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                 {
                     _DataDeskFWriteC(file, context, "void");
                 }
-                _DataDeskFWriteC(file, context, ");\n");
+                _DataDeskFWriteC(file, context, ");\n\n");
                 break;
             }
             

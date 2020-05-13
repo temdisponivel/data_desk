@@ -555,10 +555,12 @@ int main(int argument_count, char **arguments)
             }
         }
         
-        FILE *output_file = fopen("documentation.html", "w");
+        FILE *output_file = fopen("custom_layer_api.html", "w");
         if(output_file)
         {
             fprintf(output_file, "<script type=\"text/javascript\"/ src=\"search.js\"></script>\n");
+            fprintf(output_file, "<div id=\"index_menu\">\n");
+            fprintf(output_file, "<h1>Custom Layer API</h1>");
             fprintf(output_file, "<input class=\"docs_searcher\" id=\"search_input\" oninput=\"SearchInput(event)\" onkeydown=\"SearchKeyDown(event)\" placeholder=\"Filter\"></input>\n");
             fprintf(output_file, "<ul id=\"docs_menu\" class=\"doc_menu_list\">\n");
             for(DataDeskNode *node = head; node; node = node->next)
@@ -575,21 +577,28 @@ int main(int argument_count, char **arguments)
                     default: break;
                 }
                 
-                fprintf(output_file, "<li class=\"doc_menu_link\"><a>%s%s%s%.*s</a></li>\n",
+                fprintf(output_file, "<a href=\"#");
+                DataDeskFWriteStringAsLowercaseWithUnderscoresN(output_file, node->string, node->string_length);
+                fprintf(output_file, "\">\n");
+                fprintf(output_file, "<li class=\"doc_menu_link\">");
+                fprintf(output_file, "%s%s%s%.*s</li>\n",
                         node_type_string ? "(" : "",
                         node_type_string ? node_type_string : "",
                         node_type_string ? ") " : "",
                         node->string_length, node->string);
+                fprintf(output_file, "</a>\n");
             }
             fprintf(output_file, "</ul>\n");
+            fprintf(output_file, "</div>\n");
             
             for(DataDeskNode *node = head; node; node = node->next)
             {
+                fprintf(output_file, "<div class=\"hidden\" id=\"");
+                DataDeskFWriteStringAsLowercaseWithUnderscoresN(output_file, node->string, node->string_length);
+                fprintf(output_file, "\">\n");
+                fprintf(output_file, "<a class=\"link\" href=\"#\">← Back to Index</a><br><br><br>\n");
                 GenerateDocsHTML(output_file, node);
-                if(node->next)
-                {
-                    fprintf(output_file, "<hr>\n");
-                }
+                fprintf(output_file, "</div>\n");
             }
             fclose(output_file);
         }
