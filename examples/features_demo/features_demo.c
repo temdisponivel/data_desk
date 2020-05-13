@@ -12,7 +12,7 @@ DataDeskCustomInitCallback(void)
 DATA_DESK_FUNC void
 DataDeskCustomParseCallback(DataDeskNode *root, char *filename)
 {
-	DataDeskFWriteGraphAsC(global_header_file, root, 0);
+	DataDeskFWriteGraphAsC(global_header_file, root);
 }
 
 DATA_DESK_FUNC void

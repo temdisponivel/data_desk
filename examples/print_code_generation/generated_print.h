@@ -3,17 +3,16 @@ struct Foo
 {
     int a;
     float b;
-    char* c;
-    void* d;
+    char *c;
+    void *d;
     struct
     {
         int a;
         float b;
-        char* c;
-    } e;
+        char *c;
+    }e;
     Bar f;
 };
-
 void PrintFoo(Foo *object);
 typedef struct Bar Bar;
 struct Bar
@@ -21,7 +20,6 @@ struct Bar
     int g;
     float h;
     // @NoPrint 
-    void* i;
+    void *i;
 };
-
 void PrintBar(Bar *object);
