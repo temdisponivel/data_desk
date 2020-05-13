@@ -1447,7 +1447,7 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                 
                 if(!root->parent || root->parent->type != DataDeskNodeType_Declaration)
                 {
-                    _DataDeskFWriteC(file, context, ";\n\n");
+                    _DataDeskFWriteC(file, context, ";\n");
                 }
                 
                 break;
@@ -1483,7 +1483,7 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                 
                 if(!root->parent || root->parent->type != DataDeskNodeType_Declaration)
                 {
-                    _DataDeskFWriteC(file, context, ";\n\n");
+                    _DataDeskFWriteC(file, context, ";\n");
                 }
                 
                 break;
@@ -1500,7 +1500,7 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                         _DataDeskFWriteC(file, context, ",\n");
                     }
                 }
-                _DataDeskFWriteC(file, context, "\n%.*s;\n\n", root->string_length, root->string);
+                _DataDeskFWriteC(file, context, "\n%.*s;\n", root->string_length, root->string);
                 break;
             }
             
@@ -1523,11 +1523,11 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                 {
                     if(needed_bits_for_flag_type == 32)
                     {
-                        _DataDeskFWriteC(file, context, "typedef unsigned int %.*s;\n\n", root->string_length, root->string);
+                        _DataDeskFWriteC(file, context, "typedef unsigned int %.*s;\n", root->string_length, root->string);
                     }
                     else if(needed_bits_for_flag_type > 32)
                     {
-                        _DataDeskFWriteC(file, context, "typedef unsigned long int %.*s;\n\n", root->string_length, root->string);
+                        _DataDeskFWriteC(file, context, "typedef unsigned long int %.*s;\n", root->string_length, root->string);
                     }
                 }
                 
@@ -1615,7 +1615,7 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                 {
                     _DataDeskFWriteC(file, context, "void");
                 }
-                _DataDeskFWriteC(file, context, ");\n\n");
+                _DataDeskFWriteC(file, context, ");\n");
                 break;
             }
             
