@@ -30,7 +30,7 @@ command_list = {
 		.save_dirty_files = true,
 		.cursor_at_end = false,
 		.cmd = {
-			{ "build.bat", .os = "win" },
+			{ "build_msvc.bat", .os = "win" },
 		},
 	},
 	

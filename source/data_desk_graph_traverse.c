@@ -192,7 +192,10 @@ GenerateGraphNullTerminatedStrings(ParseContext *context, DataDeskNode *root)
             
         }
         
-        GenerateGraphNullTerminatedStrings(context, node->children_list_head);
+        if(node->type != DataDeskNodeType_Identifier)
+        {
+            GenerateGraphNullTerminatedStrings(context, node->children_list_head);
+        }
         GenerateGraphNullTerminatedStrings(context, node->tag_list_head);
     }
 }
@@ -214,12 +217,15 @@ PatchGraphSymbols(ParseContext *context, DataDeskNode *root)
 {
     for(DataDeskNode *node = root; node; node = node->next)
     {
-        if(root->type == DataDeskNodeType_Identifier)
+        if(node->type == DataDeskNodeType_Identifier)
         {
-            root->reference = ParseContextLookUpSymbol(context, root->string, root->string_length);
+            node->reference = ParseContextLookUpSymbol(context, node->string, node->string_length);
         }
-        PatchGraphSymbols(context, node->children_list_head);
-        PatchGraphSymbols(context, node->tag_list_head);
+        else
+        {
+            PatchGraphSymbols(context, node->children_list_head);
+            PatchGraphSymbols(context, node->tag_list_head);
+        }
     }
 }
 
