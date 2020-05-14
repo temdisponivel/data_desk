@@ -42,7 +42,10 @@ typedef enum MyEnum
 }
 MyEnum;
 // @Tag 
-#define MyFlags_Value1 (1<<0)
-#define MyFlags_Value2 (1<<1)
-#define MyFlags_Value3 (1<<2)
+enum
+{
+    MyFlags_Value1 = (1<<0),
+    MyFlags_Value2 = (1<<1),
+    MyFlags_Value3 = (1<<2),
+};
 typedef unsigned int MyFlags;

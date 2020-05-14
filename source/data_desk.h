@@ -1508,11 +1508,17 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
             {
                 int needed_bits_for_flag_type = 32;
                 int current_bit = 0;
-                for(DataDeskNode *member = root->children_list_head; member; member = member->next)
+                
+                _DataDeskFWriteC(file, context, "enum\n");
+                _DDCScope
                 {
-                    _DataDeskFWriteC(file, context, "#define %.*s (1<<%i)\n", member->string_length, member->string, current_bit);
-                    ++current_bit;
+                    for(DataDeskNode *member = root->children_list_head; member; member = member->next)
+                    {
+                        _DataDeskFWriteC(file, context, "%.*s = (1<<%i),\n", member->string_length, member->string, current_bit);
+                        ++current_bit;
+                    }
                 }
+                _DataDeskFWriteC(file, context, ";\n");
                 
                 if(current_bit >= 31)
                 {
