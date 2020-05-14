@@ -1378,7 +1378,7 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
             {
                 _DataDeskFWriteC(file, context, "%.*s", root->string_length, root->string);
                 
-                if(root->type = DataDeskNodeType_Identifier &&
+                if(root->type == DataDeskNodeType_Identifier &&
                    root->parent &&
                    ((root->parent->type == DataDeskNodeType_TypeDecorator &&
                      root->parent->sub_type != DataDeskTypeDecoratorType_Array) ||
