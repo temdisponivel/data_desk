@@ -1380,7 +1380,8 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                 if(root->type == DataDeskNodeType_Identifier &&
                    root->parent &&
                    ((root->parent->type == DataDeskNodeType_TypeDecorator &&
-                     root->parent->sub_type != DataDeskTypeDecoratorType_Array) ||
+                     (root->parent->sub_type != DataDeskTypeDecoratorType_Array ||
+                      root->parent->children_list_head == root)) ||
                     root->parent->type == DataDeskNodeType_Declaration ||
                     (root->parent->type == DataDeskNodeType_ProcedureHeader &&
                      root->parent->children_list_head == root)
