@@ -1373,7 +1373,6 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
         {
             case DataDeskNodeType_Identifier:
             case DataDeskNodeType_NumericConstant:
-            case DataDeskNodeType_StringConstant:
             case DataDeskNodeType_CharConstant:
             {
                 _DataDeskFWriteC(file, context, "%.*s", root->string_length, root->string);
@@ -1390,6 +1389,43 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                     _DataDeskFWriteC(file, context, " ");
                 }
                 
+                break;
+            }
+            
+            case DataDeskNodeType_StringConstant:
+            {
+                if(root->string && root->string[0] == '"')
+                {
+                    if(root->string[1] == '"' && root->string[2] == '"')
+                    {
+                        char *string = root->string;
+                        fprintf(file, "\"");
+                        for(int i = 3; string[i]; ++i)
+                        {
+                            if(string[i] == '"' && string[i+1] == '"' && string[i+2] == '"')
+                            {
+                                break;
+                            }
+                            else if(string[i] == '\n')
+                            {
+                                fprintf(file, "\\n\"\n\"");
+                            }
+                            else
+                            {
+                                fprintf(file, "%c", string[i]);
+                            }
+                        }
+                        fprintf(file, "\"");
+                    }
+                    else
+                    {
+                        _DataDeskFWriteC(file, context, "%.*s", root->string_length, root->string);
+                    }
+                }
+                else
+                {
+                    _DataDeskFWriteC(file, context, "\"\"");
+                }
                 break;
             }
             
