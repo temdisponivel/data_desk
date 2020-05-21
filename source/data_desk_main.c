@@ -2,7 +2,7 @@
 Data Desk
 
 Author  : Ryan Fleury
-Updated : 5 December 2019
+Updated : 20 May 2020
 License : MIT, at end of file.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
@@ -111,39 +111,66 @@ main(int argument_count, char **arguments)
             // to zero, so that we know the arguments to process in the file-processing
             // loop.
             {
-                int argument_read_mode = 0;
-                enum
-                {
-                    ARGUMENT_READ_MODE_files,
-                    ARGUMENT_READ_MODE_custom_layer_dll,
-                };
                 
-                for(int i = 1; i < argument_count; ++i)
+                // NOTE(rjf): Figure out if logging is enabled.
                 {
-                    if(argument_read_mode == ARGUMENT_READ_MODE_files)
+                    for(int i = 1; i < argument_count; ++i)
                     {
-                        if(StringMatchCaseInsensitive(arguments[i], "-c") ||
-                           StringMatchCaseInsensitive(arguments[i], "--custom"))
-                        {
-                            argument_read_mode = ARGUMENT_READ_MODE_custom_layer_dll;
-                            arguments[i] = 0;
-                        }
-                        else if(StringMatchCaseInsensitive(arguments[i], "-l") ||
-                                StringMatchCaseInsensitive(arguments[i], "--log"))
+                        if(StringMatchCaseInsensitive(arguments[i], "-l") ||
+                           StringMatchCaseInsensitive(arguments[i], "--log"))
                         {
                             global_log_enabled = 1;
-                            arguments[i] = 0;
-                        }
-                        else
-                        {
-                            ++expected_number_of_files;
                         }
                     }
-                    else if(argument_read_mode == ARGUMENT_READ_MODE_custom_layer_dll)
+                }
+                
+                // NOTE(rjf): Print out command line.
+                if(global_log_enabled)
+                {
+                    for(int i = 0; i < argument_count; ++i)
                     {
-                        custom_layer_dll_path = arguments[i];
-                        arguments[i] = 0;
-                        argument_read_mode = ARGUMENT_READ_MODE_files;
+                        fprintf(stdout, "%s ", arguments[i]);
+                    }
+                }
+                
+                // NOTE(rjf): Find all files and custom DLL stuff.
+                {
+                    int argument_read_mode = 0;
+                    enum
+                    {
+                        ArgumentReadMode_Files,
+                        ArgumentReadMode_CustomLayerDLL,
+                    };
+                    
+                    for(int i = 1; i < argument_count; ++i)
+                    {
+                        if(arguments[i])
+                        {
+                            if(argument_read_mode == ArgumentReadMode_Files)
+                            {
+                                if(StringMatchCaseInsensitive(arguments[i], "-c") ||
+                                   StringMatchCaseInsensitive(arguments[i], "--custom"))
+                                {
+                                    argument_read_mode = ArgumentReadMode_CustomLayerDLL;
+                                    arguments[i] = 0;
+                                }
+                                if(StringMatchCaseInsensitive(arguments[i], "-l") ||
+                                   StringMatchCaseInsensitive(arguments[i], "--log"))
+                                {
+                                    arguments[i] = 0;
+                                }
+                                else
+                                {
+                                    ++expected_number_of_files;
+                                }
+                            }
+                            else if(argument_read_mode == ArgumentReadMode_CustomLayerDLL)
+                            {
+                                custom_layer_dll_path = arguments[i];
+                                arguments[i] = 0;
+                                argument_read_mode = ArgumentReadMode_Files;
+                            }
+                        }
                     }
                 }
             }
