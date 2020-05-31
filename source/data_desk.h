@@ -1591,7 +1591,13 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                         DataDeskNode *array_size = type_decorator->children_list_head ? type_decorator->children_list_head->next : 0;
                         if(array_size)
                         {
-                            _DataDeskFWriteC(file, context, "[");
+                            if (type_decorator->parent &&
+								type_decorator->parent->type == DataDeskNodeType_TypeDecorator &&
+								type_decorator->parent->sub_type == DataDeskTypeDecoratorType_Pointer)
+							{
+								_DataDeskFWriteC(file, context, ")");
+							}
+							_DataDeskFWriteC(file, context, "[");
                             _DataDeskFWriteGraphAsC(file, array_size, context);
                             _DataDeskFWriteC(file, context, "]");
                         }
@@ -1606,7 +1612,13 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                 _DataDeskFWriteGraphAsC(file, root->children_list_head, context);
                 if(root->sub_type == DataDeskTypeDecoratorType_Pointer)
                 {
-                    _DataDeskFWriteC(file, context, "*");
+                    if (root->children_list_head &&
+						root->children_list_head->type == DataDeskNodeType_TypeDecorator &&
+						root->children_list_head->sub_type == DataDeskTypeDecoratorType_Array)
+					{
+						_DataDeskFWriteC(file, context, "(");
+					}
+					_DataDeskFWriteC(file, context, "*");
                 }
                 break;
             }

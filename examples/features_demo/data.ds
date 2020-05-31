@@ -27,7 +27,9 @@ MyStructB :: struct
 		bar : *void,
 		@Tag
 			baz : [8][SOME_CONSTANT]float
-	}
+	},
+	
+	array_of_pointers_to_array_to_pointers_to_pointer : [1]*[2]**int,
 }
 
 // ---- Unions ----------------------------------------------------------------
