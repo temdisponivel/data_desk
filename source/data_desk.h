@@ -984,7 +984,22 @@ DataDeskInterpretNumericExpressionAsInteger(DataDeskNode *root)
                 result = DataDeskCStringToInt(root->string);
                 break;
             }
-            
+            case DataDeskNodeType_Identifier:
+            {
+                if (root->children_list_head)
+                {
+                    result = DataDeskInterpretNumericExpressionAsInteger(root->children_list_head);
+                }
+                break;
+            }
+            case DataDeskNodeType_ConstantDefinition:
+            {
+                if (root->children_list_head)
+                {
+                    result = DataDeskInterpretNumericExpressionAsInteger(root->children_list_head);
+                }
+                break;
+            }
             case DataDeskNodeType_UnaryOperator:
             {
                 DataDeskUnaryOperatorType unary_operator_type = root->sub_type;
