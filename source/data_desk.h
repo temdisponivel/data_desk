@@ -986,18 +986,12 @@ DataDeskInterpretNumericExpressionAsInteger(DataDeskNode *root)
             }
             case DataDeskNodeType_Identifier:
             {
-                if (root->children_list_head)
-                {
-                    result = DataDeskInterpretNumericExpressionAsInteger(root->children_list_head);
-                }
+                result = DataDeskInterpretNumericExpressionAsInteger(root->children_list_head);
                 break;
             }
             case DataDeskNodeType_ConstantDefinition:
             {
-                if (root->children_list_head)
-                {
-                    result = DataDeskInterpretNumericExpressionAsInteger(root->children_list_head);
-                }
+                result = DataDeskInterpretNumericExpressionAsInteger(root->children_list_head);
                 break;
             }
             case DataDeskNodeType_UnaryOperator:
