@@ -805,7 +805,6 @@ ParseType(ParseContext *context, Tokenizer *tokenizer)
 
         if(!array_expr)
         {
-            ParseContextPushError(context, tokenizer, "Invalid array expression.");
             goto end_parse;
         }
         
@@ -999,8 +998,16 @@ ParseDeclarationBody(ParseContext *context, Tokenizer *tokenizer, Token name)
     {
         DataDeskNode *initialization = 0;
         initialization = ParseExpression(context, tokenizer);
+
+        if(!initialization)
+        {
+            goto end_parse;
+        }
+
         root->declaration.initialization = InsertChild(initialization, root);
     }
+
+    end_parse:;
     return root;
 }
 
