@@ -802,6 +802,12 @@ ParseType(ParseContext *context, Tokenizer *tokenizer)
         type->sub_type = DataDeskTypeDecoratorType_Array;
         
         DataDeskNode *array_expr = ParseExpression(context, tokenizer);
+
+        if(!array_expr)
+        {
+            ParseContextPushError(context, tokenizer, "Invalid array expression.");
+            goto end_parse;
+        }
         
         if(!RequireToken(tokenizer, "]", 0))
         {
