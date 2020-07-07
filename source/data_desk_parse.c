@@ -268,6 +268,7 @@ ParseContextAddSymbol(ParseContext *context, char *key, int key_length, DataDesk
                 {
                     result = PARSE_CONTEXT_ADD_SYMBOL_SUCCESS;
                     context->symbol_table_keys[key_hash].key = key;
+                    context->symbol_table_keys[key_hash].key_length = key_length;
                     context->symbol_table_values[key_hash].root = root;
                     ++context->symbol_table_count;
                 }
@@ -288,6 +289,7 @@ ParseContextAddSymbol(ParseContext *context, char *key, int key_length, DataDesk
         else
         {
             context->symbol_table_keys[key_hash].key = key;
+            context->symbol_table_keys[key_hash].key_length = key_length;
             context->symbol_table_values[key_hash].root = root;
             result = PARSE_CONTEXT_ADD_SYMBOL_SUCCESS;
             ++context->symbol_table_count;
