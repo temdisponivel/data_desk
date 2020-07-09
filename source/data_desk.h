@@ -432,11 +432,18 @@ struct DataDeskNode
         tag;
         
     };
-    
+
+    // TODO(mal): Write DataDeskDoc
+    int namespace_index;
+    char *namespace_string;
+
+    // TODO(mal): Write DataDeskDoc
+    struct
+    {
+        DataDeskNode *namespace_alias_prev;
+        DataDeskNode *namespace_alias_next;
+    };
 };
-
-
-
 
 
 /*
@@ -1377,10 +1384,22 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
             }
             _DataDeskFWriteC(file, context, "\n");
         }
-        
+
+        char *namespace_prefix = "";
+        char *underscore = "";
+        if(root->namespace_string)
+        {
+            namespace_prefix = root->namespace_string;
+            underscore = "_";
+        }
+
         switch(root->type)
         {
             case DataDeskNodeType_Identifier:
+            {
+                _DataDeskFWriteC(file, context, "%s%s", namespace_prefix, underscore);
+                // NOTE(mal): Falls through  <-------------------------------- IMPORTANT
+            }
             case DataDeskNodeType_NumericConstant:
             case DataDeskNodeType_CharConstant:
             {
@@ -1475,14 +1494,18 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
             {
                 if(!root->parent || root->parent->type != DataDeskNodeType_Declaration)
                 {
-                    _DataDeskFWriteC(file, context, "typedef struct %.*s %.*s;\n",
+                    _DataDeskFWriteC(file, context, "typedef struct %s%s%.*s %s%s%.*s;\n",
+                                     namespace_prefix, underscore,
                                      root->string_length, root->string,
+                                     namespace_prefix, underscore,
                                      root->string_length, root->string);
                 }
                 
                 if(root->string)
                 {
-                    _DataDeskFWriteC(file, context, "struct %.*s\n", root->string_length, root->string);
+                    _DataDeskFWriteC(file, context, "struct %s%s%.*s\n",
+                                     namespace_prefix, underscore,
+                                     root->string_length, root->string);
                 }
                 else
                 {
@@ -1511,14 +1534,18 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
             {
                 if(!root->parent || root->parent->type != DataDeskNodeType_Declaration)
                 {
-                    _DataDeskFWriteC(file, context, "typedef union %.*s %.*s;\n",
+                    _DataDeskFWriteC(file, context, "typedef union %s%s%.*s %s%s%.*s;\n",
+                                     namespace_prefix, underscore,
                                      root->string_length, root->string,
+                                     namespace_prefix, underscore,
                                      root->string_length, root->string);
                 }
                 
                 if(root->string)
                 {
-                    _DataDeskFWriteC(file, context, "union %.*s\n", root->string_length, root->string);
+                    _DataDeskFWriteC(file, context, "union %s%s%.*s\n", 
+                                     namespace_prefix, underscore,
+                                     root->string_length, root->string);
                 }
                 else
                 {
@@ -1545,7 +1572,9 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
             
             case DataDeskNodeType_EnumDeclaration:
             {
-                _DataDeskFWriteC(file, context, "typedef enum %.*s\n", root->string_length, root->string);
+                _DataDeskFWriteC(file, context, "typedef enum %s%s%.*s\n", 
+                                 namespace_prefix, underscore,
+                                 root->string_length, root->string);
                 _DDCScope
                 {
                     for(DataDeskNode *member = root->children_list_head; member; member = member->next)
@@ -1554,7 +1583,7 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                         _DataDeskFWriteC(file, context, ",\n");
                     }
                 }
-                _DataDeskFWriteC(file, context, "\n%.*s;\n", root->string_length, root->string);
+                _DataDeskFWriteC(file, context, "\n%s%s%.*s;\n", namespace_prefix, underscore, root->string_length, root->string);
                 break;
             }
             
@@ -1568,7 +1597,9 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                 {
                     for(DataDeskNode *member = root->children_list_head; member; member = member->next)
                     {
-                        _DataDeskFWriteC(file, context, "%.*s = (1<<%i),\n", member->string_length, member->string, current_bit);
+                        _DataDeskFWriteC(file, context, "%s%s%.*s = (1<<%i),\n",
+                                         namespace_prefix, underscore,
+                                         member->string_length, member->string, current_bit);
                         ++current_bit;
                     }
                 }
@@ -1583,11 +1614,15 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                 {
                     if(needed_bits_for_flag_type == 32)
                     {
-                        _DataDeskFWriteC(file, context, "typedef unsigned int %.*s;\n", root->string_length, root->string);
+                        _DataDeskFWriteC(file, context, "typedef unsigned int %s%s%.*s;\n", 
+                                         namespace_prefix, underscore,
+                                         root->string_length, root->string);
                     }
                     else if(needed_bits_for_flag_type > 32)
                     {
-                        _DataDeskFWriteC(file, context, "typedef unsigned long int %.*s;\n", root->string_length, root->string);
+                        _DataDeskFWriteC(file, context, "typedef unsigned long int %s%s%.*s;\n", 
+                                         namespace_prefix, underscore,
+                                         root->string_length, root->string);
                     }
                 }
                 
@@ -1644,7 +1679,7 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
             {
                 if(root->parent && root->parent->type == DataDeskNodeType_EnumDeclaration)
                 {
-                    _DataDeskFWriteC(file, context, "%.*s", root->string_length, root->string);
+                    _DataDeskFWriteC(file, context, "%s%s%.*s", namespace_prefix, underscore, root->string_length, root->string);
                     if(root->children_list_head)
                     {
                         _DataDeskFWriteC(file, context, " = ");
@@ -1653,7 +1688,7 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                 }
                 else
                 {
-                    _DataDeskFWriteC(file, context, "#define %.*s (", root->string_length, root->string);
+                    _DataDeskFWriteC(file, context, "#define %s%s%.*s (", namespace_prefix, underscore, root->string_length, root->string);
                     _DataDeskFWriteGraphAsC(file, root->children_list_head, context);
                     _DataDeskFWriteC(file, context, ")\n");
                 }

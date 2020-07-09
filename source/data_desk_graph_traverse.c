@@ -219,7 +219,17 @@ PatchGraphSymbols(ParseContext *context, DataDeskNode *root)
     {
         if(node->type == DataDeskNodeType_Identifier)
         {
-            node->reference = ParseContextLookUpSymbol(context, node->string, node->string_length);
+            ParseContextSymbolTableKey key = {0};
+            key.key = node->string;
+            key.key_length = node->string_length;
+            key.namespace_index = node->namespace_index;
+
+            node->reference = ParseContextLookUpSymbol(context, key);
+
+            if(!node->reference && node->parent->type != DataDeskNodeType_EnumDeclaration)
+            {
+                node->namespace_string = 0;
+            }
         }
         else
         {

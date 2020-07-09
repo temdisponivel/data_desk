@@ -19,12 +19,26 @@ struct ParseContextSymbolTableKey
 {
     char *key;
     int key_length;
+    int namespace_index;
 };
 
 typedef struct ParseContextSymbolTableValue ParseContextSymbolTableValue;
 struct ParseContextSymbolTableValue
 {
     DataDeskNode *root;
+};
+
+enum        // TODO(mal): Move to data_desk.h if user-facing
+{
+    NAMESPACE_INDEX_GLOBAL = 0,
+};
+
+typedef struct NamespaceNode NamespaceNode;
+struct NamespaceNode
+{
+    NamespaceNode *next;
+    char *name;
+    int index;
 };
 
 typedef struct ParseContext ParseContext;
@@ -40,6 +54,15 @@ struct ParseContext
     unsigned int symbol_table_count;
     ParseContextSymbolTableKey *symbol_table_keys;
     ParseContextSymbolTableValue *symbol_table_values;
+
+    struct
+    {
+        NamespaceNode global_namespace;
+        NamespaceNode *namespace_head;  // NOTE(mal): Always points to global_namespace
+        NamespaceNode *namespace_tail;
+        NamespaceNode *current_namespace;
+        int namespace_count;
+    };
 };
 
 static void
@@ -117,31 +140,30 @@ static unsigned int global_crc32_table[] =
 };
 
 static unsigned int
-ParseContextSymbolTableHash(char *key, int length)
+ParseContextSymbolTableHash(ParseContextSymbolTableKey symbol_key)
 {
-    unsigned int crc = 0;
-    for(int i = 0; key[i] && i < length; ++i)
+    unsigned int crc = symbol_key.namespace_index;
+    for(int i = 0; symbol_key.key[i] && i < symbol_key.key_length; ++i)
     {
-        crc = (crc << 8) ^ global_crc32_table[((crc >> 24) ^ key[i]) & 255];
+        crc = (crc << 8) ^ global_crc32_table[((crc >> 24) ^ symbol_key.key[i]) & 255];
     }
     return crc;
 }
 
 static DataDeskNode *
-ParseContextLookUpSymbol(ParseContext *context, char *key, int key_length)
+ParseContextLookUpSymbol(ParseContext *context, ParseContextSymbolTableKey symbol_key)
 {
     DataDeskNode *symbol_value = 0;
-    
     if(context->symbol_table_max)
     {
-        unsigned int key_hash = ParseContextSymbolTableHash(key, key_length) % context->symbol_table_max;
+        unsigned int key_hash = ParseContextSymbolTableHash(symbol_key) % context->symbol_table_max;
         unsigned int original_hash = key_hash;
         
         for(;;)
         {
             if(context->symbol_table_keys[key_hash].key)
             {
-                if(StringMatchCaseSensitiveN(context->symbol_table_keys[key_hash].key, key, key_length))
+                if(StringMatchCaseSensitiveN(context->symbol_table_keys[key_hash].key, symbol_key.key, symbol_key.key_length))
                 {
                     symbol_value = context->symbol_table_values[key_hash].root;
                     break;
@@ -163,6 +185,12 @@ ParseContextLookUpSymbol(ParseContext *context, char *key, int key_length)
                 break;
             }
         }
+    }
+
+    if(!symbol_value && symbol_key.namespace_index != NAMESPACE_INDEX_GLOBAL)
+    {
+        symbol_key.namespace_index = NAMESPACE_INDEX_GLOBAL;
+        symbol_value = ParseContextLookUpSymbol(context, symbol_key);
     }
     
     return symbol_value;
@@ -201,18 +229,17 @@ ParseContextAddSymbol(ParseContext *context, char *key, int key_length, DataDesk
         {
             if(context->symbol_table_keys[i].key)
             {
-                char *old_key = context->symbol_table_keys[i].key;
-                int old_key_length = context->symbol_table_keys[i].key_length;
+                ParseContextSymbolTableKey old_symbol_key = context->symbol_table_keys[i];
                 DataDeskNode *old_root = context->symbol_table_values[i].root;
                 
-                unsigned int new_hash = ParseContextSymbolTableHash(old_key, old_key_length) % new_symbol_table_max;
+                unsigned int new_hash = ParseContextSymbolTableHash(old_symbol_key) % new_symbol_table_max;
                 unsigned int original_new_hash = new_hash;
                 
                 for(;;)
                 {
                     if(new_symbol_table_keys[new_hash].key)
                     {
-                        if(StringMatchCaseSensitive(new_symbol_table_keys[new_hash].key, old_key))
+                        if(StringMatchCaseSensitive(new_symbol_table_keys[new_hash].key, old_symbol_key.key))
                         {
                             new_symbol_table_values[new_hash].root = old_root;
                             break;
@@ -235,8 +262,7 @@ ParseContextAddSymbol(ParseContext *context, char *key, int key_length, DataDesk
                     }
                     else
                     {
-                        new_symbol_table_keys[new_hash].key = old_key;
-                        new_symbol_table_keys[new_hash].key_length = old_key_length;
+                        new_symbol_table_keys[new_hash] = old_symbol_key;
                         new_symbol_table_values[new_hash].root = old_root;
                         break;
                     }
@@ -250,8 +276,13 @@ ParseContextAddSymbol(ParseContext *context, char *key, int key_length, DataDesk
         context->symbol_table_values = new_symbol_table_values;
         context->symbol_table_max    = new_symbol_table_max;
     }
-    
-    unsigned int key_hash = ParseContextSymbolTableHash(key, key_length) % context->symbol_table_max;
+
+    ParseContextSymbolTableKey new_symbol_key = {0};
+    new_symbol_key.key = key;
+    new_symbol_key.key_length = key_length;
+    new_symbol_key.namespace_index = context->current_namespace->index;
+
+    unsigned int key_hash = ParseContextSymbolTableHash(new_symbol_key) % context->symbol_table_max;
     unsigned int original_hash = key_hash;
     
     for(;;)
@@ -268,6 +299,7 @@ ParseContextAddSymbol(ParseContext *context, char *key, int key_length, DataDesk
                 {
                     result = PARSE_CONTEXT_ADD_SYMBOL_SUCCESS;
                     context->symbol_table_keys[key_hash].key = key;
+                    context->symbol_table_keys[key_hash].key_length = key_length;
                     context->symbol_table_values[key_hash].root = root;
                     ++context->symbol_table_count;
                 }
@@ -288,10 +320,25 @@ ParseContextAddSymbol(ParseContext *context, char *key, int key_length, DataDesk
         else
         {
             context->symbol_table_keys[key_hash].key = key;
+            context->symbol_table_keys[key_hash].key_length = key_length;
             context->symbol_table_values[key_hash].root = root;
             result = PARSE_CONTEXT_ADD_SYMBOL_SUCCESS;
             ++context->symbol_table_count;
             break;
+        }
+    }
+
+    if(result == PARSE_CONTEXT_ADD_SYMBOL_SUCCESS)
+    {
+        while(new_symbol_key.namespace_index--)
+        {
+            DataDeskNode *node = ParseContextLookUpSymbol(context, new_symbol_key);
+            if(node)
+            {
+                root->namespace_alias_prev = node;
+                node->namespace_alias_next = root;
+                break;
+            }
         }
     }
     
@@ -315,6 +362,19 @@ ParseContextAllocateNode(ParseContext *context, Tokenizer *tokenizer, Token toke
     node->line = tokenizer->line;
     node->string = token.string;
     node->string_length = token.string_length;
+    node->namespace_index = context->current_namespace->index;
+
+	if(type == DataDeskNodeType_Identifier ||
+	   type == DataDeskNodeType_StructDeclaration ||
+	   type == DataDeskNodeType_UnionDeclaration ||
+	   type == DataDeskNodeType_EnumDeclaration ||
+	   type == DataDeskNodeType_FlagsDeclaration ||
+	   type == DataDeskNodeType_ConstantDefinition ||
+	   type == DataDeskNodeType_ProcedureHeader ||
+	   type == DataDeskNodeType_Declaration)
+	{
+		node->namespace_string = context->current_namespace->name;
+	}
     return node;
 }
 
@@ -838,9 +898,60 @@ ParseCode(ParseContext *context, Tokenizer *tokenizer)
     DataDeskNode *tail = 0;
     
     Token token = {0};
+
+    context->current_namespace = &context->global_namespace;
     
     do
     {
+        if(RequireToken(tokenizer, "namespace", 0))
+        {
+            Token namespace_token = {0};
+            if(RequireTokenType(tokenizer, Token_AlphanumericBlock, &namespace_token))
+            {
+                NamespaceNode *target_namespace = 0;
+
+                for(NamespaceNode *node = context->namespace_head->next; node; node = node->next){
+                    if(StringMatchCaseSensitiveN(node->name, namespace_token.string, namespace_token.string_length) &&
+                       node->name[namespace_token.string_length] == 0)
+                    {
+                        target_namespace = node;
+                        break;
+                    }
+
+                }
+
+                if(!target_namespace)
+                {
+                    target_namespace = ParseContextAllocateMemory(context, sizeof(NamespaceNode));
+
+                    context->namespace_tail->next = target_namespace;
+                    context->namespace_tail = target_namespace;
+
+                    target_namespace->name = ParseContextAllocateMemory(context, namespace_token.string_length+1);
+                    MemoryCopy(target_namespace->name, namespace_token.string, namespace_token.string_length);
+                    target_namespace->name[namespace_token.string_length] = 0;
+
+                    target_namespace->index = context->namespace_count++;
+                }
+
+                context->current_namespace = target_namespace;
+            }
+            else
+            {
+#if 0
+                ParseContextPushError(context, tokenizer, "Expected namespace identifier.");
+#else
+                // NOTE(mal): Selects global namespace if no namespaces is specified
+                context->current_namespace = &context->global_namespace;
+#endif
+            }
+
+            if(!RequireToken(tokenizer, ";", 0))
+            {
+                ParseContextPushError(context, tokenizer, "Expected ';'.");
+            }
+        }
+
         ParseTagList(context, tokenizer);
         DataDeskNode *tag_list = ParseContextPopAllTags(context);
         
