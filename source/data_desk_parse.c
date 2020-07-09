@@ -862,6 +862,11 @@ ParseType(ParseContext *context, Tokenizer *tokenizer)
         type->sub_type = DataDeskTypeDecoratorType_Array;
         
         DataDeskNode *array_expr = ParseExpression(context, tokenizer);
+
+        if(!array_expr)
+        {
+            goto end_parse;
+        }
         
         if(!RequireToken(tokenizer, "]", 0))
         {
@@ -1104,8 +1109,16 @@ ParseDeclarationBody(ParseContext *context, Tokenizer *tokenizer, Token name)
     {
         DataDeskNode *initialization = 0;
         initialization = ParseExpression(context, tokenizer);
+
+        if(!initialization)
+        {
+            goto end_parse;
+        }
+
         root->declaration.initialization = InsertChild(initialization, root);
     }
+
+    end_parse:;
     return root;
 }
 
