@@ -337,6 +337,7 @@ ParseContextAddSymbol(ParseContext *context, char *key, int key_length, DataDesk
             {
                 root->namespace_alias_prev = node;
                 node->namespace_alias_next = root;
+                break;
             }
         }
     }
