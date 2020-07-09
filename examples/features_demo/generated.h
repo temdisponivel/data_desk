@@ -17,11 +17,12 @@ struct MyStructB
     float y;
     struct
     {
-        intfoo[16];
+        int foo[16];
         void *bar;
         // @Tag 
-        floatbaz[8][SOME_CONSTANT];
+        float baz[8][SOME_CONSTANT];
     }sub_struct;
+    int **(*array_of_pointers_to_array_to_pointers_to_pointer[1])[2];
 };
 // @SameAsStructs 
 typedef union MyUnion MyUnion;
