@@ -1411,6 +1411,14 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                             {
                                 fprintf(file, "\\n\"\n\"");
                             }
+                            else if(string[i] == '\r')
+                            {
+                                fprintf(file, "\\r");
+                            }
+                            else if(string[i] == '\t')
+                            {
+                                fprintf(file, "\\t");
+                            }
                             else
                             {
                                 fprintf(file, "%c", string[i]);
