@@ -2,6 +2,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#if _MSC_VER
+#include <malloc.h>
+#endif
 #include "data_desk.h"
 
 static FILE *global_header_file = 0;
