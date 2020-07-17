@@ -201,6 +201,35 @@ GenerateGraphNullTerminatedStrings(ParseContext *context, DataDeskNode *root)
 }
 
 static void
+LinkNamespaceAliases(ParseContext *context, DataDeskNode *root)
+{
+    for(DataDeskNode *node = root; node; node = node->next)
+    {
+        if(node->string && !node->namespace_alias_prev && !node->namespace_alias_next)
+        {
+            ParseContextSymbolTableKey key = {0};
+            key.key = node->string;
+            key.key_length = node->string_length;
+
+            DataDeskNode *prev = 0;
+            for(int i_namespace = 0; i_namespace < context->namespace_count; ++i_namespace){
+                key.namespace_index = i_namespace;
+                DataDeskNode *cur = ParseContextLookUpSymbol(context, key);
+                if(cur)
+                {
+                    if(prev)
+                    {
+                        cur->namespace_alias_prev = prev;
+                        prev->namespace_alias_next = cur;
+                    }
+                    prev = cur;
+                }
+            }
+        }
+    }
+}
+
+static void
 CallCustomParseCallbacks(ParseContext *context, DataDeskNode *root, DataDeskCustom custom, char *filename)
 {
     if(custom.ParseCallback)
