@@ -79,6 +79,7 @@ ProcessParsedGraph(char *filename, DataDeskNode *root, ParseContext *context, Da
 {
     PatchGraphSymbols(context, root);
     GenerateGraphNullTerminatedStrings(context, root);
+    LinkNamespaceAliases(context, root);
     CallCustomParseCallbacks(context, root, custom, filename);
     PrintAndResetParseContextErrors(context);
 }

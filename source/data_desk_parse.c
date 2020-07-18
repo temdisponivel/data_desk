@@ -328,20 +328,6 @@ ParseContextAddSymbol(ParseContext *context, char *key, int key_length, DataDesk
         }
     }
 
-    if(result == PARSE_CONTEXT_ADD_SYMBOL_SUCCESS)
-    {
-        while(new_symbol_key.namespace_index--)
-        {
-            DataDeskNode *node = ParseContextLookUpSymbol(context, new_symbol_key);
-            if(node)
-            {
-                root->namespace_alias_prev = node;
-                node->namespace_alias_next = root;
-                break;
-            }
-        }
-    }
-    
     return result;
 }
 
