@@ -195,7 +195,6 @@ main(int argument_count, char **arguments)
             }
             
             ParseContext parse_context = {0};
-            ParseContextInit(&parse_context);
             
             int number_of_parsed_files = 0;
             struct

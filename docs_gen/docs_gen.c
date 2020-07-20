@@ -530,7 +530,6 @@ int main(int argument_count, char **arguments)
     if(argument_count > 1)
     {
         ParseContext context = {0};
-        ParseContextInit(&context);
         
         DataDeskNode *head = 0;
         DataDeskNode *tail = 0;
