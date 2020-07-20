@@ -66,6 +66,13 @@ struct ParseContext
 };
 
 static void
+ParseContextInit(ParseContext *context)
+{
+    context->namespace_count = 1;
+    context->current_namespace = context->namespace_head = context->namespace_tail = &context->global_namespace;
+}
+
+static void
 ParseContextCleanUp(ParseContext *context)
 {
     MemoryArenaClear(&context->arena);

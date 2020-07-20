@@ -530,8 +530,7 @@ int main(int argument_count, char **arguments)
     if(argument_count > 1)
     {
         ParseContext context = {0};
-        context.namespace_count = 1;
-        context.current_namespace = context.namespace_head = context.namespace_tail = &context.global_namespace;
+        ParseContextInit(&context);
         
         DataDeskNode *head = 0;
         DataDeskNode *tail = 0;

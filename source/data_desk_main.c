@@ -195,9 +195,7 @@ main(int argument_count, char **arguments)
             }
             
             ParseContext parse_context = {0};
-            parse_context.namespace_count = 1;
-            parse_context.current_namespace = parse_context.namespace_head = parse_context.namespace_tail =
-                &parse_context.global_namespace;
+            ParseContextInit(&parse_context);
             
             int number_of_parsed_files = 0;
             struct
