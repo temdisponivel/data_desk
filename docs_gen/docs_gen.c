@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 
 #define ENABLE_LOG_BY_DEFAULT 1
 
@@ -529,6 +530,8 @@ int main(int argument_count, char **arguments)
     if(argument_count > 1)
     {
         ParseContext context = {0};
+        context.namespace_count = 1;
+        context.current_namespace = context.namespace_head = context.namespace_tail = &context.global_namespace;
         
         DataDeskNode *head = 0;
         DataDeskNode *tail = 0;
