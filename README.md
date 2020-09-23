@@ -44,6 +44,27 @@ To run Data Desk with your custom layer, you can use the following command templ
 
 `data_desk --custom /path/to/custom/layer /file/to/parse/1 /file/to/parse/2 ...`
 
+## Usage for CMake projects
+
+To use Data Desk in your CMake projects, it's recommended to use the Data Desk repository as a subdirectory in your project (e.g.: git submodule). Then in your `CMakeLists.txt`, you can use it similarly to the following:
+```cmake
+# Add data_desk to your project: this will also compile the data_desk binary itself.
+add_subdirectory("ext/data_desk")
+
+# Compile a custom layer for Data Desk
+data_desk_add_custom_library(
+    LIBNAME my_custom_data_desk_layer_shared_library
+    SRC "path/to/my/custom_library_code.c")
+
+# Add a build step to process given *.ds files with Data Desk
+data_desk_invoke(
+    LIBNAME my_custom_data_desk_layer_shared_library
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    DATASPECS "path/to/my/data_model.ds"
+    OUTPUTS "${CMAKE_CURRENT_SOURCE_DIR}/path/to/generated_outputs.c")
+```
+Make sure you specify all the output files in `data_desk_invoke` correctly, such that CMake will be able to insert the correct build dependencies for your source files, meaning it will reinvoke Data Desk (if you update the `*.ds` file) *before* compiling the outputted source files.
+
 ## Data Desk (.ds) File Documentation
 
 A valid Data Desk file is defined as a set of zero or more *Declaration*s, *Struct*s, *Union*s, *Enum*s, *Flags*s, *Const*s, *Procedure Header*s, or *Comment*s. Each of the following sections defines these (and what they are comprised of).
