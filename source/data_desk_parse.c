@@ -1221,6 +1221,19 @@ ParseIdentifierList(ParseContext *context, Tokenizer *tokenizer)
                                                                 DataDeskNodeType_Identifier);
             identifier->first_tag = tag_list;
             
+            if(RequireToken(tokenizer, "=", 0))
+            {
+                DataDeskNode *initialization = 0;
+                initialization = ParseExpression(context, tokenizer);
+                
+                if(!initialization)
+                {
+                    break;
+                }
+                
+                InsertChild(initialization, initialization);
+            }
+            
             if(tail == 0)
             {
                 head = tail = identifier;
