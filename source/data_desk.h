@@ -1380,7 +1380,10 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                     }
                     _DataDeskFWriteC(file, context, ")");
                 }
-                _DataDeskFWriteC(file, context, " ");
+                if (tag->next)
+                {
+                    _DataDeskFWriteC(file, context, " ");
+                }
             }
             _DataDeskFWriteC(file, context, "\n");
         }
