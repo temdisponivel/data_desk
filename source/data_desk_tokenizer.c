@@ -97,6 +97,7 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                     {
                         if(buffer[j] == '`')
                         {
+                            j += 1;
                             break;
                         }
                     }
