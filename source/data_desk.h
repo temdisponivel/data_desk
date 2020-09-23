@@ -365,6 +365,8 @@ struct DataDeskNode
         char *file;
     DataDeskDoc("Stores an integer representing the line number from which this node was parsed.")
         int line;
+    DataDeskDoc("Stores an integer representing the last line number from which this node was parsed.")
+        int end_line;
     
     //~ NOTE(rjf): Tag List
     union
@@ -1328,6 +1330,7 @@ struct DataDeskCPrintContext
     int nest;
     int indent;
     int indented_this_line;
+    int lines_to_print;
 };
 
 DATA_DESK_HEADER_PROC void
@@ -1369,6 +1372,29 @@ _DataDeskFWriteC(FILE *file, DataDeskCPrintContext *context, char *format, ...)
 }
 
 DATA_DESK_HEADER_PROC void
+_DataDeskFWriteLines(FILE *file, DataDeskCPrintContext *context)
+{
+    for(int i = 0; i < context->lines_to_print; i += 1)
+    {
+        fprintf(file, "\n");
+    }
+    context->lines_to_print = 0;
+}
+
+DATA_DESK_HEADER_PROC void
+_DataDeskCBumpLines(DataDeskCPrintContext *context, DataDeskNode *node)
+{
+    if(node && node->next)
+    {
+        int lines = (node->next->line - node->end_line);
+        if(lines > 1)
+        {
+            context->lines_to_print += lines - 1;
+        }
+    }
+}
+
+DATA_DESK_HEADER_PROC void
 _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *context)
 {
     
@@ -1376,6 +1402,8 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
     
     if(root)
     {
+        _DataDeskFWriteLines(file, context);
+        
         if(root->first_tag && root->first_tag->type == DataDeskNodeType_Tag)
         {
             _DataDeskFWriteC(file, context, "// ");
@@ -1389,6 +1417,7 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                     for(DataDeskNode *tag_arg = tag->children_list_head; tag_arg; tag_arg = tag_arg->next)
                     {
                         _DataDeskFWriteGraphAsC(file, tag_arg, context);
+                        context->lines_to_print = 0;
                         if(tag_arg->next)
                         {
                             _DataDeskFWriteC(file, context, ", ");
@@ -1663,12 +1692,12 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                         if(array_size)
                         {
                             if (type_decorator->parent &&
-								type_decorator->parent->type == DataDeskNodeType_TypeDecorator &&
-								type_decorator->parent->sub_type == DataDeskTypeDecoratorType_Pointer)
-							{
-								_DataDeskFWriteC(file, context, ")");
-							}
-							_DataDeskFWriteC(file, context, "[");
+                                type_decorator->parent->type == DataDeskNodeType_TypeDecorator &&
+                                type_decorator->parent->sub_type == DataDeskTypeDecoratorType_Pointer)
+                            {
+                                _DataDeskFWriteC(file, context, ")");
+                            }
+                            _DataDeskFWriteC(file, context, "[");
                             _DataDeskFWriteGraphAsC(file, array_size, context);
                             _DataDeskFWriteC(file, context, "]");
                         }
@@ -1684,12 +1713,12 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
                 if(root->sub_type == DataDeskTypeDecoratorType_Pointer)
                 {
                     if (root->children_list_head &&
-						root->children_list_head->type == DataDeskNodeType_TypeDecorator &&
-						root->children_list_head->sub_type == DataDeskTypeDecoratorType_Array)
-					{
-						_DataDeskFWriteC(file, context, "(");
-					}
-					_DataDeskFWriteC(file, context, "*");
+                        root->children_list_head->type == DataDeskNodeType_TypeDecorator &&
+                        root->children_list_head->sub_type == DataDeskTypeDecoratorType_Array)
+                    {
+                        _DataDeskFWriteC(file, context, "(");
+                    }
+                    _DataDeskFWriteC(file, context, "*");
                 }
                 break;
             }
@@ -1747,6 +1776,8 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
             
             default: break;
         }
+        
+        _DataDeskCBumpLines(context, root);
     }
     
 #undef _DDCScope

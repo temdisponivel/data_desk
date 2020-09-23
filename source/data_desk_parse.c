@@ -344,6 +344,15 @@ ParseContextAllocateMemory(ParseContext *context, unsigned int size)
     return MemoryArenaAllocate(&context->arena, size);
 }
 
+static void
+BumpEndLine(DataDeskNode *node, int line)
+{
+    if(node && node->end_line < line)
+    {
+        node->end_line = line;
+    }
+}
+
 static DataDeskNode *
 ParseContextAllocateNode(ParseContext *context, Tokenizer *tokenizer, Token token,
                          DataDeskNodeType type)
@@ -353,6 +362,7 @@ ParseContextAllocateNode(ParseContext *context, Tokenizer *tokenizer, Token toke
     node->type = type;
     node->file = tokenizer->filename;
     node->line = tokenizer->line;
+    // node->end_line = node->line;
     node->string = token.string;
     node->string_length = token.string_length;
     
@@ -362,23 +372,25 @@ ParseContextAllocateNode(ParseContext *context, Tokenizer *tokenizer, Token toke
     
     node->namespace_index = context->current_namespace->index;
     
-	if(type == DataDeskNodeType_Identifier ||
-	   type == DataDeskNodeType_StructDeclaration ||
-	   type == DataDeskNodeType_UnionDeclaration ||
-	   type == DataDeskNodeType_EnumDeclaration ||
-	   type == DataDeskNodeType_FlagsDeclaration ||
-	   type == DataDeskNodeType_ConstantDefinition ||
-	   type == DataDeskNodeType_ProcedureHeader ||
-	   type == DataDeskNodeType_Declaration)
-	{
-		node->namespace_string = context->current_namespace->name;
-	}
+    if(type == DataDeskNodeType_Identifier ||
+       type == DataDeskNodeType_StructDeclaration ||
+       type == DataDeskNodeType_UnionDeclaration ||
+       type == DataDeskNodeType_EnumDeclaration ||
+       type == DataDeskNodeType_FlagsDeclaration ||
+       type == DataDeskNodeType_ConstantDefinition ||
+       type == DataDeskNodeType_ProcedureHeader ||
+       type == DataDeskNodeType_Declaration)
+    {
+        node->namespace_string = context->current_namespace->name;
+    }
     return node;
 }
 
 static DataDeskNode *
 InsertChild(DataDeskNode *node, DataDeskNode *parent)
 {
+    BumpEndLine(parent, node ? node->line : 0);
+    
     DataDeskNode *tail = node;
     for(DataDeskNode *child = node; child; child = child->next)
     {
@@ -1283,6 +1295,8 @@ ParseStructBody(ParseContext *context, Tokenizer *tokenizer, Token name)
         goto end_parse;
     }
     
+    BumpEndLine(root, tokenizer->line);
+    
     end_parse:;
     return root;
 }
@@ -1306,6 +1320,8 @@ ParseUnionBody(ParseContext *context, Tokenizer *tokenizer, Token name)
         ParseContextPushError(context, tokenizer, "Expected '}'.");
         goto end_parse;
     }
+    
+    BumpEndLine(root, tokenizer->line);
     
     end_parse:;
     return root;
@@ -1331,6 +1347,8 @@ ParseEnumBody(ParseContext *context, Tokenizer *tokenizer, Token name)
         goto end_parse;
     }
     
+    BumpEndLine(root, tokenizer->line);
+    
     end_parse:;
     return root;
 }
@@ -1354,6 +1372,8 @@ ParseFlagsBody(ParseContext *context, Tokenizer *tokenizer, Token name)
         ParseContextPushError(context, tokenizer, "Expected '}'.");
         goto end_parse;
     }
+    
+    BumpEndLine(root, tokenizer->line);
     
     end_parse:;
     return root;
