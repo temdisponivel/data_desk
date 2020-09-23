@@ -699,7 +699,7 @@ DataDeskCharIsUppercaseAlpha(int c)
 DATA_DESK_HEADER_PROC int
 DataDeskCharIsSpace(int c)
 {
-    return (c <= 32);
+    return (c <= 32 && c);
 }
 
 DATA_DESK_HEADER_PROC int
