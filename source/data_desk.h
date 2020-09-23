@@ -432,11 +432,11 @@ struct DataDeskNode
         tag;
         
     };
-
+    
     // TODO(mal): Write DataDeskDoc
     int namespace_index;
     char *namespace_string;
-
+    
     // TODO(mal): Write DataDeskDoc
     struct
     {
@@ -455,6 +455,16 @@ struct DataDeskNode
 | functions that can be helpful when introspecting upon abstract
 | syntax trees.
 */
+
+//~ NOTE(rjf): Helpers
+DataDeskDoc("Returns 1 if @Parameter(0) is an alphabetic character.")
+DATA_DESK_HEADER_PROC int DataDeskCharIsAlpha(int c);
+
+DataDeskDoc("Returns 1 if @Parameter(0) is a numeric character.")
+DATA_DESK_HEADER_PROC int DataDeskCharIsDigit(int c);
+
+DataDeskDoc("Returns 1 if @Parameter(0) is a whitespace character.")
+DATA_DESK_HEADER_PROC int DataDeskCharIsSpace(int c);
 
 
 //~ NOTE(rjf): Name Introspection
@@ -684,6 +694,12 @@ DATA_DESK_HEADER_PROC int
 DataDeskCharIsUppercaseAlpha(int c)
 {
     return (c >= 'A' && c <= 'Z');
+}
+
+DATA_DESK_HEADER_PROC int
+DataDeskCharIsSpace(int c)
+{
+    return (c <= 32);
 }
 
 DATA_DESK_HEADER_PROC int
@@ -1387,7 +1403,7 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
             }
             _DataDeskFWriteC(file, context, "\n");
         }
-
+        
         char *namespace_prefix = "";
         char *underscore = "";
         if(root->namespace_string)
@@ -1395,7 +1411,7 @@ _DataDeskFWriteGraphAsC(FILE *file, DataDeskNode *root, DataDeskCPrintContext *c
             namespace_prefix = root->namespace_string;
             underscore = "_";
         }
-
+        
         switch(root->type)
         {
             case DataDeskNodeType_Identifier:
