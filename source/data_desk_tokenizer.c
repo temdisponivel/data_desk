@@ -84,7 +84,7 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                 }
                 
                 // NOTE(rjf): Numeric block
-                else if(CharIsDigit(buffer[i]))
+                else if(CharIsDigit(buffer[i]) || (buffer[i] == '-' && CharIsDigit(buffer[i+1])))
                 {
                     for(j = i+1; buffer[j]; ++j)
                     {
