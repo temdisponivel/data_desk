@@ -66,6 +66,13 @@ struct ParseContext
 };
 
 static void
+ParseContextInitNamespaces(ParseContext *context)
+{
+    context->namespace_count = 1;
+    context->current_namespace = context->namespace_head = context->namespace_tail = &context->global_namespace;
+}
+
+static void
 ParseContextCleanUp(ParseContext *context)
 {
     MemoryArenaClear(&context->arena);
@@ -348,6 +355,11 @@ ParseContextAllocateNode(ParseContext *context, Tokenizer *tokenizer, Token toke
     node->line = tokenizer->line;
     node->string = token.string;
     node->string_length = token.string_length;
+    
+    if(context->namespace_count == 0){
+        ParseContextInitNamespaces(context);
+    }
+    
     node->namespace_index = context->current_namespace->index;
     
 	if(type == DataDeskNodeType_Identifier ||
@@ -914,7 +926,7 @@ ParseCode(ParseContext *context, Tokenizer *tokenizer)
     
     Token token = {0};
     
-    context->current_namespace = &context->global_namespace;
+    context->current_namespace = &context->global_namespace; // NOTE(mal): Revert back to global_namespace for each new file
     
     do
     {
@@ -925,6 +937,10 @@ ParseCode(ParseContext *context, Tokenizer *tokenizer)
             {
                 NamespaceNode *target_namespace = 0;
                 
+                if(context->namespace_count == 0){
+                    ParseContextInitNamespaces(context);
+                }
+                
                 for(NamespaceNode *node = context->namespace_head->next; node; node = node->next){
                     if(StringMatchCaseSensitiveN(node->name, namespace_token.string, namespace_token.string_length) &&
                        node->name[namespace_token.string_length] == 0)
@@ -932,7 +948,6 @@ ParseCode(ParseContext *context, Tokenizer *tokenizer)
                         target_namespace = node;
                         break;
                     }
-                    
                 }
                 
                 if(!target_namespace)
