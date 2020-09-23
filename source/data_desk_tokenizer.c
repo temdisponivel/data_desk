@@ -29,8 +29,15 @@ typedef struct Token Token;
 struct Token
 {
     int type;
+    
+    // NOTE(rjf): The actual string that anyone cares about.
     char *string;
     int string_length;
+    
+    // NOTE(rjf): The "entire string", for skipping the relevant memory of the token.
+    char *base;
+    int base_length;
+    
     int lines_traversed;
 };
 
@@ -81,6 +88,21 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                         }
                     }
                     token.type = Token_AlphanumericBlock;
+                }
+                
+                // NOTE(rjf): Arbitrary String Alphanumeric Block
+                else if(buffer[i] == '`')
+                {
+                    for(j = i+1; buffer[j]; ++j)
+                    {
+                        if(buffer[j] == '`')
+                        {
+                            break;
+                        }
+                    }
+                    token.type = Token_AlphanumericBlock;
+                    token.string = buffer + i + 1;
+                    token.string_length = j - i - 2;
                 }
                 
                 // NOTE(rjf): Numeric block
@@ -231,8 +253,16 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                 
                 if(j)
                 {
-                    token.string = buffer+i;
-                    token.string_length = j-i;
+                    token.base = buffer+i;
+                    token.base_length = j-i;
+                    
+                    // NOTE(rjf): If one of the tokenizing rules didn't set the string/length
+                    // manually, assume it is the same as the base.
+                    if(token.string == 0)
+                    {
+                        token.string = token.base;
+                        token.string_length = token.base_length;
+                    }
                     break;
                 }
             }
@@ -269,14 +299,14 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
     // for now. Ideally this calculation would happen as a token
     // is being processed, but I'm in a crunch so I'm not going
     // to care about performance right now.
-    if(token.string)
+    if(token.base)
     {
         token.lines_traversed = 0;
-        for(int i = (char *)tokenizer->at - (char *)token.string;
-            i < token.string_length;
+        for(int i = (char *)tokenizer->at - (char *)token.base;
+            i < token.base_length;
             ++i)
         {
-            if(token.string[i] == '\n')
+            if(token.base[i] == '\n')
             {
                 ++token.lines_traversed;
             }
@@ -297,7 +327,7 @@ static Token
 NextToken(Tokenizer *tokenizer)
 {
     Token token = GetNextTokenFromBuffer(tokenizer);
-    tokenizer->at = token.string + token.string_length;
+    tokenizer->at = token.base + token.base_length;
     tokenizer->line += token.lines_traversed;
     return token;
 }
@@ -317,7 +347,7 @@ RequireToken(Tokenizer *tokenizer, char *string, Token *token_ptr)
     Token token = GetNextTokenFromBuffer(tokenizer);
     if(TokenMatch(token, string))
     {
-        tokenizer->at = token.string + token.string_length;
+        tokenizer->at = token.base + token.base_length;
         tokenizer->line += token.lines_traversed;
         if(token_ptr)
         {
@@ -335,7 +365,7 @@ RequireTokenType(Tokenizer *tokenizer, int type, Token *token_ptr)
     Token token = GetNextTokenFromBuffer(tokenizer);
     if(type == token.type)
     {
-        tokenizer->at = token.string + token.string_length;
+        tokenizer->at = token.base + token.base_length;
         tokenizer->line += token.lines_traversed;
         if(token_ptr)
         {
