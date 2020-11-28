@@ -236,6 +236,11 @@ DD_FUNCTION void           DD_Parse_String(DD_ParseCtx *ctx, DD_String8 filename
 DD_FUNCTION void           DD_Parse_Tokenizer(DD_ParseCtx *ctx, DD_Tokenizer tokenizer);
 DD_FUNCTION DD_ParseResult DD_Parse_End(DD_ParseCtx *ctx);
 
+//~ Introspection Helpers
+DD_FUNCTION DD_Node *DD_TagOnNode(DD_Node *node, DD_String8 tag_string);
+DD_FUNCTION DD_b32   DD_NodeHasTag(DD_Node *node, DD_String8 tag_string);
+DD_FUNCTION DD_b32   DD_RequireTagArg(DD_Node *node, DD_String8 tag_string, int arg_index, DD_Node **arg_value_out);
+
 //~ Generation Functions
 DD_FUNCTION void DD_OutputTree(FILE *file, DD_Node *node);
 
