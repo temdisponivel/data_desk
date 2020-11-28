@@ -30,7 +30,13 @@ Generate(PageInfo *info, FILE *file, DD_Node *node)
             {
                 html_tag = "pre";
             }
-            DD_String8List strlist = DD_SplitStringByString(node->string, DD_S8Lit("\n\n"));
+            
+            DD_String8 splits[] =
+            {
+                DD_S8Lit("\n\n"),
+            };
+            DD_String8List strlist = DD_SplitString(node->string, sizeof(splits)/sizeof(splits[0]), splits);
+            
             for(DD_String8Node *node = strlist.first; node; node = node->next)
             {
                 fprintf(file, "<%s>", html_tag);
@@ -51,6 +57,17 @@ Generate(PageInfo *info, FILE *file, DD_Node *node)
                     fprintf(file, "</li>\n");
                 }
                 fprintf(file, "</ul>\n");
+            }
+            else if(DD_NodeHasTag(node, DD_S8Lit("img")))
+            {
+                DD_Node *src = 0;
+                DD_Node *alt = 0;
+                if(DD_RequireNodeChild(node, 0, &src))
+                {
+                    DD_RequireNodeChild(node, 0, &alt);
+                    fprintf(file, "<img src=\"%.*s\">\n", DD_StringExpand(node->string));
+                    fprintf(file, "</img>\n");
+                }
             }
         }break;
         

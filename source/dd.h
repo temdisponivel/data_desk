@@ -262,6 +262,7 @@ DD_FUNCTION DD_ParseResult DD_Parse_End(DD_ParseCtx *ctx);
 DD_FUNCTION DD_Node *DD_TagOnNode(DD_Node *node, DD_String8 tag_string);
 DD_FUNCTION DD_b32   DD_NodeHasTag(DD_Node *node, DD_String8 tag_string);
 DD_FUNCTION DD_b32   DD_RequireTagArg(DD_Node *node, DD_String8 tag_string, int arg_index, DD_Node **arg_value_out);
+DD_FUNCTION DD_b32   DD_RequireNodeChild(DD_Node *node, int child_index, DD_Node **child_value_out);
 
 //~ Generation Functions
 DD_FUNCTION void DD_OutputTree(FILE *file, DD_Node *node);

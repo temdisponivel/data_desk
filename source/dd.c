@@ -869,7 +869,30 @@ DD_RequireTagArg(DD_Node *node, DD_String8 tag_string, int arg_index, DD_Node **
         {
             *arg_value_out = found_arg;
         }
+        result = !!found_arg;
     }
+    return result;
+}
+
+DD_FUNCTION_IMPL DD_b32
+DD_RequireNodeChild(DD_Node *node, int child_index, DD_Node **child_value_out)
+{
+    DD_b32 result = 0;
+    DD_Node *found_child = 0;
+    int idx = 0;
+    for(DD_Node *child = node->children.first; child; child = child->next, idx += 1)
+    {
+        if(idx == child_index)
+        {
+            found_child = child;
+            break;
+        }
+    }
+    if(found_child && child_value_out)
+    {
+        *child_value_out = found_child;
+    }
+    result = !!found_child;
     return result;
 }
 
