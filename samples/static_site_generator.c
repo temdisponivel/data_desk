@@ -65,8 +65,17 @@ Generate(PageInfo *info, FILE *file, DD_Node *node)
                 if(DD_RequireNodeChild(node, 0, &src))
                 {
                     DD_RequireNodeChild(node, 0, &alt);
-                    fprintf(file, "<img src=\"%.*s\">\n", DD_StringExpand(node->string));
+                    fprintf(file, "<img src=\"%.*s\">\n", DD_StringExpand(src->string));
                     fprintf(file, "</img>\n");
+                }
+            }
+            else if(DD_NodeHasTag(node, DD_S8Lit("youtube")))
+            {
+                DD_Node *id = 0;
+                if(DD_RequireNodeChild(node, 0, &id))
+                {
+                    fprintf(file, "<iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/%.*s\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen></iframe>\n",
+                            DD_StringExpand(id->string));
                 }
             }
         }break;
