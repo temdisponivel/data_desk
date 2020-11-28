@@ -1,8 +1,9 @@
 version(1);
 
-project_name = "Data Desk";
+project_name = "DD";
 
-patterns = {
+patterns =
+{
 	"*.c",
 	"*.cpp",
 	"*.ds",
@@ -10,42 +11,34 @@ patterns = {
 	"*.bat",
 	"*.sh",
 	"*.4coder",
+	"*.txt",
 };
 
-blacklist_patterns = {
+blacklist_patterns =
+{
 	".*",
 };
 
-load_paths = {
+load_paths =
+{
 	{
 		{ {"."}, .recursive = true, .relative = true }, .os = "win"
 	},
 };
 
-command_list = {
+command_list =
+{
 	{
 		.name = "build",
 		.out = "*compilation*",
 		.footer_panel = true,
 		.save_dirty_files = true,
 		.cursor_at_end = false,
-		.cmd = {
-			{ "build_msvc.bat", .os = "win" },
+		.cmd =
+		{
+			{ "build.bat", .os = "win" },
 		},
 	},
-	
-	{
-		.name = "docs_gen",
-		.out = "*compilation*",
-		.footer_panel = true,
-		.save_dirty_files = true,
-		.cursor_at_end = false,
-		.cmd = {
-			{ "generate_docs.bat", .os = "win" },
-		},
-	},
-
 };
 
 fkey_command[1] = "build";
-fkey_command[2] = "docs_gen";
