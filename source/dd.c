@@ -148,7 +148,99 @@ DD_PushStringF(char *fmt, ...)
     return result;
 }
 
-DD_FUNCTION DD_Token
+DD_FUNCTION_IMPL void
+DD_PushStringToList(DD_String8List *list, DD_String8 string)
+{
+    DD_String8Node *node = calloc(1, sizeof(*node));
+    node->next = 0;
+    node->string = string;
+    if(list->last == 0)
+    {
+        list->first = list->last = node;
+    }
+    else
+    {
+        list->last->next = node;
+        list->last = list->last->next;
+    }
+}
+
+DD_FUNCTION_IMPL void
+DD_PushStringListToList(DD_String8List *list, DD_String8List to_push)
+{
+    if(to_push.first)
+    {
+        if(list->last == 0)
+        {
+            *list = to_push;
+        }
+        else
+        {
+            list->last->next = to_push.first;
+            list->last = to_push.last;
+        }
+    }
+}
+
+DD_FUNCTION_IMPL DD_String8List
+DD_SplitString(DD_String8 string, int split_count, DD_String8 *splits)
+{
+    DD_String8List list = {0};
+    
+    DD_u64 split_start = 0;
+    for(DD_u64 i = 0; i < string.size; i += 1)
+    {
+        DD_b32 was_split = 0;
+        for(int split_idx = 0; split_idx < split_count; split_idx += 1)
+        {
+            DD_b32 match = 0;
+            if(i + splits[split_idx].size <= string.size)
+            {
+                match = 1;
+                for(DD_u64 split_i = 0; split_i < splits[split_idx].size && i + split_i < string.size; split_i += 1)
+                {
+                    if(splits[split_idx].str[split_i] != string.str[i + split_i])
+                    {
+                        match = 0;
+                        break;
+                    }
+                }
+            }
+            if(match)
+            {
+                DD_String8 split_string = DD_S8(string.str + split_start, i - split_start);
+                DD_PushStringToList(&list, split_string);
+                split_start = i + splits[split_idx].size;
+                i += splits[split_idx].size - 1;
+                was_split = 1;
+                break;
+            }
+        }
+        
+        if(was_split == 0 && i == string.size - 1)
+        {
+            DD_String8 split_string = DD_S8(string.str + split_start, i+1 - split_start);
+            DD_PushStringToList(&list, split_string);
+            break;
+        }
+    }
+    
+    return list;
+}
+
+DD_FUNCTION_IMPL DD_String8List
+DD_SplitStringByString(DD_String8 string, DD_String8 split)
+{
+    return DD_SplitString(string, 1, &split);
+}
+
+DD_FUNCTION_IMPL DD_String8List
+DD_SplitStringByCharacter(DD_String8 string, DD_u8 character)
+{
+    return DD_SplitStringByString(string, DD_S8(&character, 1));
+}
+
+DD_FUNCTION_IMPL DD_Token
 DD_TokenZero(void)
 {
     DD_Token token = {0};

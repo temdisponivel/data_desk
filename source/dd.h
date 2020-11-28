@@ -29,12 +29,27 @@ typedef int16_t  DD_b16;
 typedef int32_t  DD_b32;
 typedef int64_t  DD_b64;
 
-//~ Basic UTF-8 string type.
+//~ Basic UTF-8 string types.
+
 typedef struct DD_String8 DD_String8;
 struct DD_String8
 {
     DD_u8 *str;
     DD_u64 size;
+};
+
+typedef struct DD_String8Node DD_String8Node;
+struct DD_String8Node
+{
+    DD_String8Node *next;
+    DD_String8 string;
+};
+
+typedef struct DD_String8List DD_String8List;
+struct DD_String8List
+{
+    DD_String8Node *first;
+    DD_String8Node *last;
 };
 
 //~ Node kinds that comprise the language.
@@ -200,15 +215,20 @@ DD_FUNCTION DD_u8  DD_CharToLower(DD_u8 c);
 
 //~ String Functions
 DD_FUNCTION DD_String8     DD_S8(DD_u8 *str, DD_u64 size);
+#define DD_S8CString(s)    DD_S8((DD_u8 *)(s), strlen(s))
+#define DD_S8Lit(s)        DD_S8((DD_u8 *)(s), strlen(s))
 DD_FUNCTION DD_b32         DD_StringMatch(DD_String8 a, DD_String8 b);
 DD_FUNCTION DD_b32         DD_StringMatchCaseInsensitive(DD_String8 a, DD_String8 b);
 DD_FUNCTION DD_String8     DD_ExtensionString(DD_String8 string);
 DD_FUNCTION char *         DD_CStringFromString8(DD_String8 string);
 DD_FUNCTION DD_String8     DD_PushStringFV(char *fmt, va_list args);
 DD_FUNCTION DD_String8     DD_PushStringF(char *fmt, ...);
-#define DD_S8CString(s)    DD_S8((DD_u8 *)(s), strlen(s))
-#define DD_S8Lit(s)        DD_S8((DD_u8 *)(s), strlen(s))
 #define DD_StringExpand(s) (int)(s).size, (s).str
+DD_FUNCTION void           DD_PushStringToList(DD_String8List *list, DD_String8 string);
+DD_FUNCTION void           DD_PushStringListToList(DD_String8List *list, DD_String8List to_push);
+DD_FUNCTION DD_String8List DD_SplitString(DD_String8 string, int split_count, DD_String8 *splits);
+DD_FUNCTION DD_String8List DD_SplitStringByString(DD_String8 string, DD_String8 split);
+DD_FUNCTION DD_String8List DD_SplitStringByCharacter(DD_String8 string, DD_u8 character);
 
 //~ Tokenization Functions
 DD_FUNCTION DD_Token     DD_TokenZero(void);

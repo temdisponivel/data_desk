@@ -30,32 +30,11 @@ Generate(PageInfo *info, FILE *file, DD_Node *node)
             {
                 html_tag = "pre";
             }
-            
-            for(DD_u64 start_string = 0; start_string < node->string.size;)
+            DD_String8List strlist = DD_SplitStringByString(node->string, DD_S8Lit("\n\n"));
+            for(DD_String8Node *node = strlist.first; node; node = node->next)
             {
-                DD_String8 string = {0};
-                for(DD_u64 i = start_string; i < node->string.size; i += 1)
-                {
-                    if(i+1 < node->string.size && node->string.str[i] == '\n' && node->string.str[i+1] == '\n')
-                    {
-                        string.str = node->string.str + start_string;
-                        string.size = i - start_string;
-                        break;
-                    }
-                    else if(i == node->string.size - 1)
-                    {
-                        string.str = node->string.str + start_string;
-                        string.size = i - start_string + 1;
-                        break;
-                    }
-                }
-                start_string += string.size + 2;
-                if(string.size == 0)
-                {
-                    break;
-                }
                 fprintf(file, "<%s>", html_tag);
-                fprintf(file, "%.*s", DD_StringExpand(string));
+                fprintf(file, "%.*s", DD_StringExpand(node->string));
                 fprintf(file, "</%s>\n", html_tag);
             }
         }break;
