@@ -229,6 +229,8 @@ DD_FUNCTION void           DD_PushStringListToList(DD_String8List *list, DD_Stri
 DD_FUNCTION DD_String8List DD_SplitString(DD_String8 string, int split_count, DD_String8 *splits);
 DD_FUNCTION DD_String8List DD_SplitStringByString(DD_String8 string, DD_String8 split);
 DD_FUNCTION DD_String8List DD_SplitStringByCharacter(DD_String8 string, DD_u8 character);
+DD_FUNCTION int            DD_IntFromString(DD_String8 string);
+DD_FUNCTION float          DD_FloatFromString(DD_String8 string);
 
 //~ Tokenization Functions
 DD_FUNCTION DD_Token     DD_TokenZero(void);

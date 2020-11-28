@@ -82,7 +82,7 @@ int main(int argument_count, char **arguments)
                     }
                     else if(DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("date")))
                     {
-                        info.date = node->children.first;
+                        info.date = node;
                     }
                 }
             }
@@ -107,6 +107,43 @@ int main(int argument_count, char **arguments)
             if(info.desc)
             {
                 fprintf(file, "<h2>%.*s</h2>", DD_StringExpand(info.desc->string));
+            }
+            if(info.date)
+            {
+                DD_Node *year = 0;
+                DD_Node *month = 0;
+                DD_Node *day = 0;
+                
+                for(DD_Node *child = info.date->children.first; child; child = child->next)
+                {
+                    if(child->kind == DD_NodeKind_NumericLiteral)
+                    {
+                        if      (year  == 0) year  = child;
+                        else if (month == 0) month = child;
+                        else if (day   == 0) day   = child;
+                        else
+                        {
+                            break;
+                        }
+                    }
+                }
+                
+                if(year && month && day)
+                {
+                    char *month_names[] =
+                    {
+                        "January", "February", "March", "April", "May", "June", "July", "August",
+                        "September", "October", "November", "December",
+                    };
+                    int month_idx = DD_IntFromString(month->string)-1;
+                    if(month_idx >= 0 && month_idx < sizeof(month_names)/sizeof(month_names[0]))
+                    {
+                        fprintf(file, "<h3>%.*s %s %.*s</h3>",
+                                DD_StringExpand(day->string),
+                                month_names[month_idx],
+                                DD_StringExpand(year->string));
+                    }
+                }
             }
             for(DD_Node *node = parse.root; node; node = node->next)
             {

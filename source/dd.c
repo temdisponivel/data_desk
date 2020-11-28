@@ -240,6 +240,20 @@ DD_SplitStringByCharacter(DD_String8 string, DD_u8 character)
     return DD_SplitStringByString(string, DD_S8(&character, 1));
 }
 
+DD_FUNCTION_IMPL int
+DD_IntFromString(DD_String8 string)
+{
+    char *str = DD_CStringFromString8(string);
+    return atoi(str);
+}
+
+DD_FUNCTION_IMPL float
+DD_FloatFromString(DD_String8 string)
+{
+    char *str = DD_CStringFromString8(string);
+    return atof(str);
+}
+
 DD_FUNCTION_IMPL DD_Token
 DD_TokenZero(void)
 {
@@ -377,7 +391,7 @@ DD_Tokenizer_Peek(DD_Tokenizer *tokenizer)
                 token.string.str = tokenizer->at + i + 1;
                 token.string.size = j - (i + 1);
                 token.outer_string.str = tokenizer->at + i;
-                token.outer_string.size = (j - i) + 2;
+                token.outer_string.size = (j - i) + 1;
                 break;
             }
             
@@ -389,7 +403,7 @@ DD_Tokenizer_Peek(DD_Tokenizer *tokenizer)
                 token.string.str = tokenizer->at + i + 1;
                 token.string.size = j - (i + 1);
                 token.outer_string.str = tokenizer->at + i;
-                token.outer_string.size = (j - i) + 2;
+                token.outer_string.size = (j - i) + 1;
                 break;
             }
             
