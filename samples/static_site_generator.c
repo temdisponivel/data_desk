@@ -78,6 +78,12 @@ Generate(PageInfo *info, FILE *file, DD_Node *node)
                             DD_StringExpand(id->string));
                 }
             }
+            else if(DD_NodeHasTag(node, DD_S8Lit("lister")))
+            {
+                fprintf(file, "<ul>\n");
+                
+                fprintf(file, "</ul>\n");
+            }
         }break;
         
         default: break;
@@ -171,7 +177,7 @@ int main(int argument_count, char **arguments)
                     }
                 }
             }
-            for(DD_Node *node = parse.root; node; node = node->next)
+            for(DD_Node *node = parse.root->children.first; node; node = node->next)
             {
                 Generate(&info, file, node);
             }

@@ -29,7 +29,7 @@ int main(int argument_count, char **arguments)
     
     // NOTE(rjf): Call "custom layer" back.
     Initialize();
-    for(DD_Node *node = result.root; node; node = node->next)
+    for(DD_Node *node = result.root->children.first; node; node = node->next)
     {
         TopLevel(node);
     }

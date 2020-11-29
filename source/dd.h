@@ -99,7 +99,32 @@ struct DD_Node
     DD_u64 line;
 };
 
+//~ String-To-Node table
+
+typedef enum DD_NodeTableCollisionRule
+{
+    DD_NodeTableCollisionRule_Chain,
+    DD_NodeTableCollisionRule_Overwrite,
+}
+DD_NodeTableCollisionRule;
+
+typedef struct DD_NodeTableSlot DD_NodeTableSlot;
+struct DD_NodeTableSlot
+{
+    DD_NodeTableSlot *next;
+    DD_u64 hash;
+    DD_Node *node;
+};
+
+typedef struct DD_NodeTable DD_NodeTable;
+struct DD_NodeTable
+{
+    DD_u64 table_size;
+    DD_NodeTableSlot **table;
+};
+
 //~ Token kinds.
+
 typedef enum DD_TokenKind
 {
     DD_TokenKind_Null,
@@ -169,7 +194,7 @@ struct DD_Error
 typedef struct DD_ParseCtx DD_ParseCtx;
 struct DD_ParseCtx
 {
-    DD_NodeList roots;
+    DD_Node *root;
     DD_Error *first_error;
     DD_Error *last_error;
 };
@@ -231,6 +256,11 @@ DD_FUNCTION DD_String8List DD_SplitStringByString(DD_String8 string, DD_String8 
 DD_FUNCTION DD_String8List DD_SplitStringByCharacter(DD_String8 string, DD_u8 character);
 DD_FUNCTION int            DD_IntFromString(DD_String8 string);
 DD_FUNCTION float          DD_FloatFromString(DD_String8 string);
+DD_FUNCTION DD_u64         DD_HashString(DD_String8 string);
+
+//~ String-To-Node-List Table
+DD_FUNCTION DD_NodeTableSlot *DD_NodeTable_Lookup(DD_NodeTable *table, DD_String8 string);
+DD_FUNCTION DD_b32            DD_NodeTable_Insert(DD_NodeTable *table, DD_NodeTableCollisionRule collision_rule, DD_String8 string, DD_Node *node);
 
 //~ Tokenization Functions
 DD_FUNCTION DD_Token     DD_TokenZero(void);

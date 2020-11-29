@@ -254,6 +254,83 @@ DD_FloatFromString(DD_String8 string)
     return atof(str);
 }
 
+DD_FUNCTION_IMPL DD_u64
+DD_HashString(DD_String8 string)
+{
+    DD_u64 result = 5381;
+    for(DD_u64 i = 0; i < string.size; i += 1)
+    {
+        result = ((result << 5) + result) + string.str[i];
+    }
+    return result;
+}
+
+DD_PRIVATE_FUNCTION_IMPL void
+_DD_NodeTable_Initialize(DD_NodeTable *table)
+{
+    if(table->table_size == 0)
+    {
+        table->table_size = 4096;
+        table->table = calloc(1, sizeof(DD_NodeTableSlot *));
+    }
+}
+
+DD_FUNCTION_IMPL DD_NodeTableSlot *
+DD_NodeTable_Lookup(DD_NodeTable *table, DD_String8 string)
+{
+    _DD_NodeTable_Initialize(table);
+    
+    DD_NodeTableSlot *slot = 0;
+    DD_u64 hash = DD_HashString(string);
+    DD_u64 index = hash % table->table_size;
+    for(DD_NodeTableSlot *candidate = table->table[index]; candidate; candidate = candidate->next)
+    {
+        if(candidate->hash == hash)
+        {
+            slot = candidate;
+            break;
+        }
+    }
+    return slot;
+}
+
+DD_FUNCTION_IMPL DD_b32
+DD_NodeTable_Insert(DD_NodeTable *table, DD_NodeTableCollisionRule collision_rule, DD_String8 string, DD_Node *node)
+{
+    _DD_NodeTable_Initialize(table);
+    
+    DD_NodeTableSlot *slot = 0;
+    DD_u64 hash = DD_HashString(string);
+    DD_u64 index = hash % table->table_size;
+    
+    for(DD_NodeTableSlot *candidate = table->table[index]; candidate; candidate = candidate->next)
+    {
+        if(candidate->hash == hash)
+        {
+            slot = candidate;
+            break;
+        }
+    }
+    
+    if(slot == 0 || (slot != 0 && collision_rule == DD_NodeTableCollisionRule_Chain))
+    {
+        slot = calloc(1, sizeof(*slot));
+        if(slot)
+        {
+            slot->next = table->table[index];
+            table->table[index] = slot;
+        }
+    }
+    
+    if(slot)
+    {
+        slot->node = node;
+        slot->hash = hash;
+    }
+    
+    return !!slot;
+}
+
 DD_FUNCTION_IMPL DD_Token
 DD_TokenZero(void)
 {
@@ -804,6 +881,7 @@ _DD_ParseTagList(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer)
 DD_FUNCTION_IMPL void
 DD_Parse_Tokenizer(DD_ParseCtx *ctx, DD_Tokenizer tokenizer)
 {
+    ctx->root = DD_MakeNode(DD_NodeKind_Set, DD_S8Lit("GlobalRoot"), 0, DD_TokenZero());
     for(;;)
     {
         DD_Node *node = _DD_Parse(ctx, &tokenizer);
@@ -811,7 +889,7 @@ DD_Parse_Tokenizer(DD_ParseCtx *ctx, DD_Tokenizer tokenizer)
         {
             break;
         }
-        DD_PushNodeToList(&ctx->roots, 0, node);
+        DD_PushNodeToList(&ctx->root->children, ctx->root, node);
     }
 }
 
@@ -819,7 +897,7 @@ DD_FUNCTION_IMPL DD_ParseResult
 DD_Parse_End(DD_ParseCtx *ctx)
 {
     DD_ParseResult result = {0};
-    result.root = ctx->roots.first;
+    result.root = ctx->root;
     result.first_error = ctx->first_error;
     return result;
 }

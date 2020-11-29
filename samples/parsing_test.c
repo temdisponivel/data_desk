@@ -13,7 +13,7 @@ int main(int argument_count, char **arguments)
     DD_ParseResult result = DD_Parse_End(&ctx);
     
     // NOTE(rjf): Print out parsed results.
-    for(DD_Node *node = result.root; node; node = node->next)
+    for(DD_Node *node = result.root->children.first; node; node = node->next)
     {
         DD_OutputTree(stdout, node);
     }
