@@ -10,7 +10,7 @@ struct PageInfo
 };
 
 static void
-Generate(PageInfo *info, FILE *file, DD_Node *node)
+Generate(DD_NodeTable *index_table, PageInfo *info, FILE *file, DD_Node *node)
 {
     switch(node->kind)
     {
@@ -52,9 +52,15 @@ Generate(PageInfo *info, FILE *file, DD_Node *node)
                 fprintf(file, "<ul>\n");
                 for(DD_Node *child = node->children.first; child; child = child->next)
                 {
-                    fprintf(file, "<li>\n");
-                    Generate(info, file, child);
-                    fprintf(file, "</li>\n");
+                    if(child->children.first == 0)
+                    {
+                        fprintf(file, "<li>\n");
+                    }
+                    Generate(index_table, info, file, child);
+                    if(child->children.first == 0)
+                    {
+                        fprintf(file, "</li>\n");
+                    }
                 }
                 fprintf(file, "</ul>\n");
             }
@@ -81,7 +87,20 @@ Generate(PageInfo *info, FILE *file, DD_Node *node)
             else if(DD_NodeHasTag(node, DD_S8Lit("lister")))
             {
                 fprintf(file, "<ul>\n");
-                
+                DD_Node *index_string = 0;
+                for(DD_u64 idx = 0; DD_RequireNodeChild(node, idx, &index_string); idx += 1)
+                {
+                    for(DD_NodeTableSlot *slot = DD_NodeTable_Lookup(index_table, index_string->string);
+                        slot; slot = slot->next)
+                    {
+                        if(slot->node)
+                        {
+                            fprintf(file, "<li>");
+                            fprintf(file, "<a href=\"#\">%.*s</a>", DD_StringExpand(slot->node->file));
+                            fprintf(file, "</li>");
+                        }
+                    }
+                }
                 fprintf(file, "</ul>\n");
             }
         }break;
@@ -92,35 +111,58 @@ Generate(PageInfo *info, FILE *file, DD_Node *node)
 
 int main(int argument_count, char **arguments)
 {
+    //~ NOTE(rjf): Do parse.
+    DD_ParseCtx ctx = DD_Parse_Begin();
     for(int i = 1; i < argument_count; i += 1)
     {
-        DD_ParseCtx ctx = DD_Parse_Begin();
         DD_Parse_Filename(&ctx, DD_S8CString(arguments[i]));
-        DD_ParseResult parse = DD_Parse_End(&ctx);
-        
-        PageInfo info = {0};
+    }
+    DD_ParseResult parse = DD_Parse_End(&ctx);
+    
+    //~ NOTE(rjf): Generate index table.
+    DD_NodeTable index_table = {0};
+    for(DD_Node *root = parse.roots.first; root; root = root->next)
+    {
+        for(DD_Node *node = root->children.first; node; node = node->next)
         {
-            for(DD_Node *node = parse.root; node; node = node->next)
+            if(node->kind == DD_NodeKind_Set && node->children.first &&
+               DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("index")))
             {
-                if(node->kind == DD_NodeKind_Set && node->children.first)
+                for(DD_Node *index_string = node->children.first; index_string; index_string = index_string->next)
                 {
-                    if(DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("title")))
-                    {
-                        info.title = node->children.first;
-                    }
-                    else if(DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("desc")))
-                    {
-                        info.desc = node->children.first;
-                    }
-                    else if(DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("date")))
-                    {
-                        info.date = node;
-                    }
+                    DD_NodeTable_Insert(&index_table, DD_NodeTableCollisionRule_Chain, index_string->string, root);
+                }
+                goto end_index_build;
+            }
+        }
+        end_index_build:;
+    }
+    
+    //~ NOTE(rjf): Generate files for all roots.
+    for(DD_Node *root = parse.roots.first; root; root = root->next)
+    {
+        PageInfo info = {0};
+        for(DD_Node *node = root->children.first; node; node = node->next)
+        {
+            if(node->kind == DD_NodeKind_Set && node->children.first)
+            {
+                if(DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("title")))
+                {
+                    info.title = node->children.first;
+                }
+                else if(DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("desc")))
+                {
+                    info.desc = node->children.first;
+                }
+                else if(DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("date")))
+                {
+                    info.date = node;
                 }
             }
         }
         
-        FILE *file = fopen("generated.html", "w");
+        DD_String8 name_without_extension = DD_WithoutExtension(root->file);
+        FILE *file = fopen(DD_PushCStringF("%.*s.html", DD_StringExpand(name_without_extension)), "w");
         if(file)
         {
             fprintf(file, "<!DOCTYPE html>\n");
@@ -177,14 +219,16 @@ int main(int argument_count, char **arguments)
                     }
                 }
             }
-            for(DD_Node *node = parse.root->children.first; node; node = node->next)
+            
+            for(DD_Node *node = root->children.first; node; node = node->next)
             {
-                Generate(&info, file, node);
+                Generate(&index_table, &info, file, node);
             }
             fprintf(file, "</body>\n");
             fprintf(file, "</html>\n");
             fclose(file);
         }
     }
+    
     return 0;
 }

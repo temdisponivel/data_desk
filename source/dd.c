@@ -98,7 +98,22 @@ DD_StringMatchCaseInsensitive(DD_String8 a, DD_String8 b)
     return result;
 }
 
-DD_FUNCTION DD_String8
+DD_FUNCTION_IMPL DD_String8
+DD_WithoutExtension(DD_String8 string)
+{
+    DD_u64 new_size = string.size;
+    for(DD_u64 i = 0; i < string.size; i += 1)
+    {
+        if(string.str[i] == '.')
+        {
+            new_size = i;
+        }
+    }
+    string.size = new_size;
+    return string;
+}
+
+DD_FUNCTION_IMPL DD_String8
 DD_ExtensionString(DD_String8 string)
 {
     DD_String8 ext = string;
@@ -144,6 +159,29 @@ DD_PushStringF(char *fmt, ...)
     va_list args;
     va_start(args, fmt);
     result = DD_PushStringFV(fmt, args);
+    va_end(args);
+    return result;
+}
+
+DD_FUNCTION_IMPL char *
+DD_PushCStringFV(char *fmt, va_list args)
+{
+    char *result = 0;
+    va_list args2;
+    va_copy(args2, args);
+    DD_u64 needed_bytes = vsnprintf(0, 0, fmt, args)+1;
+    result = calloc(needed_bytes, 1);
+    vsnprintf(result, needed_bytes, fmt, args2);
+    return result;
+}
+
+DD_FUNCTION_IMPL char *
+DD_PushCStringF(char *fmt, ...)
+{
+    char *result = 0;
+    va_list args;
+    va_start(args, fmt);
+    result = DD_PushCStringFV(fmt, args);
     va_end(args);
     return result;
 }
@@ -271,7 +309,7 @@ _DD_NodeTable_Initialize(DD_NodeTable *table)
     if(table->table_size == 0)
     {
         table->table_size = 4096;
-        table->table = calloc(1, sizeof(DD_NodeTableSlot *));
+        table->table = calloc(table->table_size, sizeof(DD_NodeTableSlot *));
     }
 }
 
@@ -881,7 +919,8 @@ _DD_ParseTagList(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer)
 DD_FUNCTION_IMPL void
 DD_Parse_Tokenizer(DD_ParseCtx *ctx, DD_Tokenizer tokenizer)
 {
-    ctx->root = DD_MakeNode(DD_NodeKind_Set, tokenizer.filename, 1, DD_TokenZero());
+    DD_Node *root = DD_MakeNode(DD_NodeKind_Set, tokenizer.filename, 1, DD_TokenZero());
+    DD_PushNodeToList(&ctx->roots, 0, root);
     for(;;)
     {
         DD_Node *node = _DD_Parse(ctx, &tokenizer);
@@ -889,7 +928,7 @@ DD_Parse_Tokenizer(DD_ParseCtx *ctx, DD_Tokenizer tokenizer)
         {
             break;
         }
-        DD_PushNodeToList(&ctx->root->children, ctx->root, node);
+        DD_PushNodeToList(&root->children, root, node);
     }
 }
 
@@ -897,7 +936,7 @@ DD_FUNCTION_IMPL DD_ParseResult
 DD_Parse_End(DD_ParseCtx *ctx)
 {
     DD_ParseResult result = {0};
-    result.root = ctx->root;
+    result.roots = ctx->roots;
     result.first_error = ctx->first_error;
     return result;
 }

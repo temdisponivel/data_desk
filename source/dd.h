@@ -194,7 +194,7 @@ struct DD_Error
 typedef struct DD_ParseCtx DD_ParseCtx;
 struct DD_ParseCtx
 {
-    DD_Node *root;
+    DD_NodeList roots;
     DD_Error *first_error;
     DD_Error *last_error;
 };
@@ -203,7 +203,7 @@ struct DD_ParseCtx
 typedef struct DD_ParseResult DD_ParseResult;
 struct DD_ParseResult
 {
-    DD_Node *root;
+    DD_NodeList roots;
     DD_Error *first_error;
 };
 
@@ -244,10 +244,13 @@ DD_FUNCTION DD_String8     DD_S8(DD_u8 *str, DD_u64 size);
 #define DD_S8Lit(s)        DD_S8((DD_u8 *)(s), strlen(s))
 DD_FUNCTION DD_b32         DD_StringMatch(DD_String8 a, DD_String8 b);
 DD_FUNCTION DD_b32         DD_StringMatchCaseInsensitive(DD_String8 a, DD_String8 b);
+DD_FUNCTION DD_String8     DD_WithoutExtension(DD_String8 string);
 DD_FUNCTION DD_String8     DD_ExtensionString(DD_String8 string);
 DD_FUNCTION char *         DD_CStringFromString8(DD_String8 string);
 DD_FUNCTION DD_String8     DD_PushStringFV(char *fmt, va_list args);
 DD_FUNCTION DD_String8     DD_PushStringF(char *fmt, ...);
+DD_FUNCTION char *         DD_PushCStringFV(char *fmt, va_list args);
+DD_FUNCTION char *         DD_PushCStringF(char *fmt, ...);
 #define DD_StringExpand(s) (int)(s).size, (s).str
 DD_FUNCTION void           DD_PushStringToList(DD_String8List *list, DD_String8 string);
 DD_FUNCTION void           DD_PushStringListToList(DD_String8List *list, DD_String8List to_push);
