@@ -207,6 +207,14 @@ struct DD_ParseResult
     DD_Error *first_error;
 };
 
+//~ Command line parsing helper types.
+typedef struct DD_CommandLine DD_CommandLine;
+struct DD_CommandLine
+{
+    DD_String8 *arguments;
+    int argument_count;
+};
+
 //~ File system access types.
 
 typedef DD_u32 DD_FileFlags;
@@ -242,9 +250,12 @@ DD_FUNCTION DD_u8  DD_CharToLower(DD_u8 c);
 DD_FUNCTION DD_String8     DD_S8(DD_u8 *str, DD_u64 size);
 #define DD_S8CString(s)    DD_S8((DD_u8 *)(s), strlen(s))
 #define DD_S8Lit(s)        DD_S8((DD_u8 *)(s), strlen(s))
+#define DD_ZeroString()    DD_S8(0, 0)
+DD_FUNCTION DD_b32         DD_StringIsZero(DD_String8 str);
 DD_FUNCTION DD_b32         DD_StringMatch(DD_String8 a, DD_String8 b);
 DD_FUNCTION DD_b32         DD_StringMatchCaseInsensitive(DD_String8 a, DD_String8 b);
 DD_FUNCTION DD_String8     DD_WithoutExtension(DD_String8 string);
+DD_FUNCTION DD_String8     DD_WithoutFolder(DD_String8 string);
 DD_FUNCTION DD_String8     DD_ExtensionString(DD_String8 string);
 DD_FUNCTION char *         DD_CStringFromString8(DD_String8 string);
 DD_FUNCTION DD_String8     DD_PushStringFV(char *fmt, va_list args);
@@ -299,6 +310,15 @@ DD_FUNCTION DD_b32   DD_RequireNodeChild(DD_Node *node, int child_index, DD_Node
 
 //~ Generation Functions
 DD_FUNCTION void DD_OutputTree(FILE *file, DD_Node *node);
+
+//~ Command Line Argument Helper Functions
+DD_FUNCTION DD_CommandLine DD_CommandLine_Start(int argument_count, char **arguments);
+DD_FUNCTION DD_b32         DD_CommandLine_Flag(DD_CommandLine *cmdln, DD_String8 string);
+DD_FUNCTION DD_b32         DD_CommandLine_FlagStrings(DD_CommandLine *cmdln, DD_String8 string, int out_count, DD_String8 *out);
+DD_FUNCTION DD_b32         DD_CommandLine_FlagIntegers(DD_CommandLine *cmdln, DD_String8 string, int out_count, DD_i64 *out);
+DD_FUNCTION DD_b32         DD_CommandLine_FlagString(DD_CommandLine *cmdln, DD_String8 string, DD_String8 *out);
+DD_FUNCTION DD_b32         DD_CommandLine_FlagInteger(DD_CommandLine *cmdln, DD_String8 string, DD_i64 *out);
+DD_FUNCTION DD_b32         DD_CommandLine_Increment(DD_CommandLine *cmdln, DD_String8 **string_ptr);
 
 //~ File System Functions
 DD_FUNCTION DD_String8  DD_LoadEntireFile(DD_String8 filename);

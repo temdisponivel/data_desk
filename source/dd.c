@@ -61,6 +61,12 @@ DD_S8(DD_u8 *str, DD_u64 size)
 }
 
 DD_FUNCTION_IMPL DD_b32
+DD_StringIsZero(DD_String8 str)
+{
+    return str.str == 0 || str.size == 0;
+}
+
+DD_FUNCTION_IMPL DD_b32
 DD_StringMatch(DD_String8 a, DD_String8 b)
 {
     int result = 0;
@@ -114,6 +120,21 @@ DD_WithoutExtension(DD_String8 string)
 }
 
 DD_FUNCTION_IMPL DD_String8
+DD_WithoutFolder(DD_String8 string)
+{
+    DD_String8 new_string = string;
+    for(DD_u64 i = 0; i < string.size; i += 1)
+    {
+        if(string.str[i] == '/' || string.str[i] == '\\')
+        {
+            new_string.str = string.str + i + 1;
+            new_string.size = string.size - (i + 1);
+        }
+    }
+    return new_string;
+}
+
+DD_FUNCTION_IMPL DD_String8
 DD_ExtensionString(DD_String8 string)
 {
     DD_String8 ext = string;
@@ -147,8 +168,8 @@ DD_PushStringFV(char *fmt, va_list args)
     va_copy(args2, args);
     DD_u64 needed_bytes = vsnprintf(0, 0, fmt, args)+1;
     result.str = calloc(needed_bytes, 1);
-    result.size = needed_bytes - 1;
-    vsnprintf(result.str, result.size, fmt, args2);
+    result.size = needed_bytes-1;
+    vsnprintf(result.str, needed_bytes, fmt, args2);
     return result;
 }
 
@@ -1050,6 +1071,134 @@ DD_OutputTree(FILE *file, DD_Node *node)
     {
         fprintf(file, " ");
     }
+}
+
+DD_FUNCTION_IMPL DD_CommandLine
+DD_CommandLine_Start(int argument_count, char **arguments)
+{
+    DD_CommandLine cmdln = {0};
+    cmdln.arguments = calloc(sizeof(DD_String8), argument_count-1);
+    for(int i = 1; i < argument_count; i += 1)
+    {
+        cmdln.arguments[i-1] = DD_PushStringF("%s", arguments[i]);
+    }
+    cmdln.argument_count = argument_count-1;
+    return cmdln;
+}
+
+DD_FUNCTION_IMPL DD_b32
+DD_CommandLine_Flag(DD_CommandLine *cmdln, DD_String8 string)
+{
+    DD_b32 result = 0;
+    for(int i = 0; i < cmdln->argument_count; i += 1)
+    {
+        if(DD_StringMatch(string, cmdln->arguments[i]))
+        {
+            result = 1;
+            cmdln->arguments[i].str = 0;
+            cmdln->arguments[i].size = 0;
+            break;
+        }
+    }
+    return result;
+}
+
+DD_FUNCTION_IMPL DD_b32
+DD_CommandLine_FlagStrings(DD_CommandLine *cmdln, DD_String8 string, int out_count, DD_String8 *out)
+{
+    DD_b32 result = 0;
+    for(int i = 0; i < cmdln->argument_count; i += 1)
+    {
+        if(DD_StringMatch(string, cmdln->arguments[i]))
+        {
+            cmdln->arguments[i].str = 0;
+            cmdln->arguments[i].size = 0;
+            if(cmdln->argument_count > i + out_count)
+            {
+                for(int out_idx = 0; out_idx < out_count; out_idx += 1)
+                {
+                    out[out_idx] = cmdln->arguments[i+out_idx+1];
+                    cmdln->arguments[i+out_idx+1].str = 0;
+                    cmdln->arguments[i+out_idx+1].size = 0;
+                }
+                result = 1;
+                break;
+            }
+        }
+    }
+    return result;
+}
+
+DD_FUNCTION_IMPL DD_b32
+DD_CommandLine_FlagIntegers(DD_CommandLine *cmdln, DD_String8 string, int out_count, DD_i64 *out)
+{
+    DD_b32 result = 0;
+    for(int i = 0; i < cmdln->argument_count; i += 1)
+    {
+        if(DD_StringMatch(string, cmdln->arguments[i]))
+        {
+            cmdln->arguments[i].str = 0;
+            cmdln->arguments[i].size = 0;
+            if(cmdln->argument_count > i + out_count)
+            {
+                for(int out_idx = 0; out_idx < out_count; out_idx += 1)
+                {
+                    out[out_idx] = (DD_i64)DD_IntFromString(cmdln->arguments[i+out_idx+1]);
+                    cmdln->arguments[i+out_idx+1].str = 0;
+                    cmdln->arguments[i+out_idx+1].size = 0;
+                }
+                result = 1;
+                break;
+            }
+        }
+    }
+    return result;
+}
+
+DD_FUNCTION_IMPL DD_b32
+DD_CommandLine_FlagString(DD_CommandLine *cmdln, DD_String8 string, DD_String8 *out)
+{
+    return DD_CommandLine_FlagStrings(cmdln, string, 1, out);
+}
+
+DD_FUNCTION_IMPL DD_b32
+DD_CommandLine_FlagInteger(DD_CommandLine *cmdln, DD_String8 string, DD_i64 *out)
+{
+    return DD_CommandLine_FlagIntegers(cmdln, string, 1, out);
+}
+
+DD_FUNCTION_IMPL DD_b32
+DD_CommandLine_Increment(DD_CommandLine *cmdln, DD_String8 **string_ptr)
+{
+    DD_b32 result = 0;
+    DD_String8 *string = *string_ptr;
+    if(string == 0)
+    {
+        for(int i = 0; i < cmdln->argument_count; i += 1)
+        {
+            if(cmdln->arguments[i].str)
+            {
+                string = &cmdln->arguments[i];
+                break;
+            }
+        }
+    }
+    else
+    {
+        int idx = (int)(string - cmdln->arguments);
+        string = 0;
+        for(int i = idx+1; i < cmdln->argument_count; i += 1)
+        {
+            if(cmdln->arguments[i].str)
+            {
+                string = &cmdln->arguments[i];
+                break;
+            }
+        }
+    }
+    *string_ptr = string;
+    result = !!string;
+    return result;
 }
 
 DD_FUNCTION_IMPL DD_String8
