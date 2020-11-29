@@ -881,7 +881,7 @@ _DD_ParseTagList(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer)
 DD_FUNCTION_IMPL void
 DD_Parse_Tokenizer(DD_ParseCtx *ctx, DD_Tokenizer tokenizer)
 {
-    ctx->root = DD_MakeNode(DD_NodeKind_Set, DD_S8Lit("GlobalRoot"), 0, DD_TokenZero());
+    ctx->root = DD_MakeNode(DD_NodeKind_Set, tokenizer.filename, 1, DD_TokenZero());
     for(;;)
     {
         DD_Node *node = _DD_Parse(ctx, &tokenizer);
