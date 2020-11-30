@@ -58,13 +58,18 @@ int main(int argument_count, char **arguments)
         printf("Searching for site pages at \"%.*s\"...\n", DD_StringExpand(page_dir_path));
         for(DD_FileIter it = {0}; DD_FileIter_Increment(&it, page_dir_path, &file_info);)
         {
-            printf("Processing site page at \"%.*s\"...\n", DD_StringExpand(file_info.path));
-            
-            if(DD_StringMatchCaseInsensitive(file_info.extension, DD_S8Lit(".dd")) &&
-               !DD_StringMatchCaseInsensitive(DD_WithoutFolder(DD_WithoutExtension(file_info.path)),
-                                              DD_WithoutFolder(DD_WithoutExtension(site_info_path))))
+            if(DD_StringMatch(file_info.extension, DD_S8Lit("dd"), DD_StringMatchFlag_CaseInsensitive) &&
+               !DD_StringMatch(DD_WithoutFolder(DD_WithoutExtension(file_info.path)),
+                               DD_WithoutFolder(DD_WithoutExtension(site_info_path)),
+                               DD_StringMatchFlag_CaseInsensitive))
             {
-                DD_Parse_Filename(&ctx, file_info.path);
+                printf("Processing site page at \"%.*s\"...\n", DD_StringExpand(file_info.path));
+                DD_String8 folder = DD_FolderString(page_dir_path);
+                DD_String8 path = DD_PushStringF("%.*s/%.*s",
+                                                 DD_StringExpand(folder),
+                                                 DD_StringExpand(file_info.path));
+                printf("%.*s\n", DD_StringExpand(path));
+                DD_Parse_Filename(&ctx, path);
             }
         }
         parse = DD_Parse_End(&ctx);
@@ -78,7 +83,7 @@ int main(int argument_count, char **arguments)
             for(DD_Node *node = root->children.first; node; node = node->next)
             {
                 if(node->kind == DD_NodeKind_Set && node->children.first &&
-                   DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("index")))
+                   DD_StringMatch(node->string, DD_S8Lit("index"), DD_StringMatchFlag_CaseInsensitive))
                 {
                     for(DD_Node *index_string = node->children.first; index_string; index_string = index_string->next)
                     {
@@ -251,19 +256,19 @@ ParsePageInfo(DD_Node *page)
     {
         if(node->kind == DD_NodeKind_Set && node->children.first)
         {
-            if(DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("title")))
+            if(DD_StringMatch(node->string, DD_S8Lit("title"), DD_StringMatchFlag_CaseInsensitive))
             {
                 info.title = node->children.first;
             }
-            else if(DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("desc")))
+            else if(DD_StringMatch(node->string, DD_S8Lit("desc"), DD_StringMatchFlag_CaseInsensitive))
             {
                 info.desc = node->children.first;
             }
-            else if(DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("date")))
+            else if(DD_StringMatch(node->string, DD_S8Lit("date"), DD_StringMatchFlag_CaseInsensitive))
             {
                 info.date = node;
             }
-            else if(DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("parent")))
+            else if(DD_StringMatch(node->string, DD_S8Lit("parent"), DD_StringMatchFlag_CaseInsensitive))
             {
                 info.parent = node->children.first;
             }
@@ -280,35 +285,35 @@ ParseSiteInfo(DD_Node *site)
     {
         if(node->kind == DD_NodeKind_Set && node->children.first)
         {
-            if(DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("title")))
+            if(DD_StringMatch(node->string, DD_S8Lit("title"), DD_StringMatchFlag_CaseInsensitive))
             {
                 info.title = node->children.first;
             }
-            else if(DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("desc")))
+            else if(DD_StringMatch(node->string, DD_S8Lit("desc"), DD_StringMatchFlag_CaseInsensitive))
             {
                 info.desc = node->children.first;
             }
-            else if(DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("canonical_url")))
+            else if(DD_StringMatch(node->string, DD_S8Lit("canonical_url"), DD_StringMatchFlag_CaseInsensitive))
             {
                 info.canonical_url = node->children.first;
             }
-            else if(DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("author")))
+            else if(DD_StringMatch(node->string, DD_S8Lit("author"), DD_StringMatchFlag_CaseInsensitive))
             {
                 info.author = node->children.first;
             }
-            else if(DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("twitter_handle")))
+            else if(DD_StringMatch(node->string, DD_S8Lit("twitter_handle"), DD_StringMatchFlag_CaseInsensitive))
             {
                 info.twitter_handle = node->children.first;
             }
-            else if(DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("header")))
+            else if(DD_StringMatch(node->string, DD_S8Lit("header"), DD_StringMatchFlag_CaseInsensitive))
             {
                 info.header = node->children.first;
             }
-            else if(DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("footer")))
+            else if(DD_StringMatch(node->string, DD_S8Lit("footer"), DD_StringMatchFlag_CaseInsensitive))
             {
                 info.footer = node->children.first;
             }
-            else if(DD_StringMatchCaseInsensitive(node->string, DD_S8Lit("style")))
+            else if(DD_StringMatch(node->string, DD_S8Lit("style"), DD_StringMatchFlag_CaseInsensitive))
             {
                 info.style = node->children.first;
             }

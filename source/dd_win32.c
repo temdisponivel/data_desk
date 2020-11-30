@@ -1,5 +1,3 @@
-
-#if 0
 #define MAX_PATH 260
 typedef unsigned long DWORD;
 typedef unsigned short WORD;
@@ -43,8 +41,7 @@ typedef _WIN32_FIND_DATAA *LPWIN32_FIND_DATAA;
 
 HANDLE FindFirstFileA(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData);
 BOOL FindNextFileA(HANDLE hFindFile, LPWIN32_FIND_DATAA lpFindFileData);
-#endif
-#include <windows.h>
+
 #pragma comment(lib, "User32.lib")
 
 DD_PRIVATE_FUNCTION_IMPL DD_b32
@@ -56,19 +53,13 @@ _DD_OS_IMPL_FileIter_Increment(DD_FileIter *it, DD_String8 path, DD_FileInfo *ou
     HANDLE state = *(HANDLE *)(&it->state);
     if(state == 0)
     {
-        char *cpath = DD_CStringFromString8(path);
-        for(int i = 0; cpath[i]; i += 1)
+        DD_b32 need_star = 0;
+        if(path.str[path.size-1] == '/' ||
+           path.str[path.size-1] == '\\')
         {
-            if(cpath[i] == '\\')
-            {
-                cpath[i] = '/';
-            }
-            if(cpath[i+1] == 0 && cpath[i] == '/')
-            {
-                cpath[i] = 0;
-            }
+            need_star = 1;
         }
-        
+        char *cpath = need_star ? DD_PushCStringF("%.*s*", DD_StringExpand(path)) : DD_CStringFromString8(path);
         state = FindFirstFileA(cpath, &find_data);
         result = !!state;
     }
@@ -85,7 +76,7 @@ _DD_OS_IMPL_FileIter_Increment(DD_FileIter *it, DD_String8 path, DD_FileInfo *ou
         {
             out_info->flags |= DD_FileFlag_Directory;
         }
-        out_info->path = DD_S8CString(find_data.cFileName);
+        out_info->path = DD_PushStringF("%s", find_data.cFileName);
         out_info->extension = DD_ExtensionString(out_info->path);
         out_info->file_size = ((((DD_u64)find_data.nFileSizeHigh) << 32) |
                                ((DD_u64)find_data.nFileSizeLow));

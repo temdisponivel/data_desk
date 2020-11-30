@@ -58,6 +58,14 @@ struct DD_String8List
     DD_String8Node *last;
 };
 
+typedef DD_u32 DD_StringMatchFlags;
+enum
+{
+    DD_StringMatchFlag_CaseInsensitive = (1<<0),
+    DD_StringMatchFlag_RightSideSloppy = (1<<1),
+    DD_StringMatchFlag_FindLast        = (1<<2),
+};
+
 //~ Node kinds that comprise the language.
 typedef enum DD_NodeKind
 {
@@ -254,15 +262,23 @@ DD_FUNCTION DD_u8  DD_CharToLower(DD_u8 c);
 
 //~ String Functions
 DD_FUNCTION DD_String8     DD_S8(DD_u8 *str, DD_u64 size);
-#define DD_S8CString(s)    DD_S8((DD_u8 *)(s), strlen(s))
-#define DD_S8Lit(s)        DD_S8((DD_u8 *)(s), strlen(s))
+#define DD_S8CString(s)    DD_S8((DD_u8 *)(s), DD_CalculateCStringLength(s))
+#define DD_S8Lit(s)        DD_S8((DD_u8 *)(s), DD_CalculateCStringLength(s))
 #define DD_ZeroString()    DD_S8(0, 0)
 DD_FUNCTION DD_b32         DD_StringIsZero(DD_String8 str);
-DD_FUNCTION DD_b32         DD_StringMatch(DD_String8 a, DD_String8 b);
-DD_FUNCTION DD_b32         DD_StringMatchCaseInsensitive(DD_String8 a, DD_String8 b);
+DD_FUNCTION DD_String8     DD_StringSubstring(DD_String8 str, DD_u64 min, DD_u64 max);
+DD_FUNCTION DD_String8     DD_StringPrefix(DD_String8 str, DD_u64 max);
+DD_FUNCTION DD_String8     DD_StringSuffix(DD_String8 str, DD_u64 min);
+
+DD_FUNCTION DD_b32         DD_StringMatch(DD_String8 a, DD_String8 b, DD_StringMatchFlags flags);
+DD_FUNCTION DD_b32         DD_StringFindSubstring(DD_String8 str, DD_String8 substring, DD_u64 occurrence, DD_StringMatchFlags flags, DD_u64 *start);
+DD_FUNCTION DD_b32         DD_StringFindLastSubstring(DD_String8 str, DD_String8 substring, DD_StringMatchFlags flags, DD_u64 *start);
+
 DD_FUNCTION DD_String8     DD_WithoutExtension(DD_String8 string);
 DD_FUNCTION DD_String8     DD_WithoutFolder(DD_String8 string);
 DD_FUNCTION DD_String8     DD_ExtensionString(DD_String8 string);
+DD_FUNCTION DD_String8     DD_FolderString(DD_String8 string);
+
 DD_FUNCTION char *         DD_CStringFromString8(DD_String8 string);
 DD_FUNCTION DD_String8     DD_PushStringFV(char *fmt, va_list args);
 DD_FUNCTION DD_String8     DD_PushStringF(char *fmt, ...);
@@ -277,6 +293,7 @@ DD_FUNCTION DD_String8List DD_SplitStringByCharacter(DD_String8 string, DD_u8 ch
 DD_FUNCTION int            DD_IntFromString(DD_String8 string);
 DD_FUNCTION float          DD_FloatFromString(DD_String8 string);
 DD_FUNCTION DD_u64         DD_HashString(DD_String8 string);
+DD_FUNCTION DD_u64         DD_CalculateCStringLength(char *cstr);
 
 //~ String-To-Node-List Table
 DD_FUNCTION DD_NodeTableSlot *DD_NodeTable_Lookup(DD_NodeTable *table, DD_String8 string);
