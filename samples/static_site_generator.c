@@ -29,6 +29,10 @@ static void GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, 
 
 int main(int argument_count, char **arguments)
 {
+    
+    //~ NOTE(rjf): Load JS.
+    DD_String8 js_string = DD_LoadEntireFile(DD_S8Lit("site.js"));
+    
     //~ NOTE(rjf): Parse command line arguments.
     DD_String8 site_info_path = {0};
     DD_String8 page_dir_path = {0};
@@ -103,6 +107,16 @@ int main(int argument_count, char **arguments)
         if(file)
         {
             fprintf(file, "%.*s", DD_StringExpand(site_info.style->string));
+            fclose(file);
+        }
+    }
+    
+    //~ NOTE(rjf): Generate JS.
+    {
+        FILE *file = fopen("site.js", "w");
+        if(file)
+        {
+            fprintf(file, "%.*s", DD_StringExpand(js_string));
             fclose(file);
         }
     }
@@ -402,8 +416,11 @@ GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
             }
             else if(DD_NodeHasTag(node, DD_S8Lit("lister")))
             {
-                fprintf(file, "<input></input>");
-                fprintf(file, "<ul class=\"lister\">\n");
+                static int lister_idx = 0;
+                fprintf(file, "<input autofocus id=\"lister_search_%i\" class=\"lister_search\" oninput=\"SearchInput(event, %i)\" onkeydown=\"SearchKeyDown(event, %i)\" placeholder=\"Filter...\"></input>", lister_idx, lister_idx, lister_idx);
+                fprintf(file, "<ul id=\"lister_%i\" class=\"lister\">\n", lister_idx);
+                lister_idx += 1;
+                
                 DD_Node *index_string = 0;
                 for(DD_u64 idx = 0; DD_RequireNodeChild(node, idx, &index_string); idx += 1)
                 {
