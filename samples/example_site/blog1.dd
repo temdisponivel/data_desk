@@ -1,6 +1,6 @@
 title: "Test Blog #1"
 desc:  "This is my test blog."
-date:  (2020/11/28)
+date:  (2020/11/30)
 index: {"blog"}
 parent: "blog_main"
 

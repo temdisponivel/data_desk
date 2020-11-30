@@ -826,12 +826,11 @@ enum
     _DD_ParseSetFlag_Bracket  = (1<<2),
     _DD_ParseSetFlag_Implicit = (1<<3),
 };
-DD_PRIVATE_FUNCTION_IMPL DD_Node *   _DD_Parse(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer);
 DD_PRIVATE_FUNCTION_IMPL DD_NodeList _DD_ParseSet(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer, DD_Node *parent, _DD_ParseSetFlags flags);
 DD_PRIVATE_FUNCTION_IMPL DD_NodeList _DD_ParseTagList(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer);
 
-DD_PRIVATE_FUNCTION_IMPL DD_Node *
-_DD_Parse(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer)
+DD_FUNCTION_IMPL DD_Node *
+DD_Parse(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer)
 {
     DD_Node *result = 0;
     DD_NodeList tags = _DD_ParseTagList(ctx, tokenizer);
@@ -937,7 +936,7 @@ _DD_ParseSet(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer, DD_Node *parent, _DD_Par
     {
         for(DD_u64 child_idx = 0;; child_idx += 1)
         {
-            DD_Node *child = _DD_Parse(ctx, tokenizer);
+            DD_Node *child = DD_Parse(ctx, tokenizer);
             if(child)
             {
                 DD_PushNodeToList(&list, parent, child);
@@ -1028,7 +1027,7 @@ DD_Parse_Tokenizer(DD_ParseCtx *ctx, DD_Tokenizer tokenizer)
     DD_PushNodeToList(&ctx->roots, 0, root);
     for(;;)
     {
-        DD_Node *node = _DD_Parse(ctx, &tokenizer);
+        DD_Node *node = DD_Parse(ctx, &tokenizer);
         if(node == 0)
         {
             break;

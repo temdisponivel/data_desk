@@ -9,6 +9,7 @@ struct SiteInfo
     DD_Node *canonical_url;
     DD_Node *author;
     DD_Node *twitter_handle;
+    DD_Node *link_dictionary;
     DD_Node *header;
     DD_Node *footer;
     DD_Node *style;
@@ -183,10 +184,12 @@ int main(int argument_count, char **arguments)
                     fprintf(file, "%.*s", DD_StringExpand(site_info.header->string));
                 }
                 
+                fprintf(file, "<div class=\"page_content\">\n");
+                
                 // NOTE(rjf): Parent page back button.
                 if(page_info.parent)
                 {
-                    fprintf(file, "<a href=\"%.*s.html\">← Back</a>", DD_StringExpand(page_info.parent->string));
+                    fprintf(file, "<div class=\"standalone_link_container\"><a class=\"link\" href=\"%.*s.html\">← Back</a></div>", DD_StringExpand(page_info.parent->string));
                 }
                 
                 // NOTE(rjf): Title.
@@ -216,6 +219,8 @@ int main(int argument_count, char **arguments)
                 {
                     GeneratePageContent(&index_table, &site_info, &page_info, file, node);
                 }
+                
+                fprintf(file, "</div>\n");
                 
                 // NOTE(rjf): Generate footer.
                 if(site_info.footer)
@@ -291,6 +296,10 @@ ParseSiteInfo(DD_Node *site)
             else if(DD_StringMatch(node->string, DD_S8Lit("twitter_handle"), DD_StringMatchFlag_CaseInsensitive))
             {
                 info.twitter_handle = node->children.first;
+            }
+            else if(DD_StringMatch(node->string, DD_S8Lit("link_dictionary"), DD_StringMatchFlag_CaseInsensitive))
+            {
+                info.link_dictionary = node;
             }
             else if(DD_StringMatch(node->string, DD_S8Lit("header"), DD_StringMatchFlag_CaseInsensitive))
             {
@@ -384,10 +393,80 @@ GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
             };
             DD_String8List strlist = DD_SplitString(node->string, sizeof(splits)/sizeof(splits[0]), splits);
             
-            for(DD_String8Node *node = strlist.first; node; node = node->next)
+            for(DD_String8Node *strnode = strlist.first; strnode; strnode = strnode->next)
             {
                 fprintf(file, "<%s class=\"%s\">", html_tag, style);
-                fprintf(file, "%.*s", DD_StringExpand(node->string));
+                for(DD_u64 i = 0; i < strnode->string.size; i += 1)
+                {
+                    if(strnode->string.str[i] == '@')
+                    {
+                        DD_ParseCtx ctx = DD_Parse_Begin();
+                        DD_Tokenizer tokenizer = DD_Tokenizer_Start(node->file, DD_S8(strnode->string.str + i, strnode->string.size - i));
+                        DD_u8 *at = tokenizer.at;
+                        DD_Node *substyle = DD_Parse(&ctx, &tokenizer);
+                        DD_ParseResult result = DD_Parse_End(&ctx);
+                        if(substyle)
+                        {
+                            if(DD_NodeHasTag(substyle, DD_S8Lit("i")))
+                            {
+                                fprintf(file, "<i>%.*s</i>", DD_StringExpand(substyle->string));
+                            }
+                            else if(DD_NodeHasTag(substyle, DD_S8Lit("b")))
+                            {
+                                fprintf(file, "<strong>%.*s</strong>", DD_StringExpand(substyle->string));
+                            }
+                            else if(DD_NodeHasTag(substyle, DD_S8Lit("code")))
+                            {
+                                fprintf(file, "<span class=\"inline_code\">%.*s</span>", DD_StringExpand(substyle->string));
+                            }
+                            else if(DD_NodeHasTag(substyle, DD_S8Lit("link")))
+                            {
+                                DD_Node *text = 0;
+                                DD_Node *link = 0;
+                                if(DD_RequireNodeChild(substyle, 0, &text) &&
+                                   DD_RequireNodeChild(substyle, 1, &link))
+                                {
+                                    fprintf(file, "<a class=\"link\" href=\"%.*s\">%.*s</a>",
+                                            DD_StringExpand(link->string),
+                                            DD_StringExpand(text->string));
+                                }
+                            }
+                        }
+                        i += (tokenizer.at - at - 1);
+                    }
+                    else
+                    {
+                        DD_b32 dict_word = 0;
+                        if(site_info->link_dictionary)
+                        {
+                            DD_Node *text = 0;
+                            DD_Node *link = 0;
+                            for(DD_Node *dict_link = site_info->link_dictionary->children.first;
+                                dict_link; dict_link = dict_link->next)
+                            {
+                                if(DD_RequireNodeChild(dict_link, 0, &text) &&
+                                   DD_RequireNodeChild(dict_link, 1, &link))
+                                {
+                                    DD_String8 substring = DD_StringSubstring(strnode->string, i, i+text->string.size);
+                                    if(DD_StringMatch(substring, text->string, 0))
+                                    {
+                                        fprintf(file, "<a class=\"link\" href=\"%.*s\">%.*s</a>",
+                                                DD_StringExpand(link->string),
+                                                DD_StringExpand(text->string));
+                                        dict_word = 1;
+                                        i += text->string.size-1;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if(!dict_word)
+                        {
+                            fprintf(file, "%c", strnode->string.str[i]);
+                        }
+                    }
+                }
                 fprintf(file, "</%s>\n", html_tag);
             }
         }break;
@@ -418,7 +497,7 @@ GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
                 if(DD_RequireNodeChild(node, 0, &src))
                 {
                     DD_RequireNodeChild(node, 0, &alt);
-                    fprintf(file, "<img class=\"image\" src=\"%.*s\"></img>", DD_StringExpand(src->string));
+                    fprintf(file, "<div class=\"img_container\"><img class=\"img\" src=\"%.*s\"></img></div>\n", DD_StringExpand(src->string));
                 }
             }
             else if(DD_NodeHasTag(node, DD_S8Lit("youtube")))

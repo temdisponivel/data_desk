@@ -323,6 +323,7 @@ DD_FUNCTION DD_ParseCtx    DD_Parse_Begin(void);
 DD_FUNCTION void           DD_Parse_Filename(DD_ParseCtx *ctx, DD_String8 filename);
 DD_FUNCTION void           DD_Parse_String(DD_ParseCtx *ctx, DD_String8 filename, DD_String8 string);
 DD_FUNCTION void           DD_Parse_Tokenizer(DD_ParseCtx *ctx, DD_Tokenizer tokenizer);
+DD_FUNCTION DD_Node *      DD_Parse(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer);
 DD_FUNCTION DD_ParseResult DD_Parse_End(DD_ParseCtx *ctx);
 
 //~ Introspection Helpers
