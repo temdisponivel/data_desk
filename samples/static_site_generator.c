@@ -25,13 +25,11 @@ struct PageInfo
 
 static PageInfo ParsePageInfo(DD_Node *page);
 static SiteInfo ParseSiteInfo(DD_Node *site);
+static DD_String8 MakeDateString(DD_Node *date);
 static void GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *page_info, FILE *file, DD_Node *node);
 
 int main(int argument_count, char **arguments)
 {
-    
-    //~ NOTE(rjf): Load JS.
-    DD_String8 js_string = DD_LoadEntireFile(DD_S8Lit("site.js"));
     
     //~ NOTE(rjf): Parse command line arguments.
     DD_String8 site_info_path = {0};
@@ -43,6 +41,9 @@ int main(int argument_count, char **arguments)
         fprintf(stderr, "USAGE: %s --siteinfo <path to site info file> --pagedir <path to directory with pages> ...\n", arguments[0]);
         goto end;
     }
+    
+    //~ NOTE(rjf): Load JS.
+    DD_String8 js_string = DD_LoadEntireFile(DD_PushStringF("%.*s/site.js", DD_StringExpand(page_dir_path)));
     
     //~ NOTE(rjf): Parse site info.
     SiteInfo site_info = {0};
@@ -153,6 +154,7 @@ int main(int argument_count, char **arguments)
                 fprintf(file, "<meta name=\"twitter:card\" content=\"summary\">\n");
                 fprintf(file, "<meta name=\"twitter:site\" content=\"%.*s\">\n", DD_StringExpand(twitter_handle));
                 fprintf(file, "<link rel=\"stylesheet\" type=\"text/css\" href=\"style.css\">\n");
+                fprintf(file, "<script src=\"site.js\"></script>\n");
                 if(!DD_StringIsZero(title))
                 {
                     if(!DD_StringIsZero(site_title))
@@ -202,39 +204,10 @@ int main(int argument_count, char **arguments)
                 // NOTE(rjf): Date.
                 if(page_info.date)
                 {
-                    DD_Node *year = 0;
-                    DD_Node *month = 0;
-                    DD_Node *day = 0;
-                    
-                    for(DD_Node *child = page_info.date->children.first; child; child = child->next)
+                    DD_String8 date_string = MakeDateString(page_info.date);
+                    if(!DD_StringIsZero(date_string))
                     {
-                        if(child->kind == DD_NodeKind_NumericLiteral)
-                        {
-                            if      (year  == 0) year  = child;
-                            else if (month == 0) month = child;
-                            else if (day   == 0) day   = child;
-                            else
-                            {
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if(year && month && day)
-                    {
-                        char *month_names[] =
-                        {
-                            "January", "February", "March", "April", "May", "June", "July", "August",
-                            "September", "October", "November", "December",
-                        };
-                        int month_idx = DD_IntFromString(month->string)-1;
-                        if(month_idx >= 0 && month_idx < sizeof(month_names)/sizeof(month_names[0]))
-                        {
-                            fprintf(file, "<h3 class=\"date\">%.*s %s %.*s</h3>",
-                                    DD_StringExpand(day->string),
-                                    month_names[month_idx],
-                                    DD_StringExpand(year->string));
-                        }
+                        fprintf(file, "<h3 class=\"date\">%.*s</h3>", DD_StringExpand(date_string));
                     }
                 }
                 
@@ -336,6 +309,49 @@ ParseSiteInfo(DD_Node *site)
     return info;
 }
 
+static DD_String8
+MakeDateString(DD_Node *date)
+{
+    DD_String8 result = {0};
+    
+    DD_Node *year = 0;
+    DD_Node *month = 0;
+    DD_Node *day = 0;
+    
+    for(DD_Node *child = date->children.first; child; child = child->next)
+    {
+        if(child->kind == DD_NodeKind_NumericLiteral)
+        {
+            if      (year  == 0) year  = child;
+            else if (month == 0) month = child;
+            else if (day   == 0) day   = child;
+            else
+            {
+                break;
+            }
+        }
+    }
+    
+    if(year && month && day)
+    {
+        char *month_names[] =
+        {
+            "January", "February", "March", "April", "May", "June", "July", "August",
+            "September", "October", "November", "December",
+        };
+        int month_idx = DD_IntFromString(month->string)-1;
+        if(month_idx >= 0 && month_idx < sizeof(month_names)/sizeof(month_names[0]))
+        {
+            result = DD_PushStringF("%.*s %s %.*s",
+                                    DD_StringExpand(day->string),
+                                    month_names[month_idx],
+                                    DD_StringExpand(year->string));
+        }
+    }
+    
+    return result;
+}
+
 static void
 GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *page_info, FILE *file, DD_Node *node)
 {
@@ -430,12 +446,21 @@ GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
                         if(slot->node)
                         {
                             PageInfo info = ParsePageInfo(slot->node);
-                            fprintf(file, "<li class=\"lister_item\">");
+                            fprintf(file, "<li class=\"lister_item\">\n");
                             DD_String8 filename = slot->node->file;
                             DD_String8 filename_no_ext = DD_WithoutExtension(DD_WithoutFolder(filename));
                             DD_String8 link = DD_PushStringF("%.*s.html", DD_StringExpand(filename_no_ext));
                             DD_String8 name = info.title->string;
-                            fprintf(file, "<a href=\"%.*s\">%.*s</a>", DD_StringExpand(link), DD_StringExpand(name));
+                            DD_String8 date = MakeDateString(info.date);
+                            if(DD_StringIsZero(date))
+                            {
+                                fprintf(file, "<a href=\"%.*s\">%.*s</a>", DD_StringExpand(link), DD_StringExpand(name));
+                            }
+                            else
+                            {
+                                fprintf(file, "<a href=\"%.*s\">(%.*s) %.*s</a>", DD_StringExpand(link), DD_StringExpand(date), DD_StringExpand(name));
+                            }
+                            fprintf(file, "<p>%.*s</p>\n", DD_StringExpand(info.desc->string));
                             fprintf(file, "</li>\n");
                         }
                     }
