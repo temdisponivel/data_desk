@@ -2,7 +2,9 @@
 #define DD_PRIVATE_FUNCTION_IMPL DD_FUNCTION_IMPL
 
 //~ NOTE(rjf): OS Implementation Functions
+#if DD_OS
 DD_PRIVATE_FUNCTION_IMPL DD_b32 _DD_OS_IMPL_FileIter_Increment(DD_FileIter *it, DD_String8 path, DD_FileInfo *out_info);
+#endif
 
 //~ NOTE(rjf): OS Layers
 
@@ -1222,8 +1224,10 @@ DD_LoadEntireFile(DD_String8 filename)
     return file_contents;
 }
 
+#if DD_OS
 DD_FUNCTION_IMPL DD_b32
 DD_FileIter_Increment(DD_FileIter *it, DD_String8 path, DD_FileInfo *out_info)
 {
     return _DD_OS_IMPL_FileIter_Increment(it, path, out_info);
 }
+#endif

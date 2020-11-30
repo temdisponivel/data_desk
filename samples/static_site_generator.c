@@ -31,16 +31,19 @@ int main(int argument_count, char **arguments)
 {
     //~ NOTE(rjf): Parse command line arguments.
     DD_String8 site_info_path = {0};
+    DD_String8 page_dir_path = {0};
     DD_CommandLine cmdln = DD_CommandLine_Start(argument_count, arguments);
-    if(!DD_CommandLine_FlagString(&cmdln, DD_S8Lit("--siteinfo"), &site_info_path))
+    if(!DD_CommandLine_FlagString(&cmdln, DD_S8Lit("--siteinfo"), &site_info_path) ||
+       !DD_CommandLine_FlagString(&cmdln, DD_S8Lit("--pagedir"), &page_dir_path))
     {
-        fprintf(stderr, "USAGE: %s --siteinfo <path to site info file> <site file 1> <site file 2> ...\n", arguments[0]);
+        fprintf(stderr, "USAGE: %s --siteinfo <path to site info file> --pagedir <path to directory with pages> ...\n", arguments[0]);
         goto end;
     }
     
     //~ NOTE(rjf): Parse site info.
     SiteInfo site_info = {0};
     {
+        printf("Parsing site metadata at \"%.*s\"...\n", DD_StringExpand(site_info_path));
         DD_ParseCtx ctx = DD_Parse_Begin();
         DD_Parse_Filename(&ctx, site_info_path);
         DD_ParseResult parse = DD_Parse_End(&ctx);
@@ -51,9 +54,18 @@ int main(int argument_count, char **arguments)
     DD_ParseResult parse = {0};
     {
         DD_ParseCtx ctx = DD_Parse_Begin();
-        for(DD_String8 *filename = 0; DD_CommandLine_Increment(&cmdln, &filename);)
+        DD_FileInfo file_info = {0};
+        printf("Searching for site pages at \"%.*s\"...\n", DD_StringExpand(page_dir_path));
+        for(DD_FileIter it = {0}; DD_FileIter_Increment(&it, page_dir_path, &file_info);)
         {
-            DD_Parse_Filename(&ctx, *filename);
+            printf("Processing site page at \"%.*s\"...\n", DD_StringExpand(file_info.path));
+            
+            if(DD_StringMatchCaseInsensitive(file_info.extension, DD_S8Lit(".dd")) &&
+               !DD_StringMatchCaseInsensitive(DD_WithoutFolder(DD_WithoutExtension(file_info.path)),
+                                              DD_WithoutFolder(DD_WithoutExtension(site_info_path))))
+            {
+                DD_Parse_Filename(&ctx, file_info.path);
+            }
         }
         parse = DD_Parse_End(&ctx);
     }

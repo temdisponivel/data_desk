@@ -1,6 +1,12 @@
 #ifndef DD_H
 #define DD_H
 
+#if defined(DD_WIN32) || defined(DD_POSIX)
+#define DD_OS 1
+#else
+#define DD_OS 0
+#endif
+
 #ifndef DD_WIN32
 #define DD_WIN32 0
 #endif
@@ -322,6 +328,11 @@ DD_FUNCTION DD_b32         DD_CommandLine_Increment(DD_CommandLine *cmdln, DD_St
 
 //~ File System Functions
 DD_FUNCTION DD_String8  DD_LoadEntireFile(DD_String8 filename);
+
+//~ Functions that require OS information... will be excluded from the build
+// if an OS is not specified.
+#if DD_OS
 DD_FUNCTION DD_b32      DD_FileIter_Increment(DD_FileIter *it, DD_String8 path, DD_FileInfo *out_info);
+#endif
 
 #endif // DD_H

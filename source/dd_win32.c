@@ -1,11 +1,12 @@
 
+#if 0
 #define MAX_PATH 260
 typedef unsigned long DWORD;
 typedef unsigned short WORD;
 typedef int BOOL;
 typedef void *HANDLE;
-typedef wchar_t WCHAR;
-typedef const WCHAR *LPCWSTR;
+typedef char CHAR;
+typedef const CHAR *LPCSTR;
 
 typedef struct _FILETIME _FILETIME;
 struct _FILETIME
@@ -17,8 +18,8 @@ typedef _FILETIME FILETIME;
 typedef _FILETIME *PFILETIME;
 typedef _FILETIME *LPFILETIME;
 
-typedef struct _WIN32_FIND_DATAW _WIN32_FIND_DATAW;
-struct _WIN32_FIND_DATAW
+typedef struct _WIN32_FIND_DATAA _WIN32_FIND_DATAA;
+struct _WIN32_FIND_DATAA
 {
 #define FILE_ATTRIBUTE_DIRECTORY 0x10
     DWORD    dwFileAttributes;
@@ -29,59 +30,54 @@ struct _WIN32_FIND_DATAW
     DWORD    nFileSizeLow;
     DWORD    dwReserved0;
     DWORD    dwReserved1;
-    WCHAR    cFileName[MAX_PATH];
-    WCHAR    cAlternateFileName[14];
+    CHAR     cFileName[MAX_PATH];
+    CHAR     cAlternateFileName[14];
     DWORD    dwFileType;
     DWORD    dwCreatorType;
     WORD     wFinderFlags;
 };
 
-typedef _WIN32_FIND_DATAW WIN32_FIND_DATAW;
-typedef _WIN32_FIND_DATAW *PWIN32_FIND_DATAW;
-typedef _WIN32_FIND_DATAW *LPWIN32_FIND_DATAW;
+typedef _WIN32_FIND_DATAA WIN32_FIND_DATAA;
+typedef _WIN32_FIND_DATAA *PWIN32_FIND_DATAA;
+typedef _WIN32_FIND_DATAA *LPWIN32_FIND_DATAA;
 
-HANDLE FindFirstFileW(LPCWSTR lpFileName, LPWIN32_FIND_DATAW lpFindFileData);
-BOOL FindNextFileW(HANDLE hFindFile, LPWIN32_FIND_DATAW lpFindFileData);
-
+HANDLE FindFirstFileA(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData);
+BOOL FindNextFileA(HANDLE hFindFile, LPWIN32_FIND_DATAA lpFindFileData);
+#endif
+#include <windows.h>
 #pragma comment(lib, "User32.lib")
-
-DD_PRIVATE_FUNCTION_IMPL LPCWSTR
-_DD_CWSTRFromString8(DD_String8 string)
-{
-    LPCWSTR result = calloc(sizeof(WCHAR), (string.size+1)*2);
-    if(result)
-    {
-        // TODO(rjf)
-    }
-    return result;
-}
-
-DD_PRIVATE_FUNCTION_IMPL DD_String8
-_DD_String8FromCWSTR(LPCWSTR wstr)
-{
-    DD_String8 result = {0};
-    // TODO(rjf)
-    return result;
-}
 
 DD_PRIVATE_FUNCTION_IMPL DD_b32
 _DD_OS_IMPL_FileIter_Increment(DD_FileIter *it, DD_String8 path, DD_FileInfo *out_info)
 {
     DD_b32 result = 0;
     
-    WIN32_FIND_DATAW find_data = {0};
-    HANDLE state = (HANDLE)it->state;
+    WIN32_FIND_DATAA find_data = {0};
+    HANDLE state = *(HANDLE *)(&it->state);
     if(state == 0)
     {
-        state = FindFirstFileW(_DD_CWSTRFromString8(path), &find_data);
+        char *cpath = DD_CStringFromString8(path);
+        for(int i = 0; cpath[i]; i += 1)
+        {
+            if(cpath[i] == '\\')
+            {
+                cpath[i] = '/';
+            }
+            if(cpath[i+1] == 0 && cpath[i] == '/')
+            {
+                cpath[i] = 0;
+            }
+        }
+        
+        state = FindFirstFileA(cpath, &find_data);
         result = !!state;
     }
     else
     {
-        result = !!FindNextFileW(state, &find_data);
+        result = !!FindNextFileA(state, &find_data);
     }
     
-    it->state = (DD_u64)state;
+    it->state = *(DD_u64 *)(&state);
     if(result)
     {
         out_info->flags = 0;
@@ -89,7 +85,7 @@ _DD_OS_IMPL_FileIter_Increment(DD_FileIter *it, DD_String8 path, DD_FileInfo *ou
         {
             out_info->flags |= DD_FileFlag_Directory;
         }
-        out_info->path = _DD_String8FromCWSTR(find_data.cFileName);
+        out_info->path = DD_S8CString(find_data.cFileName);
         out_info->extension = DD_ExtensionString(out_info->path);
         out_info->file_size = ((((DD_u64)find_data.nFileSizeHigh) << 32) |
                                ((DD_u64)find_data.nFileSizeLow));
