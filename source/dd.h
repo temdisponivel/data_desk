@@ -222,6 +222,68 @@ struct DD_ParseResult
     DD_Error *first_error;
 };
 
+//~ Expression and Type-Expression parser helper types.
+
+typedef enum DD_ExprKind
+{
+    DD_ExprKind_Null,
+    
+    DD_ExprKind_Atom,
+    DD_ExprKind_Add,
+    DD_ExprKind_Subtract,
+    DD_ExprKind_Multiply,
+    DD_ExprKind_Divide,
+    
+    DD_ExprKind_IsEqual,
+    DD_ExprKind_IsNotEqual,
+    DD_ExprKind_LessThan,
+    DD_ExprKind_GreaterThan,
+    DD_ExprKind_LessThanEqualTo,
+    DD_ExprKind_GreaterThanEqualTo,
+    
+    DD_ExprKind_BoolAnd,
+    DD_ExprKind_BoolOr,
+    DD_ExprKind_BoolNot,
+    DD_ExprKind_BitAnd,
+    DD_ExprKind_BitOr,
+    DD_ExprKind_BitNot,
+    DD_ExprKind_BitXor,
+    DD_ExprKind_Negative,
+    
+    DD_ExprKind_MAX,
+}
+DD_ExprKind;
+
+typedef struct DD_Expr DD_Expr;
+struct DD_Expr
+{
+    DD_Node *node;
+    DD_ExprKind kind;
+    DD_Expr *sub[2];
+};
+
+typedef enum DD_TypeKind
+{
+    DD_TypeKind_Null,
+    
+    DD_TypeKind_Atom,
+    DD_TypeKind_Pointer,
+    DD_TypeKind_Array,
+    
+    DD_TypeKind_MAX,
+}
+DD_TypeKind;
+
+typedef struct DD_Type DD_Type;
+struct DD_Type
+{
+    DD_Node *node;
+    DD_TypeKind kind;
+    DD_Type *parent;
+    DD_Type *operand;
+    DD_Expr *expr;
+};
+
 //~ Command line parsing helper types.
 typedef struct DD_CommandLine DD_CommandLine;
 struct DD_CommandLine
@@ -310,8 +372,8 @@ DD_FUNCTION DD_b32       DD_Tokenizer_Require(DD_Tokenizer *tokenizer, DD_String
 DD_FUNCTION DD_b32       DD_Tokenizer_RequireKind(DD_Tokenizer *tokenizer, DD_TokenKind kind, DD_Token *out_token);
 
 //~ Tree/List Building Functions
-DD_FUNCTION DD_b32   DD_IsNil(DD_Node *node);
-DD_FUNCTION DD_Node *DD_Nil(void);
+DD_FUNCTION DD_b32   DD_NodeIsNil(DD_Node *node);
+DD_FUNCTION DD_Node *DD_NilNode(void);
 DD_FUNCTION DD_Node *DD_MakeNode(DD_NodeKind kind, DD_String8 file, DD_u64 line, DD_Token token);
 DD_FUNCTION DD_Node *DD_MakeNode_Tokenizer(DD_NodeKind kind, DD_Tokenizer *tokenizer, DD_Token token);
 DD_FUNCTION void     DD_PushNodeToList(DD_NodeList *list, DD_Node *parent, DD_Node *node);
@@ -332,14 +394,29 @@ DD_FUNCTION DD_ParseResult DD_Parse_End(DD_ParseCtx *ctx);
 //~ Introspection Helpers
 DD_FUNCTION DD_Node *DD_NodeInList(DD_NodeList list, DD_String8 string);
 DD_FUNCTION DD_Node *DD_NthNodeInList(DD_NodeList list, int n);
+DD_FUNCTION int      DD_IndexFromNode(DD_Node *node);
 DD_FUNCTION DD_Node *DD_NextNodeSibling(DD_Node *last, DD_String8 string);
 DD_FUNCTION DD_Node *DD_TagOnNode(DD_Node *node, DD_String8 tag_string);
 DD_FUNCTION DD_Node *DD_ChildOnNode(DD_Node *node, DD_String8 child_string);
 DD_FUNCTION DD_Node *DD_NthTagArg(DD_Node *node, DD_String8 tag_string, int n);
 DD_FUNCTION DD_Node *DD_NthChild(DD_Node *node, int n);
 
+//~ Expression and Type-Expression Helper Functions
+DD_FUNCTION DD_Expr *DD_NilExpr(void);
+DD_FUNCTION DD_Type *DD_NilType(void);
+DD_FUNCTION DD_Expr *DD_MakeExpr(DD_Node *node, DD_ExprKind kind, DD_Expr *left, DD_Expr *right);
+DD_FUNCTION DD_Type *DD_MakeType(DD_Node *node, DD_TypeKind kind, DD_Type *parent, DD_Type *operand, DD_Expr *expr);
+DD_FUNCTION DD_Expr *DD_ParseAsExpr(DD_Node *node);
+DD_FUNCTION DD_Type *DD_ParseAsType(DD_Node *node);
+
 //~ Generation Functions
 DD_FUNCTION void DD_OutputTree(FILE *file, DD_Node *node);
+DD_FUNCTION void DD_OutputExpr(FILE *file, DD_Expr *expr);
+DD_FUNCTION void DD_OutputTree_C_String(FILE *file, DD_Node *node);
+DD_FUNCTION void DD_OutputTree_C_Struct(FILE *file, DD_Node *node);
+DD_FUNCTION void DD_OutputTree_C_Decl(FILE *file, DD_Node *node);
+DD_FUNCTION void DD_OutputType_C_PreArray(FILE *file, DD_Type *type);
+DD_FUNCTION void DD_OutputType_C_Array(FILE *file, DD_Type *type);
 
 //~ Command Line Argument Helper Functions
 DD_FUNCTION DD_CommandLine DD_CommandLine_Start(int argument_count, char **arguments);

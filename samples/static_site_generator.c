@@ -88,8 +88,7 @@ int main(int argument_count, char **arguments)
         {
             for(DD_Node *node = root->children.first; node; node = node->next)
             {
-                if(node->kind == DD_NodeKind_Set && node->children.first &&
-                   DD_StringMatch(node->string, DD_S8Lit("index"), DD_StringMatchFlag_CaseInsensitive))
+                if(node->children.first && DD_StringMatch(node->string, DD_S8Lit("index"), DD_StringMatchFlag_CaseInsensitive))
                 {
                     for(DD_Node *index_string = node->children.first; index_string; index_string = index_string->next)
                     {
@@ -371,17 +370,17 @@ GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
         {
             char *html_tag = "p";
             char *style = "paragraph";
-            if(!DD_IsNil(DD_TagOnNode(node, DD_S8Lit("title"))))
+            if(!DD_NodeIsNil(DD_TagOnNode(node, DD_S8Lit("title"))))
             {
                 html_tag = "h1";
                 style = "title";
             }
-            else if(!DD_IsNil(DD_TagOnNode(node, DD_S8Lit("subtitle"))))
+            else if(!DD_NodeIsNil(DD_TagOnNode(node, DD_S8Lit("subtitle"))))
             {
                 html_tag = "h2";
                 style = "subtitle";
             }
-            else if(!DD_IsNil(DD_TagOnNode(node, DD_S8Lit("code"))))
+            else if(!DD_NodeIsNil(DD_TagOnNode(node, DD_S8Lit("code"))))
             {
                 html_tag = "pre";
                 style = "code";
@@ -407,19 +406,19 @@ GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
                         DD_ParseResult result = DD_Parse_End(&ctx);
                         if(substyle)
                         {
-                            if(!DD_IsNil(DD_TagOnNode(node, DD_S8Lit("i"))))
+                            if(!DD_NodeIsNil(DD_TagOnNode(node, DD_S8Lit("i"))))
                             {
                                 fprintf(file, "<i>%.*s</i>", DD_StringExpand(substyle->string));
                             }
-                            else if(!DD_IsNil(DD_TagOnNode(node, DD_S8Lit("b"))))
+                            else if(!DD_NodeIsNil(DD_TagOnNode(node, DD_S8Lit("b"))))
                             {
                                 fprintf(file, "<strong>%.*s</strong>", DD_StringExpand(substyle->string));
                             }
-                            else if(!DD_IsNil(DD_TagOnNode(node, DD_S8Lit("code"))))
+                            else if(!DD_NodeIsNil(DD_TagOnNode(node, DD_S8Lit("code"))))
                             {
                                 fprintf(file, "<span class=\"inline_code\">%.*s</span>", DD_StringExpand(substyle->string));
                             }
-                            else if(!DD_IsNil(DD_TagOnNode(node, DD_S8Lit("link"))))
+                            else if(!DD_NodeIsNil(DD_TagOnNode(node, DD_S8Lit("link"))))
                             {
                                 DD_Node *text = DD_NthChild(node, 0);
                                 DD_Node *link = DD_NthChild(node, 1);
@@ -435,8 +434,8 @@ GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
                         DD_b32 dict_word = 0;
                         if(site_info->link_dictionary)
                         {
-                            DD_Node *text = DD_Nil();
-                            DD_Node *link = DD_Nil();
+                            DD_Node *text = DD_NilNode();
+                            DD_Node *link = DD_NilNode();
                             for(DD_Node *dict_link = site_info->link_dictionary->children.first;
                                 dict_link; dict_link = dict_link->next)
                             {
@@ -467,7 +466,7 @@ GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
         
         case DD_NodeKind_Set:
         {
-            if(!DD_IsNil(DD_TagOnNode(node, DD_S8Lit("list"))))
+            if(!DD_NodeIsNil(DD_TagOnNode(node, DD_S8Lit("list"))))
             {
                 fprintf(file, "<ul class=\"list\">\n");
                 for(DD_Node *child = node->children.first; child; child = child->next)
@@ -484,19 +483,19 @@ GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
                 }
                 fprintf(file, "</ul>\n");
             }
-            else if(!DD_IsNil(DD_TagOnNode(node, DD_S8Lit("img"))))
+            else if(!DD_NodeIsNil(DD_TagOnNode(node, DD_S8Lit("img"))))
             {
                 DD_Node *src = DD_NthChild(node, 0);
                 DD_Node *alt = DD_NthChild(node, 1);
                 fprintf(file, "<div class=\"img_container\"><img class=\"img\" src=\"%.*s\"></img></div>\n", DD_StringExpand(src->string));
             }
-            else if(!DD_IsNil(DD_TagOnNode(node, DD_S8Lit("youtube"))))
+            else if(!DD_NodeIsNil(DD_TagOnNode(node, DD_S8Lit("youtube"))))
             {
                 DD_Node *id = DD_NthChild(node, 0);
                 fprintf(file, "<iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/%.*s\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen></iframe>\n",
                         DD_StringExpand(id->string));
             }
-            else if(!DD_IsNil(DD_TagOnNode(node, DD_S8Lit("lister"))))
+            else if(!DD_NodeIsNil(DD_TagOnNode(node, DD_S8Lit("lister"))))
             {
                 static int lister_idx = 0;
                 fprintf(file, "<input autofocus id=\"lister_search_%i\" class=\"lister_search\" oninput=\"SearchInput(event, %i)\" onkeydown=\"SearchKeyDown(event, %i)\" placeholder=\"Filter...\"></input>", lister_idx, lister_idx, lister_idx);
@@ -504,7 +503,7 @@ GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
                 lister_idx += 1;
                 
                 DD_Node *index_string = 0;
-                for(DD_u64 idx = 0; !DD_IsNil(index_string = DD_NthChild(node, idx)); idx += 1)
+                for(DD_u64 idx = 0; !DD_NodeIsNil(index_string = DD_NthChild(node, idx)); idx += 1)
                 {
                     for(DD_NodeTableSlot *slot = DD_NodeTable_Lookup(index_table, index_string->string);
                         slot; slot = slot->next)

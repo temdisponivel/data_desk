@@ -717,36 +717,29 @@ DD_Tokenizer_RequireKind(DD_Tokenizer *tokenizer, DD_TokenKind kind, DD_Token *o
 }
 
 DD_FUNCTION_IMPL DD_b32
-DD_IsNil(DD_Node *node)
+DD_NodeIsNil(DD_Node *node)
 {
     return node == &_dd_nil_node;
 }
 
 DD_FUNCTION_IMPL DD_Node *
-DD_Nil(void) { return &_dd_nil_node; }
-
-DD_PRIVATE_FUNCTION_IMPL DD_Node *
-_DD_AllocateNode(void)
-{
-    DD_Node *node = calloc(1, sizeof(*node));
-    if(node == 0)
-    {
-        node = DD_Nil();
-    }
-    return node;
-}
+DD_NilNode(void) { return &_dd_nil_node; }
 
 DD_FUNCTION_IMPL DD_Node *
 DD_MakeNode(DD_NodeKind kind, DD_String8 file, DD_u64 line, DD_Token token)
 {
-    DD_Node *node = _DD_AllocateNode();
-    if(!DD_IsNil(node))
+    DD_Node *node = calloc(1, sizeof(*node));
+    if(node)
     {
         node->kind = kind;
         node->string = token.string;
         node->whole_string = token.outer_string;
         node->file = file;
         node->line = line;
+    }
+    else
+    {
+        node = DD_NilNode();
     }
     return node;
 }
@@ -760,7 +753,7 @@ DD_MakeNode_Tokenizer(DD_NodeKind kind, DD_Tokenizer *tokenizer, DD_Token token)
 DD_FUNCTION_IMPL void
 DD_PushNodeToList(DD_NodeList *list, DD_Node *parent, DD_Node *node)
 {
-    if(!DD_IsNil(node) && !DD_IsNil(parent))
+    if(!DD_NodeIsNil(node) && !DD_NodeIsNil(parent))
     {
         if(list->last == 0)
         {
@@ -784,7 +777,7 @@ DD_PushListToList(DD_NodeList *list, DD_Node *parent, DD_NodeList to_push)
     {
         for(DD_Node *node = to_push.first; node; node = node->next)
         {
-            if(!DD_IsNil(node))
+            if(!DD_NodeIsNil(node))
             {
                 node->parent = parent;
             }
@@ -1084,10 +1077,10 @@ DD_Parse_End(DD_ParseCtx *ctx)
     return result;
 }
 
-DD_FUNCTION DD_Node *
+DD_FUNCTION_IMPL DD_Node *
 DD_NodeInList(DD_NodeList list, DD_String8 string)
 {
-    DD_Node *result = DD_Nil();
+    DD_Node *result = DD_NilNode();
     if(list.first && list.last)
     {
         for(DD_Node *node = list.first; node; node = node->next)
@@ -1102,10 +1095,10 @@ DD_NodeInList(DD_NodeList list, DD_String8 string)
     return result;
 }
 
-DD_FUNCTION DD_Node *
+DD_FUNCTION_IMPL DD_Node *
 DD_NthNodeInList(DD_NodeList list, int n)
 {
-    DD_Node *result = DD_Nil();
+    DD_Node *result = DD_NilNode();
     if(list.first && list.last && n >= 0)
     {
         int idx = 0;
@@ -1121,10 +1114,21 @@ DD_NthNodeInList(DD_NodeList list, int n)
     return result;
 }
 
-DD_FUNCTION DD_Node *
+DD_FUNCTION_IMPL int
+DD_IndexFromNode(DD_Node *node)
+{
+    int idx = 0;
+    if(node && !DD_NodeIsNil(node))
+    {
+        for(DD_Node *last = node->prev; last; last = last->prev, idx += 1);
+    }
+    return idx;
+}
+
+DD_FUNCTION_IMPL DD_Node *
 DD_NextNodeSibling(DD_Node *last, DD_String8 string)
 {
-    DD_Node *result = DD_Nil();
+    DD_Node *result = DD_NilNode();
     if(last)
     {
         for(DD_Node *node = last->next; node; node = node->next)
@@ -1142,7 +1146,7 @@ DD_NextNodeSibling(DD_Node *last, DD_String8 string)
 DD_FUNCTION_IMPL DD_Node *
 DD_TagOnNode(DD_Node *node, DD_String8 tag_string)
 {
-    DD_Node *result = DD_Nil();
+    DD_Node *result = DD_NilNode();
     if(node)
     {
         result = DD_NodeInList(node->tags, tag_string);
@@ -1153,7 +1157,7 @@ DD_TagOnNode(DD_Node *node, DD_String8 tag_string)
 DD_FUNCTION_IMPL DD_Node *
 DD_ChildOnNode(DD_Node *node, DD_String8 child_string)
 {
-    DD_Node *result = DD_Nil();
+    DD_Node *result = DD_NilNode();
     if(node)
     {
         result = DD_NodeInList(node->children, child_string);
@@ -1164,7 +1168,7 @@ DD_ChildOnNode(DD_Node *node, DD_String8 child_string)
 DD_FUNCTION_IMPL DD_Node *
 DD_NthTagArg(DD_Node *node, DD_String8 tag_string, int n)
 {
-    DD_Node *result = DD_Nil();
+    DD_Node *result = DD_NilNode();
     if(n >= 0)
     {
         DD_Node *tag = DD_TagOnNode(node, tag_string);
@@ -1176,12 +1180,145 @@ DD_NthTagArg(DD_Node *node, DD_String8 tag_string, int n)
 DD_FUNCTION_IMPL DD_Node *
 DD_NthChild(DD_Node *node, int n)
 {
-    DD_Node *result = DD_Nil();
+    DD_Node *result = DD_NilNode();
     if(node && n >= 0)
     {
         result = DD_NthNodeInList(node->children, n);
     }
     return result;
+}
+
+static DD_Expr _dd_nil_expr = {0};
+static DD_Type _dd_nil_type = {0};
+
+DD_FUNCTION_IMPL DD_Expr *
+DD_NilExpr(void)
+{
+    return &_dd_nil_expr;
+}
+
+DD_FUNCTION_IMPL DD_Type *
+DD_NilType(void)
+{
+    return &_dd_nil_type;
+}
+
+DD_FUNCTION_IMPL DD_Expr *
+DD_MakeExpr(DD_Node *node, DD_ExprKind kind, DD_Expr *left, DD_Expr *right)
+{
+    DD_Expr *expr = calloc(1, sizeof(*expr));
+    if(expr)
+    {
+        expr->node = node;
+        expr->kind = kind;
+        expr->sub[0] = left;
+        expr->sub[1] = right;
+    }
+    else
+    {
+        expr = DD_NilExpr();
+    }
+    return expr;
+}
+
+DD_FUNCTION_IMPL DD_Type *
+DD_MakeType(DD_Node *node, DD_TypeKind kind, DD_Type *parent, DD_Type *operand, DD_Expr *expr)
+{
+    DD_Type *type = calloc(1, sizeof(*type));
+    if(type)
+    {
+        type->node = node ? node : DD_NilNode();
+        type->kind = kind;
+        type->parent = parent;
+        type->operand = operand;
+        type->expr = expr;
+    }
+    else
+    {
+        type = DD_NilType();
+    }
+    return type;
+}
+
+typedef struct _DD_NodeParseCtx _DD_NodeParseCtx;
+struct _DD_NodeParseCtx
+{
+    DD_Node *at;
+};
+
+DD_PRIVATE_FUNCTION_IMPL DD_b32
+_DD_RequireNodeKind(_DD_NodeParseCtx *ctx, DD_NodeKind kind, DD_Node **out)
+{
+    DD_b32 result = 0;
+    if(ctx->at && ctx->at->kind == kind)
+    {
+        result = 1;
+        if(out)
+        {
+            *out = ctx->at;
+        }
+        ctx->at = ctx->at->next;
+    }
+    return result;
+}
+
+DD_PRIVATE_FUNCTION_IMPL DD_b32
+_DD_RequireNode(_DD_NodeParseCtx *ctx, DD_String8 string)
+{
+    DD_b32 result = 0;
+    if(ctx->at && DD_StringMatch(string, ctx->at->string, 0))
+    {
+        result = 1;
+        ctx->at = ctx->at->next;
+    }
+    return result;
+}
+
+DD_FUNCTION_IMPL DD_Expr *
+DD_ParseAsExpr(DD_Node *node)
+{
+    DD_Expr *expr = DD_NilExpr();
+    
+    return expr;
+}
+
+DD_FUNCTION_IMPL DD_Type *
+DD_ParseAsType(DD_Node *node)
+{
+    DD_Type *first_type = 0;
+    DD_Type *last_type = 0;
+#define _DD_PushType(p) { if(last_type) { last_type->operand = (p); last_type = last_type->operand; } else { first_type = last_type = (p); } }
+    _DD_NodeParseCtx ctx = { node->children.first };
+    for(;;)
+    {
+        DD_Node *atom = 0;
+        DD_Node *expr = 0;
+        if(_DD_RequireNode(&ctx, DD_S8Lit("*")))
+        {
+            DD_Type *ptr = DD_MakeType(0, DD_TypeKind_Pointer, last_type, 0, 0);
+            _DD_PushType(ptr);
+        }
+        else if(_DD_RequireNodeKind(&ctx, DD_NodeKind_Set, &expr))
+        {
+            DD_Type *array = DD_MakeType(0, DD_TypeKind_Array, last_type, 0, DD_ParseAsExpr(expr));
+            _DD_PushType(array);
+        }
+        else if(_DD_RequireNodeKind(&ctx, DD_NodeKind_Identifier, &atom))
+        {
+            DD_Type *atom_type = DD_MakeType(atom, DD_TypeKind_Atom, last_type, 0, 0);
+            _DD_PushType(atom_type);
+        }
+        else
+        {
+            break;
+        }
+    }
+#undef _DD_PushType
+    if(first_type == 0)
+    {
+        first_type = DD_NilType();
+    }
+    return first_type;
 }
 
 DD_FUNCTION_IMPL void
@@ -1220,6 +1357,94 @@ DD_OutputTree(FILE *file, DD_Node *node)
     else
     {
         fprintf(file, " ");
+    }
+}
+
+DD_FUNCTION_IMPL void
+DD_OutputExpr(FILE *file, DD_Expr *expr)
+{
+    
+}
+
+DD_FUNCTION_IMPL void
+DD_OutputTree_C_String(FILE *file, DD_Node *node)
+{
+    fprintf(file, "\"");
+    for(DD_u64 i = 0; i < node->string.size; i += 1)
+    {
+        if(node->string.str[i] == '\n')
+        {
+            fprintf(file, "\\n\"\n\"");
+        }
+        else
+        {
+            fprintf(file, "%c", node->string.str[i]);
+        }
+    }
+    fprintf(file, "\"");
+}
+
+DD_FUNCTION_IMPL void
+DD_OutputTree_C_Struct(FILE *file, DD_Node *node)
+{
+    if(node)
+    {
+        fprintf(file, "typedef struct %.*s %.*s;\n",
+                DD_StringExpand(node->string),
+                DD_StringExpand(node->string));
+        fprintf(file, "struct %.*s\n{\n", DD_StringExpand(node->string));
+        for(DD_Node *child = node->children.first; child; child = child->next)
+        {
+            DD_OutputTree_C_Decl(file, child);
+        }
+        fprintf(file, "};\n\n");
+    }
+}
+
+DD_FUNCTION_IMPL void
+DD_OutputTree_C_Decl(FILE *file, DD_Node *node)
+{
+    if(node)
+    {
+        DD_Type *type = DD_ParseAsType(node);
+        DD_OutputType_C_PreArray(file, type);
+        fprintf(file, " %.*s", DD_StringExpand(node->string));
+        DD_OutputType_C_Array(file, type);
+    }
+}
+
+DD_FUNCTION_IMPL void
+DD_OutputType_C_PreArray(FILE *file, DD_Type *type)
+{
+    for(DD_Type *base_type = type; base_type; base_type = base_type->operand)
+    {
+        if(base_type->kind == DD_TypeKind_Atom)
+        {
+            fprintf(file, "%.*s", DD_StringExpand(base_type->node->string));
+            for(DD_Type *op = base_type->parent; op; op = op->parent)
+            {
+                switch(op->kind)
+                {
+                    case DD_TypeKind_Pointer: fprintf(file, "*"); break;
+                    default: break;
+                }
+            }
+            break;
+        }
+    }
+}
+
+DD_FUNCTION_IMPL void
+DD_OutputType_C_Array(FILE *file, DD_Type *type)
+{
+    for(DD_Type *t = type; t; t = t->operand)
+    {
+        if(t->kind == DD_TypeKind_Array)
+        {
+            fprintf(file, "[");
+            DD_OutputExpr(file, t->expr);
+            fprintf(file, "]");
+        }
     }
 }
 
