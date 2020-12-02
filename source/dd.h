@@ -334,9 +334,7 @@ DD_FUNCTION DD_Node *DD_NodeInList(DD_NodeList list, DD_String8 string);
 DD_FUNCTION DD_Node *DD_NthNodeInList(DD_NodeList list, int n);
 DD_FUNCTION DD_Node *DD_NextNodeSibling(DD_Node *last, DD_String8 string);
 DD_FUNCTION DD_Node *DD_TagOnNode(DD_Node *node, DD_String8 tag_string);
-DD_FUNCTION DD_Node *DD_NextTagOnNode(DD_Node *last_tag, DD_String8 tag_string);
 DD_FUNCTION DD_Node *DD_ChildOnNode(DD_Node *node, DD_String8 child_string);
-DD_FUNCTION DD_Node *DD_NextChildOnNode(DD_Node *last_child, DD_String8 child_string);
 DD_FUNCTION DD_Node *DD_NthTagArg(DD_Node *node, DD_String8 tag_string, int n);
 DD_FUNCTION DD_Node *DD_NthChild(DD_Node *node, int n);
 
