@@ -18,6 +18,16 @@ DD_PRIVATE_FUNCTION_IMPL DD_b32 _DD_OS_IMPL_FileIter_Increment(DD_FileIter *it, 
 
 //~
 
+static DD_Node _dd_nil_node =
+{
+    .kind         = DD_NodeKind_Null,
+    .string       = {"`NIL DD NODE`", 13},
+    .whole_string = {"`NIL DD NODE`", 13},
+    .string_hash  = 0xdeadffffffffffull,
+    .file         = {"`NIL DD NODE`", 13},
+    .line         = 1,
+};
+
 DD_FUNCTION_IMPL DD_b32
 DD_CharIsAlpha(DD_u8 c)
 {
@@ -706,15 +716,38 @@ DD_Tokenizer_RequireKind(DD_Tokenizer *tokenizer, DD_TokenKind kind, DD_Token *o
     return result;
 }
 
+DD_FUNCTION_IMPL DD_b32
+DD_IsNil(DD_Node *node)
+{
+    return node == &_dd_nil_node;
+}
+
+DD_FUNCTION_IMPL DD_Node *
+DD_Nil(void) { return &_dd_nil_node; }
+
+DD_PRIVATE_FUNCTION_IMPL DD_Node *
+_DD_AllocateNode(void)
+{
+    DD_Node *node = calloc(1, sizeof(*node));
+    if(node == 0)
+    {
+        node = DD_Nil();
+    }
+    return node;
+}
+
 DD_FUNCTION_IMPL DD_Node *
 DD_MakeNode(DD_NodeKind kind, DD_String8 file, DD_u64 line, DD_Token token)
 {
-    DD_Node *node = calloc(1, sizeof(*node));
-    node->kind = kind;
-    node->string = token.string;
-    node->whole_string = token.outer_string;
-    node->file = file;
-    node->line = line;
+    DD_Node *node = _DD_AllocateNode();
+    if(!DD_IsNil(node))
+    {
+        node->kind = kind;
+        node->string = token.string;
+        node->whole_string = token.outer_string;
+        node->file = file;
+        node->line = line;
+    }
     return node;
 }
 
@@ -727,18 +760,21 @@ DD_MakeNode_Tokenizer(DD_NodeKind kind, DD_Tokenizer *tokenizer, DD_Token token)
 DD_FUNCTION_IMPL void
 DD_PushNodeToList(DD_NodeList *list, DD_Node *parent, DD_Node *node)
 {
-    if(list->last == 0)
+    if(!DD_IsNil(node) && !DD_IsNil(parent))
     {
-        list->first = list->last = node;
-        node->next = node->prev = 0;
+        if(list->last == 0)
+        {
+            list->first = list->last = node;
+            node->next = node->prev = 0;
+        }
+        else
+        {
+            list->last->next = node;
+            node->prev = list->last;
+            list->last = list->last->next;
+        }
+        node->parent = parent;
     }
-    else
-    {
-        list->last->next = node;
-        node->prev = list->last;
-        list->last = list->last->next;
-    }
-    node->parent = parent;
 }
 
 DD_FUNCTION void
@@ -748,7 +784,10 @@ DD_PushListToList(DD_NodeList *list, DD_Node *parent, DD_NodeList to_push)
     {
         for(DD_Node *node = to_push.first; node; node = node->next)
         {
-            node->parent = parent;
+            if(!DD_IsNil(node))
+            {
+                node->parent = parent;
+            }
         }
         if(list->last == 0)
         {
@@ -1045,113 +1084,103 @@ DD_Parse_End(DD_ParseCtx *ctx)
     return result;
 }
 
-#if 0
-DD_FUNCTION_IMPL DD_Node *
-DD_TagOnNode(DD_Node *node, DD_String8 tag_string)
+DD_FUNCTION DD_Node *
+DD_NodeInList(DD_NodeList list, DD_String8 string)
 {
-    // TODO(rjf): 
+    DD_Node *result = DD_Nil();
+    if(list.first && list.last)
+    {
+        for(DD_Node *node = list.first; node; node = node->next)
+        {
+            if(DD_StringMatch(string, node->string, 0))
+            {
+                result = node;
+                break;
+            }
+        }
+    }
+    return result;
+}
+
+DD_FUNCTION DD_Node *
+DD_NthNodeInList(DD_NodeList list, int n)
+{
+    DD_Node *result = DD_Nil();
+    if(list.first && list.last && n >= 0)
+    {
+        int idx = 0;
+        for(DD_Node *node = list.first; node; node = node->next, idx += 1)
+        {
+            if(idx == n)
+            {
+                result = node;
+                break;
+            }
+        }
+    }
+    return result;
+}
+
+DD_FUNCTION DD_Node *
+DD_NextNodeSibling(DD_Node *last, DD_String8 string)
+{
+    DD_Node *result = DD_Nil();
+    if(last)
+    {
+        for(DD_Node *node = last->next; node; node = node->next)
+        {
+            if(DD_StringMatch(string, node->string, 0))
+            {
+                result = node;
+                break;
+            }
+        }
+    }
+    return result;
 }
 
 DD_FUNCTION_IMPL DD_Node *
-DD_NextTagOnNode(DD_Node *last_tag, DD_String8 tag_string)
+DD_TagOnNode(DD_Node *node, DD_String8 tag_string)
 {
-    // TODO(rjf): 
+    DD_Node *result = DD_Nil();
+    if(node)
+    {
+        result = DD_NodeInList(node->tags, tag_string);
+    }
+    return result;
 }
 
 DD_FUNCTION_IMPL DD_Node *
 DD_ChildOnNode(DD_Node *node, DD_String8 child_string)
 {
-    // TODO(rjf): 
-}
-
-DD_FUNCTION_IMPL DD_Node *
-DD_NextChildOnNode(DD_Node *last_child, DD_String8 child_string)
-{
-    // TODO(rjf): 
+    DD_Node *result = DD_Nil();
+    if(node)
+    {
+        result = DD_NodeInList(node->children, child_string);
+    }
+    return result;
 }
 
 DD_FUNCTION_IMPL DD_Node *
 DD_NthTagArg(DD_Node *node, DD_String8 tag_string, int n)
 {
-    // TODO(rjf): 
+    DD_Node *result = DD_Nil();
+    if(n >= 0)
+    {
+        DD_Node *tag = DD_TagOnNode(node, tag_string);
+        result = DD_NthNodeInList(tag->children, n);
+    }
+    return result;
 }
 
 DD_FUNCTION_IMPL DD_Node *
 DD_NthChild(DD_Node *node, int n)
 {
-    // TODO(rjf): 
-}
-#endif
-
-DD_FUNCTION_IMPL DD_Node *
-DD_TagOnNode(DD_Node *node, DD_String8 tag_string)
-{
-    DD_Node *result = 0;
-    if(node)
+    DD_Node *result = DD_Nil();
+    if(node && n >= 0)
     {
-        for(DD_Node *tag = node->tags.first; tag; tag = tag->next)
-        {
-            if(DD_StringMatch(tag->string, tag_string, 0))
-            {
-                result = tag;
-                break;
-            }
-        }
+        result = DD_NthNodeInList(node->children, n);
     }
-    return result;
-}
-
-DD_FUNCTION_IMPL DD_b32
-DD_NodeHasTag(DD_Node *node, DD_String8 tag_string)
-{
-    return !!DD_TagOnNode(node, tag_string);
-}
-
-DD_FUNCTION_IMPL DD_b32
-DD_RequireTagArg(DD_Node *node, DD_String8 tag_string, int arg_index, DD_Node **arg_value_out)
-{
-    DD_b32 result = 0;
-    DD_Node *tag = DD_TagOnNode(node, tag_string);
-    if(tag)
-    {
-        DD_Node *found_arg = 0;
-        int idx = 0;
-        for(DD_Node *arg = tag->children.first; arg; arg = arg->next, idx += 1)
-        {
-            if(idx == arg_index)
-            {
-                found_arg = arg;
-                break;
-            }
-        }
-        if(found_arg && arg_value_out)
-        {
-            *arg_value_out = found_arg;
-        }
-        result = !!found_arg;
-    }
-    return result;
-}
-
-DD_FUNCTION_IMPL DD_b32
-DD_RequireNodeChild(DD_Node *node, int child_index, DD_Node **child_value_out)
-{
-    DD_b32 result = 0;
-    DD_Node *found_child = 0;
-    int idx = 0;
-    for(DD_Node *child = node->children.first; child; child = child->next, idx += 1)
-    {
-        if(idx == child_index)
-        {
-            found_child = child;
-            break;
-        }
-    }
-    if(found_child && child_value_out)
-    {
-        *child_value_out = found_child;
-    }
-    result = !!found_child;
     return result;
 }
 

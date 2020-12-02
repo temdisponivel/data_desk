@@ -107,6 +107,7 @@ struct DD_Node
     DD_NodeKind kind;
     DD_String8 string;
     DD_String8 whole_string;
+    DD_u64 string_hash;
     
     // Source code location information.
     DD_String8 file;
@@ -263,7 +264,7 @@ DD_FUNCTION DD_u8  DD_CharToLower(DD_u8 c);
 //~ String Functions
 DD_FUNCTION DD_String8     DD_S8(DD_u8 *str, DD_u64 size);
 #define DD_S8CString(s)    DD_S8((DD_u8 *)(s), DD_CalculateCStringLength(s))
-#define DD_S8Lit(s)        DD_S8((DD_u8 *)(s), DD_CalculateCStringLength(s))
+#define DD_S8Lit(s)        (DD_String8){(DD_u8 *)(s), sizeof(s)-1}
 #define DD_ZeroString()    DD_S8(0, 0)
 DD_FUNCTION DD_b32         DD_StringIsZero(DD_String8 str);
 DD_FUNCTION DD_String8     DD_StringSubstring(DD_String8 str, DD_u64 min, DD_u64 max);
@@ -309,6 +310,8 @@ DD_FUNCTION DD_b32       DD_Tokenizer_Require(DD_Tokenizer *tokenizer, DD_String
 DD_FUNCTION DD_b32       DD_Tokenizer_RequireKind(DD_Tokenizer *tokenizer, DD_TokenKind kind, DD_Token *out_token);
 
 //~ Tree/List Building Functions
+DD_FUNCTION DD_b32   DD_IsNil(DD_Node *node);
+DD_FUNCTION DD_Node *DD_Nil(void);
 DD_FUNCTION DD_Node *DD_MakeNode(DD_NodeKind kind, DD_String8 file, DD_u64 line, DD_Token token);
 DD_FUNCTION DD_Node *DD_MakeNode_Tokenizer(DD_NodeKind kind, DD_Tokenizer *tokenizer, DD_Token token);
 DD_FUNCTION void     DD_PushNodeToList(DD_NodeList *list, DD_Node *parent, DD_Node *node);
@@ -327,6 +330,9 @@ DD_FUNCTION DD_Node *      DD_Parse(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer);
 DD_FUNCTION DD_ParseResult DD_Parse_End(DD_ParseCtx *ctx);
 
 //~ Introspection Helpers
+DD_FUNCTION DD_Node *DD_NodeInList(DD_NodeList list, DD_String8 string);
+DD_FUNCTION DD_Node *DD_NthNodeInList(DD_NodeList list, int n);
+DD_FUNCTION DD_Node *DD_NextNodeSibling(DD_Node *last, DD_String8 string);
 DD_FUNCTION DD_Node *DD_TagOnNode(DD_Node *node, DD_String8 tag_string);
 DD_FUNCTION DD_Node *DD_NextTagOnNode(DD_Node *last_tag, DD_String8 tag_string);
 DD_FUNCTION DD_Node *DD_ChildOnNode(DD_Node *node, DD_String8 child_string);
