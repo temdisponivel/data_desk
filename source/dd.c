@@ -1045,6 +1045,44 @@ DD_Parse_End(DD_ParseCtx *ctx)
     return result;
 }
 
+#if 0
+DD_FUNCTION_IMPL DD_Node *
+DD_TagOnNode(DD_Node *node, DD_String8 tag_string)
+{
+    // TODO(rjf): 
+}
+
+DD_FUNCTION_IMPL DD_Node *
+DD_NextTagOnNode(DD_Node *last_tag, DD_String8 tag_string)
+{
+    // TODO(rjf): 
+}
+
+DD_FUNCTION_IMPL DD_Node *
+DD_ChildOnNode(DD_Node *node, DD_String8 child_string)
+{
+    // TODO(rjf): 
+}
+
+DD_FUNCTION_IMPL DD_Node *
+DD_NextChildOnNode(DD_Node *last_child, DD_String8 child_string)
+{
+    // TODO(rjf): 
+}
+
+DD_FUNCTION_IMPL DD_Node *
+DD_NthTagArg(DD_Node *node, DD_String8 tag_string, int n)
+{
+    // TODO(rjf): 
+}
+
+DD_FUNCTION_IMPL DD_Node *
+DD_NthChild(DD_Node *node, int n)
+{
+    // TODO(rjf): 
+}
+#endif
+
 DD_FUNCTION_IMPL DD_Node *
 DD_TagOnNode(DD_Node *node, DD_String8 tag_string)
 {

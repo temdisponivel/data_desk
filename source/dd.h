@@ -328,9 +328,11 @@ DD_FUNCTION DD_ParseResult DD_Parse_End(DD_ParseCtx *ctx);
 
 //~ Introspection Helpers
 DD_FUNCTION DD_Node *DD_TagOnNode(DD_Node *node, DD_String8 tag_string);
-DD_FUNCTION DD_b32   DD_NodeHasTag(DD_Node *node, DD_String8 tag_string);
-DD_FUNCTION DD_b32   DD_RequireTagArg(DD_Node *node, DD_String8 tag_string, int arg_index, DD_Node **arg_value_out);
-DD_FUNCTION DD_b32   DD_RequireNodeChild(DD_Node *node, int child_index, DD_Node **child_value_out);
+DD_FUNCTION DD_Node *DD_NextTagOnNode(DD_Node *last_tag, DD_String8 tag_string);
+DD_FUNCTION DD_Node *DD_ChildOnNode(DD_Node *node, DD_String8 child_string);
+DD_FUNCTION DD_Node *DD_NextChildOnNode(DD_Node *last_child, DD_String8 child_string);
+DD_FUNCTION DD_Node *DD_NthTagArg(DD_Node *node, DD_String8 tag_string, int n);
+DD_FUNCTION DD_Node *DD_NthChild(DD_Node *node, int n);
 
 //~ Generation Functions
 DD_FUNCTION void DD_OutputTree(FILE *file, DD_Node *node);
