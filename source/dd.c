@@ -20,7 +20,7 @@ DD_PRIVATE_FUNCTION_IMPL DD_b32 _DD_OS_IMPL_FileIter_Increment(DD_FileIter *it, 
 
 static DD_Node _dd_nil_node =
 {
-    .kind         = DD_NodeKind_Null,
+    .kind         = DD_NodeKind_Nil,
     .string       = {"`NIL DD NODE`", 13},
     .whole_string = {"`NIL DD NODE`", 13},
     .string_hash  = 0xdeadffffffffffull,
@@ -719,7 +719,7 @@ DD_Tokenizer_RequireKind(DD_Tokenizer *tokenizer, DD_TokenKind kind, DD_Token *o
 DD_FUNCTION_IMPL DD_b32
 DD_NodeIsNil(DD_Node *node)
 {
-    return node == &_dd_nil_node;
+    return node && node->kind == DD_NodeKind_Nil;
 }
 
 DD_FUNCTION_IMPL DD_Node *
@@ -1396,6 +1396,7 @@ DD_OutputTree_C_Struct(FILE *file, DD_Node *node)
         for(DD_Node *child = node->children.first; child; child = child->next)
         {
             DD_OutputTree_C_Decl(file, child);
+            fprintf(file, ";\n");
         }
         fprintf(file, "};\n\n");
     }

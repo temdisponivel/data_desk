@@ -69,7 +69,7 @@ enum
 //~ Node kinds that comprise the language.
 typedef enum DD_NodeKind
 {
-    DD_NodeKind_Null,
+    DD_NodeKind_Nil,
     DD_NodeKind_Identifier,
     DD_NodeKind_Symbol,
     DD_NodeKind_NumericLiteral,
@@ -392,6 +392,7 @@ DD_FUNCTION DD_Node *      DD_Parse(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer);
 DD_FUNCTION DD_ParseResult DD_Parse_End(DD_ParseCtx *ctx);
 
 //~ Introspection Helpers
+#define DD_NodeListLoop(it, list) for(DD_Node *it = (list).first; (it); (it) = (it)->next)
 DD_FUNCTION DD_Node *DD_NodeInList(DD_NodeList list, DD_String8 string);
 DD_FUNCTION DD_Node *DD_NthNodeInList(DD_NodeList list, int n);
 DD_FUNCTION int      DD_IndexFromNode(DD_Node *node);
