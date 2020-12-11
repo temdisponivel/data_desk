@@ -1340,6 +1340,7 @@ DD_OutputTree_C_Struct(FILE *file, DD_Node *node)
         for(DD_Node *child = node->first_child; !DD_NodeIsNil(child); child = child->next)
         {
             DD_OutputTree_C_Decl(file, child);
+            fprintf(file, ";\n");
         }
         fprintf(file, "};\n\n");
     }
