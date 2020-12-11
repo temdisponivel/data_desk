@@ -1,18 +1,13 @@
 #define DD_FUNCTION_IMPL DD_FUNCTION
 #define DD_PRIVATE_FUNCTION_IMPL DD_FUNCTION_IMPL
 
-//~ NOTE(rjf): OS Implementation Functions
-#if DD_OS
-DD_PRIVATE_FUNCTION_IMPL DD_b32 _DD_OS_IMPL_FileIter_Increment(DD_FileIter *it, DD_String8 path, DD_FileInfo *out_info);
-#endif
-
 //~ NOTE(rjf): OS Layers
 
-#if DD_WIN32
+DD_PRIVATE_FUNCTION_IMPL DD_b32 _DD_OS_IMPL_FileIter_Increment(DD_FileIter *it, DD_String8 path, DD_FileInfo *out_info);
+#if DD_OS_WINDOWS
 #include "dd_win32.c"
 #endif
-
-#if DD_POSIX
+#if DD_OS_LINUX
 #include "dd_posix.c"
 #endif
 
@@ -20,12 +15,20 @@ DD_PRIVATE_FUNCTION_IMPL DD_b32 _DD_OS_IMPL_FileIter_Increment(DD_FileIter *it, 
 
 static DD_Node _dd_nil_node =
 {
-    .kind         = DD_NodeKind_Null,
-    .string       = {"`NIL DD NODE`", 13},
-    .whole_string = {"`NIL DD NODE`", 13},
-    .string_hash  = 0xdeadffffffffffull,
-    .file         = {"`NIL DD NODE`", 13},
-    .line         = 1,
+    .next          = &_dd_nil_node,
+    .prev          = &_dd_nil_node,
+    .parent        = &_dd_nil_node,
+    .first_child   = &_dd_nil_node,
+    .last_child    = &_dd_nil_node,
+    .first_tag     = &_dd_nil_node,
+    .last_tag      = &_dd_nil_node,
+    .kind          = DD_NodeKind_Nil,
+    .string        = {"`NIL DD NODE`", 13},
+    .whole_string  = {"`NIL DD NODE`", 13},
+    .string_hash   = 0xdeadffffffffffull,
+    .filename      = {"`NIL DD NODE`", 13},
+    .file_contents = 0,
+    .at            = 0,
 };
 
 DD_FUNCTION_IMPL DD_b32
@@ -60,7 +63,7 @@ DD_CharToUpper(DD_u8 c)
 DD_FUNCTION_IMPL DD_u8
 DD_CharToLower(DD_u8 c)
 {
-    return (c >= 'A' && c <= 'Z') ? ('a' + (c - 'Z')) : c;
+    return (c >= 'A' && c <= 'Z') ? ('a' + (c - 'A')) : c;
 }
 
 DD_FUNCTION_IMPL DD_String8
@@ -485,28 +488,59 @@ DD_NodeTable_Insert(DD_NodeTable *table, DD_NodeTableCollisionRule collision_rul
 }
 
 DD_FUNCTION_IMPL DD_Token
-DD_TokenZero(void)
+DD_ZeroToken(void)
 {
     DD_Token token = {0};
     return token;
 }
 
-DD_FUNCTION_IMPL DD_Tokenizer
-DD_Tokenizer_Start(DD_String8 filename, DD_String8 file_contents)
+DD_FUNCTION_IMPL DD_b32
+DD_TokenKindIsWhitespace(DD_TokenKind kind)
 {
-    DD_Tokenizer tokenizer = {0};
-    tokenizer.at = file_contents.str;
-    tokenizer.at_line = 1;
-    tokenizer.filename = filename;
-    tokenizer.file_contents = file_contents;
-    return tokenizer;
+    return kind > DD_TokenKind_WhitespaceMin && kind < DD_TokenKind_WhitespaceMax;
+}
+
+DD_FUNCTION_IMPL DD_ParseCtx
+DD_Parse_InitializeCtx(DD_String8 filename, DD_String8 contents)
+{
+    DD_ParseCtx ctx = {0};
+    ctx.first_root = ctx.last_root = DD_NilNode();
+    ctx.at = contents.str;
+    ctx.file_contents = contents;
+    ctx.filename = filename;
+    return ctx;
+}
+
+DD_PRIVATE_FUNCTION_IMPL void
+_DD_PushNodeToList(DD_Node **firstp, DD_Node **lastp, DD_Node *parent, DD_Node *node)
+{
+    if(!DD_NodeIsNil(node))
+    {
+        DD_Node *first = *firstp;
+        DD_Node *last = *lastp;
+        if(DD_NodeIsNil(last))
+        {
+            first = last = node;
+            node->next = node->prev = DD_NilNode();
+        }
+        else
+        {
+            last->next = node;
+            node->next = DD_NilNode();
+            node->prev = last;
+            last = last->next;
+        }
+        *firstp = first;
+        *lastp = last;
+        node->parent = parent;
+    }
 }
 
 DD_FUNCTION_IMPL DD_Token
-DD_Tokenizer_Peek(DD_Tokenizer *tokenizer)
+DD_Parse_PeekAll(DD_ParseCtx *ctx)
 {
     DD_Token token = {0};
-    DD_u8 *one_past_last = tokenizer->file_contents.str + tokenizer->file_contents.size;
+    DD_u8 *one_past_last = ctx->file_contents.str + ctx->file_contents.size;
     
     enum
     {
@@ -517,23 +551,23 @@ DD_Tokenizer_Peek(DD_Tokenizer *tokenizer)
     int read_mode = DD_ReadMode_Normal;
     int multiline_comment_nest = 0;
     
-    for(DD_u64 i = 0; tokenizer->at + i < one_past_last; i += 1)
+    for(DD_u64 i = 0; ctx->at + i < one_past_last; i += 1)
     {
         
         if(read_mode == DD_ReadMode_SingleLineComment)
         {
-            if(tokenizer->at[i] == '\n')
+            if(ctx->at[i] == '\n')
             {
                 read_mode = DD_ReadMode_Normal;
             }
         }
         else if(read_mode == DD_ReadMode_MultiLineComment)
         {
-            if(tokenizer->at[i] == '/' && tokenizer->at[i+1] == '*')
+            if(ctx->at[i] == '/' && ctx->at[i+1] == '*')
             {
                 multiline_comment_nest += 1;
             }
-            if(tokenizer->at[i] == '*' && tokenizer->at[i+1] == '/')
+            if(ctx->at[i] == '*' && ctx->at[i+1] == '/')
             {
                 multiline_comment_nest -= 1;
             }
@@ -544,109 +578,119 @@ DD_Tokenizer_Peek(DD_Tokenizer *tokenizer)
         }
         else
         {
-#define DD_TokenizerLoop(name, start, cond) DD_u64 name = start; for(; ((cond)) && tokenizer->at + name < one_past_last; name += 1)
+#define DD_TokenizerLoop(name, start, cond) DD_u64 name = start; for(; ((cond)) && ctx->at + name < one_past_last; name += 1)
             
             // NOTE(rjf): Single-Line Comments
-            if(tokenizer->at[i] == '/' && tokenizer->at[i+1] == '/')
+            if(ctx->at[i] == '/' && ctx->at[i+1] == '/')
             {
                 read_mode = DD_ReadMode_SingleLineComment;
             }
             
             // NOTE(rjf): Multi-Line Comments
-            else if(tokenizer->at[i] == '/' && tokenizer->at[i+1] == '*')
+            else if(ctx->at[i] == '/' && ctx->at[i+1] == '*')
             {
                 read_mode = DD_ReadMode_MultiLineComment;
                 multiline_comment_nest = 1;
             }
             
+            // NOTE(rjf): Newlines
+            else if(ctx->at[i] == '\n')
+            {
+                token.kind = DD_TokenKind_Newline;
+                token.string.str = ctx->at + i;
+                token.string.size = 1;
+                token.outer_string = token.string;
+                break;
+            }
+            
             // NOTE(rjf): Identifier
-            else if(DD_CharIsAlpha(tokenizer->at[i]))
+            else if(DD_CharIsAlpha(ctx->at[i]))
             {
                 DD_TokenizerLoop(j, i+1,
-                                 DD_CharIsAlpha(tokenizer->at[j]) ||
-                                 DD_CharIsDigit(tokenizer->at[j]) ||
-                                 tokenizer->at[j] == '_');
+                                 DD_CharIsAlpha(ctx->at[j]) ||
+                                 DD_CharIsDigit(ctx->at[j]) ||
+                                 ctx->at[j] == '_');
                 token.kind = DD_TokenKind_Identifier;
-                token.string.str = tokenizer->at + i;
+                token.string.str = ctx->at + i;
                 token.string.size = j - i;
                 token.outer_string = token.string;
                 break;
             }
             
             // NOTE(rjf): Numeric Literal
-            else if(DD_CharIsDigit(tokenizer->at[i]) ||
-                    (tokenizer->at + 1 < one_past_last &&
-                     tokenizer->at[i] == '-' && DD_CharIsDigit(tokenizer->at[i+1])))
+            else if(DD_CharIsDigit(ctx->at[i]) ||
+                    (ctx->at + 1 < one_past_last &&
+                     ctx->at[i] == '-' && DD_CharIsDigit(ctx->at[i+1])))
             {
                 DD_TokenizerLoop(j, i+1,
-                                 DD_CharIsAlpha(tokenizer->at[j]) ||
-                                 DD_CharIsDigit(tokenizer->at[j]) ||
-                                 tokenizer->at[j] == '.');
+                                 DD_CharIsAlpha(ctx->at[j]) ||
+                                 DD_CharIsDigit(ctx->at[j]) ||
+                                 ctx->at[j] == '.');
                 token.kind = DD_TokenKind_NumericLiteral;
-                token.string.str = tokenizer->at + i;
+                token.string.str = ctx->at + i;
                 token.string.size = j - i;
                 token.outer_string = token.string;
                 break;
             }
             
             // NOTE(rjf): Symbol
-            else if(DD_CharIsSymbol(tokenizer->at[i]))
+            else if(DD_CharIsSymbol(ctx->at[i]))
             {
                 token.kind = DD_TokenKind_Symbol;
-                token.string.str = tokenizer->at + i;
+                token.string.str = ctx->at + i;
                 token.string.size = 1;
                 token.outer_string = token.string;
                 break;
             }
             
             // NOTE(rjf): Multi-Line String Literal
-            else if(tokenizer->at+i+2  < one_past_last &&
-                    tokenizer->at[i] == '"' && tokenizer->at[i+1] == '"' && tokenizer->at[i+2] == '"')
+            else if(ctx->at+i+2  < one_past_last &&
+                    ctx->at[i] == '"' && ctx->at[i+1] == '"' && ctx->at[i+2] == '"')
             {
-                DD_TokenizerLoop(j, i+3, !(tokenizer->at + j + 2 < one_past_last &&
-                                           tokenizer->at[j] == '"' && tokenizer->at[j+1] == '"' && tokenizer->at[j+2] == '"'));
+                DD_TokenizerLoop(j, i+3, !(ctx->at + j + 2 < one_past_last &&
+                                           ctx->at[j] == '"' && ctx->at[j+1] == '"' && ctx->at[j+2] == '"'));
                 token.kind = DD_TokenKind_StringLiteral;
-                token.string.str = tokenizer->at + i + 3;
+                token.string.str = ctx->at + i + 3;
                 token.string.size = j - (i + 3);
-                token.outer_string.str = tokenizer->at + i;
+                token.outer_string.str = ctx->at + i;
                 token.outer_string.size = (j + 3) - i;
                 break;
             }
             
             // NOTE(rjf): Single-Line String Literal
-            else if(tokenizer->at[i] == '"')
+            else if(ctx->at[i] == '"')
             {
-                DD_TokenizerLoop(j, i+1, tokenizer->at[j] != '"');
+                DD_TokenizerLoop(j, i+1, ctx->at[j] != '"');
                 token.kind = DD_TokenKind_StringLiteral;
-                token.string.str = tokenizer->at + i + 1;
+                token.string.str = ctx->at + i + 1;
                 token.string.size = j - (i + 1);
-                token.outer_string.str = tokenizer->at + i;
+                token.outer_string.str = ctx->at + i;
                 token.outer_string.size = (j - i) + 1;
                 break;
             }
             
             // NOTE(rjf): Single-Line Char Literal
-            else if(tokenizer->at[i] == '\'')
+            else if(ctx->at[i] == '\'')
             {
-                DD_TokenizerLoop(j, i+1, tokenizer->at[j] != '\'');
+                DD_TokenizerLoop(j, i+1, ctx->at[j] != '\'');
                 token.kind = DD_TokenKind_CharLiteral;
-                token.string.str = tokenizer->at + i + 1;
+                token.string.str = ctx->at + i + 1;
                 token.string.size = j - (i + 1);
-                token.outer_string.str = tokenizer->at + i;
+                token.outer_string.str = ctx->at + i;
                 token.outer_string.size = (j - i) + 1;
                 break;
             }
             
             // NOTE(rjf): Multi-Line Char Literal
-            else if(tokenizer->at+i+2  < one_past_last &&
-                    tokenizer->at[i] == '\'' && tokenizer->at[i+1] == '\'' && tokenizer->at[i+2] == '\'')
+            else if(ctx->at+i+2  < one_past_last &&
+                    ctx->at[i] == '\'' && ctx->at[i+1] == '\'' && ctx->at[i+2] == '\'')
             {
-                DD_TokenizerLoop(j, i+3, !(tokenizer->at + j + 2 < one_past_last &&
-                                           tokenizer->at[j] == '\'' && tokenizer->at[j+1] == '\'' && tokenizer->at[j+2] == '\''));
+                DD_TokenizerLoop(j, i+3, !(ctx->at + j + 2 < one_past_last &&
+                                           ctx->at[j] == '\'' && ctx->at[j+1] == '\'' && ctx->at[j+2] == '\''));
                 token.kind = DD_TokenKind_StringLiteral;
-                token.string.str = tokenizer->at + i + 3;
+                token.string.str = ctx->at + i + 3;
                 token.string.size = j - (i + 3);
-                token.outer_string.str = tokenizer->at + i;
+                token.outer_string.str = ctx->at + i;
                 token.outer_string.size = (j + 3) - i;
                 break;
             }
@@ -658,56 +702,76 @@ DD_Tokenizer_Peek(DD_Tokenizer *tokenizer)
     return token;
 }
 
-DD_FUNCTION_IMPL DD_b32
-DD_Tokenizer_PeekMatch(DD_Tokenizer *tokenizer, DD_String8 string)
-{
-    int result = 0;
-    DD_Token token = DD_Tokenizer_Peek(tokenizer);
-    if(DD_StringMatch(token.string, string, 0))
-    {
-        result = 1;
-    }
-    return result;
-}
-
 DD_PRIVATE_FUNCTION_IMPL void
-_DD_Tokenizer_Bump(DD_Tokenizer *tokenizer, DD_Token token)
+_DD_Parse_Bump(DD_ParseCtx *ctx, DD_Token token)
 {
-    tokenizer->at = token.outer_string.str + token.outer_string.size;
+    ctx->at = token.outer_string.str + token.outer_string.size;
 }
 
-DD_FUNCTION_IMPL void
-DD_Tokenizer_Next(DD_Tokenizer *tokenizer)
+DD_FUNCTION_IMPL DD_Token
+DD_Parse_PeekNonWhitespace(DD_ParseCtx *ctx)
 {
-    DD_Token token = DD_Tokenizer_Peek(tokenizer);
-    if(token.kind)
+    DD_Token result = {0};
+    DD_ParseCtx ctx_restore = *ctx;
+    
+    for(DD_Token token = DD_Parse_PeekAll(ctx);; token = DD_Parse_PeekAll(ctx))
     {
-        _DD_Tokenizer_Bump(tokenizer, token);
+        if(!DD_TokenKindIsWhitespace(token.kind))
+        {
+            result = token;
+            break;
+        }
+        else if(token.kind == DD_TokenKind_Nil)
+        {
+            break;
+        }
+        _DD_Parse_Bump(ctx, token);
     }
-}
-
-DD_FUNCTION_IMPL DD_b32
-DD_Tokenizer_Require(DD_Tokenizer *tokenizer, DD_String8 string)
-{
-    int result = 0;
-    DD_Token token = DD_Tokenizer_Peek(tokenizer);
-    if(DD_StringMatch(token.string, string, 0))
-    {
-        result = 1;
-        _DD_Tokenizer_Bump(tokenizer, token);
-    }
+    
+    *ctx = ctx_restore;
     return result;
 }
 
 DD_FUNCTION_IMPL DD_b32
-DD_Tokenizer_RequireKind(DD_Tokenizer *tokenizer, DD_TokenKind kind, DD_Token *out_token)
+DD_Parse_TokenMatch(DD_Token token, DD_String8 string, DD_StringMatchFlags flags)
+{
+    return DD_StringMatch(token.string, string, flags);
+}
+
+DD_FUNCTION_IMPL DD_b32
+DD_Parse_Require(DD_ParseCtx *ctx, DD_String8 string)
 {
     int result = 0;
-    DD_Token token = DD_Tokenizer_Peek(tokenizer);
+    
+    DD_Token token_all = DD_Parse_PeekAll(ctx);
+    if(DD_StringMatch(token_all.string, string, 0))
+    {
+        result = 1;
+        _DD_Parse_Bump(ctx, token_all);
+        goto end;
+    }
+    
+    DD_Token token_nonws = DD_Parse_PeekNonWhitespace(ctx);
+    if(DD_StringMatch(token_nonws.string, string, 0))
+    {
+        result = 1;
+        _DD_Parse_Bump(ctx, token_nonws);
+        goto end;
+    }
+    
+    end:;
+    return result;
+}
+
+DD_FUNCTION_IMPL DD_b32
+DD_Parse_RequireKind(DD_ParseCtx *ctx, DD_TokenKind kind, DD_Token *out_token)
+{
+    int result = 0;
+    DD_Token token = DD_TokenKindIsWhitespace(kind) ? DD_Parse_PeekAll(ctx) : DD_Parse_PeekNonWhitespace(ctx);
     if(token.kind == kind)
     {
         result = 1;
-        _DD_Tokenizer_Bump(tokenizer, token);
+        _DD_Parse_Bump(ctx, token);
         if(out_token)
         {
             *out_token = token;
@@ -716,26 +780,31 @@ DD_Tokenizer_RequireKind(DD_Tokenizer *tokenizer, DD_TokenKind kind, DD_Token *o
     return result;
 }
 
-DD_FUNCTION_IMPL DD_b32
-DD_NodeIsNil(DD_Node *node)
+DD_PRIVATE_FUNCTION_IMPL void
+_DD_Error(DD_ParseCtx *ctx, char *fmt, ...)
 {
-    return node == &_dd_nil_node;
+    DD_Error *error = calloc(1, sizeof(*error));
+    error->filename = ctx->filename;
+    va_list args;
+    va_start(args, fmt);
+    error->string = DD_PushStringFV(fmt, args);
+    va_end(args);
 }
 
-DD_FUNCTION_IMPL DD_Node *
-DD_NilNode(void) { return &_dd_nil_node; }
-
-DD_FUNCTION_IMPL DD_Node *
-DD_MakeNode(DD_NodeKind kind, DD_String8 file, DD_u64 line, DD_Token token)
+DD_PRIVATE_FUNCTION_IMPL DD_Node *
+_DD_MakeNode(DD_NodeKind kind, DD_String8 string, DD_String8 whole_string, DD_String8 filename,
+             DD_u8 *file_contents, DD_u8 *at)
 {
     DD_Node *node = calloc(1, sizeof(*node));
     if(node)
     {
         node->kind = kind;
-        node->string = token.string;
-        node->whole_string = token.outer_string;
-        node->file = file;
-        node->line = line;
+        node->string = string;
+        node->whole_string = whole_string;
+        node->next = node->prev = node->parent = node->first_child = node->last_child = node->first_tag = node->last_tag = DD_NilNode();
+        node->filename = filename;
+        node->file_contents = file_contents;
+        node->at = at;
     }
     else
     {
@@ -744,110 +813,16 @@ DD_MakeNode(DD_NodeKind kind, DD_String8 file, DD_u64 line, DD_Token token)
     return node;
 }
 
-DD_FUNCTION_IMPL DD_Node *
-DD_MakeNode_Tokenizer(DD_NodeKind kind, DD_Tokenizer *tokenizer, DD_Token token)
+DD_PRIVATE_FUNCTION_IMPL DD_Node *
+_DD_MakeNodeFromToken_Ctx(DD_ParseCtx *ctx, DD_NodeKind kind, DD_Token token)
 {
-    return DD_MakeNode(kind, tokenizer->filename, tokenizer->at_line, token);
+    return _DD_MakeNode(kind, token.string, token.outer_string, ctx->filename, ctx->file_contents.str, ctx->at);
 }
 
-DD_FUNCTION_IMPL void
-DD_PushNodeToList(DD_NodeList *list, DD_Node *parent, DD_Node *node)
+DD_PRIVATE_FUNCTION_IMPL DD_Node *
+_DD_MakeNodeFromString_Ctx(DD_ParseCtx *ctx, DD_NodeKind kind, DD_String8 string)
 {
-    if(!DD_NodeIsNil(node) && !DD_NodeIsNil(parent))
-    {
-        if(list->last == 0)
-        {
-            list->first = list->last = node;
-            node->next = node->prev = 0;
-        }
-        else
-        {
-            list->last->next = node;
-            node->prev = list->last;
-            list->last = list->last->next;
-        }
-        node->parent = parent;
-    }
-}
-
-DD_FUNCTION void
-DD_PushListToList(DD_NodeList *list, DD_Node *parent, DD_NodeList to_push)
-{
-    if(to_push.first && to_push.last)
-    {
-        for(DD_Node *node = to_push.first; node; node = node->next)
-        {
-            if(!DD_NodeIsNil(node))
-            {
-                node->parent = parent;
-            }
-        }
-        if(list->last == 0)
-        {
-            *list = to_push;
-        }
-        else
-        {
-            list->last->next = to_push.first;
-            list->last = to_push.last;
-        }
-    }
-}
-
-DD_FUNCTION_IMPL void
-DD_PushChild(DD_Node *parent, DD_Node *new_child)
-{
-    DD_PushNodeToList(&parent->children, parent, new_child);
-}
-
-DD_FUNCTION_IMPL void
-DD_PushTag(DD_Node *node, DD_Node *tag)
-{
-    DD_PushNodeToList(&node->tags, node, tag);
-}
-
-DD_FUNCTION void
-DD_PushChildren(DD_Node *parent, DD_NodeList children)
-{
-    DD_PushListToList(&parent->children, parent, children);
-}
-
-DD_FUNCTION void
-DD_PushTags(DD_Node *node, DD_NodeList tags)
-{
-    DD_PushListToList(&node->tags, node, tags);
-}
-
-DD_FUNCTION_IMPL DD_ParseCtx
-DD_Parse_Begin(void)
-{
-    DD_ParseCtx ctx = {0};
-    return ctx;
-}
-
-DD_FUNCTION_IMPL void
-DD_Parse_Filename(DD_ParseCtx *ctx, DD_String8 filename)
-{
-    DD_String8 file_contents = DD_LoadEntireFile(filename);
-    DD_Parse_Tokenizer(ctx, DD_Tokenizer_Start(filename, file_contents));
-}
-
-DD_FUNCTION_IMPL void
-DD_Parse_String(DD_ParseCtx *ctx, DD_String8 filename, DD_String8 string)
-{
-    DD_Parse_Tokenizer(ctx, DD_Tokenizer_Start(filename, string));
-}
-
-DD_PRIVATE_FUNCTION_IMPL void
-_DD_Error(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer, char *fmt, ...)
-{
-    DD_Error *error = calloc(1, sizeof(*error));
-    error->filename = tokenizer->filename;
-    error->line = tokenizer->at_line;
-    va_list args;
-    va_start(args, fmt);
-    error->string = DD_PushStringFV(fmt, args);
-    va_end(args);
+    return _DD_MakeNode(kind, string, string, ctx->filename, ctx->file_contents.str, ctx->at);
 }
 
 typedef DD_u32 _DD_ParseSetFlags;
@@ -858,106 +833,127 @@ enum
     _DD_ParseSetFlag_Bracket  = (1<<2),
     _DD_ParseSetFlag_Implicit = (1<<3),
 };
-DD_PRIVATE_FUNCTION_IMPL DD_NodeList _DD_ParseSet(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer, DD_Node *parent, _DD_ParseSetFlags flags);
-DD_PRIVATE_FUNCTION_IMPL DD_NodeList _DD_ParseTagList(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer);
 
-DD_FUNCTION_IMPL DD_Node *
-DD_Parse(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer)
+DD_PRIVATE_FUNCTION_IMPL DD_ParseResult _DD_ParseOneNode(DD_ParseCtx *ctx);
+DD_PRIVATE_FUNCTION_IMPL void _DD_ParseSet(DD_ParseCtx *ctx, DD_Node *parent, _DD_ParseSetFlags flags, DD_Node **first_out, DD_Node **last_out);
+DD_PRIVATE_FUNCTION_IMPL void _DD_ParseTagList(DD_ParseCtx *ctx, DD_Node **first_out, DD_Node **last_out);
+
+DD_PRIVATE_FUNCTION_IMPL DD_ParseResult
+_DD_ParseOneNode(DD_ParseCtx *ctx)
 {
-    DD_Node *result = 0;
-    DD_NodeList tags = _DD_ParseTagList(ctx, tokenizer);
+    DD_u8 *at_first = ctx->at;
+    
+    DD_ParseResult result = {0};
+    result.node = DD_NilNode();
+    
     DD_Token token = {0};
     
+    DD_Node *first_tag = 0;
+    DD_Node *last_tag = 0;
+    _DD_ParseTagList(ctx, &first_tag, &last_tag);
+    
     // NOTE(rjf): Identifier
-    if(DD_Tokenizer_RequireKind(tokenizer, DD_TokenKind_Identifier, &token))
+    if(DD_Parse_RequireKind(ctx, DD_TokenKind_Identifier, &token))
     {
         // NOTE(rjf): Named Set
-        if(DD_Tokenizer_Require(tokenizer, DD_S8Lit(":")))
+        if(DD_Parse_Require(ctx, DD_S8Lit(":")))
         {
-            result = DD_MakeNode_Tokenizer(DD_NodeKind_Set, tokenizer, token);
-            result->children = _DD_ParseSet(ctx, tokenizer, result,
-                                            _DD_ParseSetFlag_Paren   |
-                                            _DD_ParseSetFlag_Brace   |
-                                            _DD_ParseSetFlag_Bracket |
-                                            _DD_ParseSetFlag_Implicit);
+            result.node = DD_MakeNodeFromToken(DD_NodeKind_Set, ctx->filename, ctx->file_contents.str, ctx->at, token);
+            _DD_ParseSet(ctx, result.node,
+                         _DD_ParseSetFlag_Paren   |
+                         _DD_ParseSetFlag_Brace   |
+                         _DD_ParseSetFlag_Bracket |
+                         _DD_ParseSetFlag_Implicit,
+                         &result.node->first_child,
+                         &result.node->last_child);
             goto end_parse;
         }
         
         // NOTE(rjf): Plain identifier
-        result = DD_MakeNode_Tokenizer(DD_NodeKind_Identifier, tokenizer, token);
+        result.node = _DD_MakeNodeFromToken_Ctx(ctx, DD_NodeKind_Identifier, token);
         goto end_parse;
     }
     
     // NOTE(rjf): Unnamed Sets
-    else if(DD_Tokenizer_PeekMatch(tokenizer, DD_S8Lit("(")) ||
-            DD_Tokenizer_PeekMatch(tokenizer, DD_S8Lit("{")) ||
-            DD_Tokenizer_PeekMatch(tokenizer, DD_S8Lit("[")))
+    else if(DD_Parse_TokenMatch(DD_Parse_PeekNonWhitespace(ctx), DD_S8Lit("("), 0) ||
+            DD_Parse_TokenMatch(DD_Parse_PeekNonWhitespace(ctx), DD_S8Lit("{"), 0) ||
+            DD_Parse_TokenMatch(DD_Parse_PeekNonWhitespace(ctx), DD_S8Lit("["), 0))
     {
-        result = DD_MakeNode_Tokenizer(DD_NodeKind_Set, tokenizer, DD_TokenZero());
-        result->children = _DD_ParseSet(ctx, tokenizer, result,
-                                        _DD_ParseSetFlag_Paren   |
-                                        _DD_ParseSetFlag_Brace   |
-                                        _DD_ParseSetFlag_Bracket);
+        result.node = _DD_MakeNodeFromString_Ctx(ctx, DD_NodeKind_Set, DD_S8Lit(""));
+        _DD_ParseSet(ctx, result.node,
+                     _DD_ParseSetFlag_Paren   |
+                     _DD_ParseSetFlag_Brace   |
+                     _DD_ParseSetFlag_Bracket,
+                     &result.node->first_child,
+                     &result.node->last_child);
         goto end_parse;
     }
     
     // NOTE(rjf): Numeric Literal
-    else if(DD_Tokenizer_RequireKind(tokenizer, DD_TokenKind_NumericLiteral, &token))
+    else if(DD_Parse_RequireKind(ctx, DD_TokenKind_NumericLiteral, &token))
     {
-        result = DD_MakeNode_Tokenizer(DD_NodeKind_NumericLiteral, tokenizer, token);
+        result.node = _DD_MakeNodeFromToken_Ctx(ctx, DD_NodeKind_NumericLiteral, token);
         goto end_parse;
     }
     
     // NOTE(rjf): String Literal
-    else if(DD_Tokenizer_RequireKind(tokenizer, DD_TokenKind_StringLiteral, &token))
+    else if(DD_Parse_RequireKind(ctx, DD_TokenKind_StringLiteral, &token))
     {
-        result = DD_MakeNode_Tokenizer(DD_NodeKind_StringLiteral, tokenizer, token);
+        result.node = _DD_MakeNodeFromToken_Ctx(ctx, DD_NodeKind_StringLiteral, token);
         goto end_parse;
     }
     
     // NOTE(rjf): Char Literal
-    else if(DD_Tokenizer_RequireKind(tokenizer, DD_TokenKind_CharLiteral, &token))
+    else if(DD_Parse_RequireKind(ctx, DD_TokenKind_CharLiteral, &token))
     {
-        result = DD_MakeNode_Tokenizer(DD_NodeKind_CharLiteral, tokenizer, token);
+        result.node = _DD_MakeNodeFromToken_Ctx(ctx, DD_NodeKind_CharLiteral, token);
         goto end_parse;
     }
     
     // NOTE(rjf): Symbol
-    else if(DD_Tokenizer_RequireKind(tokenizer, DD_TokenKind_Symbol, &token))
+    else if(DD_Parse_RequireKind(ctx, DD_TokenKind_Symbol, &token))
     {
-        result = DD_MakeNode_Tokenizer(DD_NodeKind_Symbol, tokenizer, token);
+        result.node = _DD_MakeNodeFromToken_Ctx(ctx, DD_NodeKind_Symbol, token);
         goto end_parse;
     }
     
     end_parse:;
-    if(result)
+    if(!DD_NodeIsNil(result.node))
     {
-        DD_PushListToList(&result->tags, result, tags);
+        result.bytes_parsed = (DD_u64)(ctx->at - at_first);
+        result.node->first_tag = first_tag;
+        result.node->last_tag = last_tag;
+        for(DD_Node *tag = first_tag; !DD_NodeIsNil(tag); tag = tag->next)
+        {
+            tag->parent = result.node;
+        }
     }
     return result;
 }
 
-DD_PRIVATE_FUNCTION_IMPL DD_NodeList
-_DD_ParseSet(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer, DD_Node *parent, _DD_ParseSetFlags flags)
+DD_PRIVATE_FUNCTION_IMPL void
+_DD_ParseSet(DD_ParseCtx *ctx, DD_Node *parent, _DD_ParseSetFlags flags,
+             DD_Node **first_out, DD_Node **last_out)
 {
-    DD_NodeList list = {0};
+    DD_Node *first = DD_NilNode();
+    DD_Node *last = DD_NilNode();
     
     DD_b32 brace = 0;
     DD_b32 paren = 0;
     DD_b32 bracket = 0;
     DD_b32 terminate_with_separator = !!(flags & _DD_ParseSetFlag_Implicit);
     
-    if(flags & _DD_ParseSetFlag_Brace && DD_Tokenizer_Require(tokenizer, DD_S8Lit("{")))
+    if(flags & _DD_ParseSetFlag_Brace && DD_Parse_Require(ctx, DD_S8Lit("{")))
     {
         brace = 1;
         terminate_with_separator = 0;
     }
-    else if(flags & _DD_ParseSetFlag_Paren && DD_Tokenizer_Require(tokenizer, DD_S8Lit("(")))
+    else if(flags & _DD_ParseSetFlag_Paren && DD_Parse_Require(ctx, DD_S8Lit("(")))
     {
         paren = 1;
         terminate_with_separator = 0;
     }
-    else if(flags & _DD_ParseSetFlag_Bracket && DD_Tokenizer_Require(tokenizer, DD_S8Lit("[")))
+    else if(flags & _DD_ParseSetFlag_Bracket && DD_Parse_Require(ctx, DD_S8Lit("[")))
     {
         bracket = 1;
         terminate_with_separator = 0;
@@ -968,80 +964,67 @@ _DD_ParseSet(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer, DD_Node *parent, _DD_Par
     {
         for(DD_u64 child_idx = 0;; child_idx += 1)
         {
-            DD_Node *child = DD_Parse(ctx, tokenizer);
-            if(child)
+            DD_ParseResult parse = _DD_ParseOneNode(ctx);
+            DD_Node *child = parse.node;
+            if(!DD_NodeIsNil(child))
             {
-                DD_PushNodeToList(&list, parent, child);
+                _DD_PushNodeToList(&first, &last, parent, child);
             }
             
             // NOTE(rjf): Separators.
             {
                 DD_b32 result = 0;
-                result |= !!DD_Tokenizer_Require(tokenizer, DD_S8Lit(","));
-                result |= !!DD_Tokenizer_Require(tokenizer, DD_S8Lit(";"));
-                result |= !!DD_Tokenizer_Require(tokenizer, DD_S8Lit("->"));
-                
+                result |= !!DD_Parse_Require(ctx, DD_S8Lit(","));
+                result |= !!DD_Parse_Require(ctx, DD_S8Lit(";"));
+                result |= !!DD_Parse_Require(ctx, DD_S8Lit("->"));
+                result |= !!DD_Parse_Require(ctx, DD_S8Lit("\n"));
                 if(result && terminate_with_separator)
                 {
                     goto end_parse;
                 }
-                
-                // NOTE(rjf): Also use newlines as a termination separator.
-                if(terminate_with_separator)
-                {
-                    for(DD_u64 i = 0; tokenizer->at + i < tokenizer->file_contents.str + tokenizer->file_contents.size; i += 1)
-                    {
-                        if(tokenizer->at[i] == '\n')
-                        {
-                            goto end_parse;
-                        }
-                        else if(tokenizer->at[i] > 32)
-                        {
-                            break;
-                        }
-                    }
-                }
             }
             
-            if(brace && DD_Tokenizer_Require(tokenizer, DD_S8Lit("}")))
+            if(brace && DD_Parse_Require(ctx, DD_S8Lit("}")))
             {
                 goto end_parse;
             }
-            else if(paren && DD_Tokenizer_Require(tokenizer, DD_S8Lit(")")))
+            else if(paren && DD_Parse_Require(ctx, DD_S8Lit(")")))
             {
                 goto end_parse;
             }
-            else if(bracket && DD_Tokenizer_Require(tokenizer, DD_S8Lit("]")))
+            else if(bracket && DD_Parse_Require(ctx, DD_S8Lit("]")))
             {
                 goto end_parse;
             }
             else if(child == 0)
             {
-                if(brace)   { _DD_Error(ctx, tokenizer, "Missing }."); }
-                if(paren)   { _DD_Error(ctx, tokenizer, "Missing )."); }
-                if(bracket) { _DD_Error(ctx, tokenizer, "Missing ]."); }
+                if(brace)   { _DD_Error(ctx, "Missing }."); }
+                if(paren)   { _DD_Error(ctx, "Missing )."); }
+                if(bracket) { _DD_Error(ctx, "Missing ]."); }
                 goto end_parse;
             }
         }
     }
     
     end_parse:;
-    return list;
+    *first_out = first;
+    *last_out = last;
 }
 
-DD_PRIVATE_FUNCTION_IMPL DD_NodeList
-_DD_ParseTagList(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer)
+DD_PRIVATE_FUNCTION_IMPL void
+_DD_ParseTagList(DD_ParseCtx *ctx, DD_Node **first_out, DD_Node **last_out)
 {
-    DD_NodeList list = {0};
+    DD_Node *first = DD_NilNode();
+    DD_Node *last = DD_NilNode();
     
-    for(;DD_Tokenizer_Require(tokenizer, DD_S8Lit("@"));)
+    for(;DD_Parse_Require(ctx, DD_S8Lit("@"));)
     {
         DD_Token name = {0};
-        if(DD_Tokenizer_RequireKind(tokenizer, DD_TokenKind_Identifier, &name))
+        if(DD_Parse_RequireKind(ctx, DD_TokenKind_Identifier, &name))
         {
-            DD_Node *tag = DD_MakeNode_Tokenizer(DD_NodeKind_Tag, tokenizer, name);
-            tag->children = _DD_ParseSet(ctx, tokenizer, tag, _DD_ParseSetFlag_Paren);
-            DD_PushNodeToList(&list, 0, tag);
+            DD_Node *tag = _DD_MakeNodeFromToken_Ctx(ctx, DD_NodeKind_Tag, name);
+            _DD_ParseSet(ctx, tag, _DD_ParseSetFlag_Paren, &tag->first_child, &tag->last_child);
+            _DD_PushNodeToList(&first, &last, DD_NilNode(), tag);
         }
         else
         {
@@ -1049,60 +1032,106 @@ _DD_ParseTagList(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer)
         }
     }
     
-    return list;
-}
-
-DD_FUNCTION_IMPL void
-DD_Parse_Tokenizer(DD_ParseCtx *ctx, DD_Tokenizer tokenizer)
-{
-    DD_Node *root = DD_MakeNode(DD_NodeKind_Set, tokenizer.filename, 1, DD_TokenZero());
-    DD_PushNodeToList(&ctx->roots, 0, root);
-    for(;;)
-    {
-        DD_Node *node = DD_Parse(ctx, &tokenizer);
-        if(node == 0)
-        {
-            break;
-        }
-        DD_PushNodeToList(&root->children, root, node);
-    }
+    *first_out = first;
+    *last_out = last;
 }
 
 DD_FUNCTION_IMPL DD_ParseResult
-DD_Parse_End(DD_ParseCtx *ctx)
+DD_ParseOneNode(DD_String8 filename, DD_String8 contents)
 {
-    DD_ParseResult result = {0};
-    result.roots = ctx->roots;
-    result.first_error = ctx->first_error;
-    return result;
+    DD_ParseCtx ctx = DD_Parse_InitializeCtx(filename, contents);
+    return _DD_ParseOneNode(&ctx);
 }
 
-DD_FUNCTION_IMPL DD_Node *
-DD_NodeInList(DD_NodeList list, DD_String8 string)
+DD_FUNCTION DD_Node *
+DD_ParseWholeString(DD_String8 filename, DD_String8 contents)
 {
-    DD_Node *result = DD_NilNode();
-    if(list.first && list.last)
+    DD_Node *root = DD_MakeNodeFromString(DD_NodeKind_Set, filename, contents.str, contents.str, DD_PushStringF("`DD Parsed From \"%.*s\"`", DD_StringExpand(filename)));
+    if(contents.size > 0)
     {
-        for(DD_Node *node = list.first; node; node = node->next)
+        DD_ParseCtx ctx = DD_Parse_InitializeCtx(filename, contents);
+        for(DD_u64 i = 0; i < contents.size;)
         {
-            if(DD_StringMatch(string, node->string, 0))
+            DD_ParseResult parse = _DD_ParseOneNode(&ctx);
+            _DD_PushNodeToList(&root->first_child, &root->last_child, root, parse.node);
+            i += parse.bytes_parsed;
+            if(parse.bytes_parsed == 0)
             {
-                result = node;
                 break;
             }
         }
     }
+    return root;
+}
+
+DD_FUNCTION_IMPL DD_Node *
+DD_ParseWholeFile(DD_String8 filename)
+{
+    return DD_ParseWholeString(filename, DD_LoadEntireFile(filename));
+}
+
+DD_FUNCTION_IMPL DD_b32
+DD_NodeIsNil(DD_Node *node)
+{
+    return node == 0 || node == &_dd_nil_node || node->kind == DD_NodeKind_Nil;
+}
+
+DD_FUNCTION_IMPL DD_Node *
+DD_NilNode(void) { return &_dd_nil_node; }
+
+DD_FUNCTION_IMPL DD_Node *
+DD_MakeNodeFromToken(DD_NodeKind kind, DD_String8 filename, DD_u8 *file, DD_u8 *at, DD_Token token)
+{
+    return _DD_MakeNode(kind, token.string, token.outer_string, filename, file, at);
+}
+
+DD_FUNCTION_IMPL DD_Node *
+DD_MakeNodeFromString(DD_NodeKind kind, DD_String8 filename, DD_u8 *file, DD_u8 *at, DD_String8 string)
+{
+    return _DD_MakeNode(kind, string, string, filename, file, at);
+}
+
+DD_FUNCTION_IMPL void
+DD_PushSibling(DD_Node **first, DD_Node **last, DD_Node *parent, DD_Node *new_sibling)
+{
+    _DD_PushNodeToList(first, last, parent, new_sibling);
+}
+
+DD_FUNCTION_IMPL void
+DD_PushChild(DD_Node *parent, DD_Node *new_child)
+{
+    _DD_PushNodeToList(&parent->first_child, &parent->last_child, parent, new_child);
+}
+
+DD_FUNCTION_IMPL void
+DD_PushTag(DD_Node *node, DD_Node *tag)
+{
+    _DD_PushNodeToList(&node->first_tag, &node->last_tag, node, tag);
+}
+
+DD_FUNCTION_IMPL DD_Node *
+DD_NodeInList(DD_Node *first, DD_Node *last, DD_String8 string)
+{
+    DD_Node *result = DD_NilNode();
+    for(DD_Node *node = first; !DD_NodeIsNil(node); node = node->next)
+    {
+        if(DD_StringMatch(string, node->string, 0))
+        {
+            result = node;
+            break;
+        }
+    }
     return result;
 }
 
 DD_FUNCTION_IMPL DD_Node *
-DD_NthNodeInList(DD_NodeList list, int n)
+DD_NthNodeInList(DD_Node *first, DD_Node *last, int n)
 {
     DD_Node *result = DD_NilNode();
-    if(list.first && list.last && n >= 0)
+    if(n >= 0)
     {
         int idx = 0;
-        for(DD_Node *node = list.first; node; node = node->next, idx += 1)
+        for(DD_Node *node = first; !DD_NodeIsNil(node); node = node->next, idx += 1)
         {
             if(idx == n)
             {
@@ -1146,61 +1175,34 @@ DD_NextNodeSibling(DD_Node *last, DD_String8 string)
 DD_FUNCTION_IMPL DD_Node *
 DD_TagOnNode(DD_Node *node, DD_String8 tag_string)
 {
-    DD_Node *result = DD_NilNode();
-    if(node)
-    {
-        result = DD_NodeInList(node->tags, tag_string);
-    }
-    return result;
+    return DD_NodeInList(node->first_tag, node->last_tag, tag_string);
 }
 
 DD_FUNCTION_IMPL DD_Node *
 DD_ChildOnNode(DD_Node *node, DD_String8 child_string)
 {
-    DD_Node *result = DD_NilNode();
-    if(node)
-    {
-        result = DD_NodeInList(node->children, child_string);
-    }
-    return result;
+    return DD_NodeInList(node->first_child, node->last_child, child_string);
 }
 
 DD_FUNCTION_IMPL DD_Node *
 DD_NthTagArg(DD_Node *node, DD_String8 tag_string, int n)
 {
-    DD_Node *result = DD_NilNode();
-    if(n >= 0)
-    {
-        DD_Node *tag = DD_TagOnNode(node, tag_string);
-        result = DD_NthNodeInList(tag->children, n);
-    }
-    return result;
+    DD_Node *tag = DD_TagOnNode(node, tag_string);
+    return DD_NthChild(tag, n);
 }
 
 DD_FUNCTION_IMPL DD_Node *
 DD_NthChild(DD_Node *node, int n)
 {
-    DD_Node *result = DD_NilNode();
-    if(node && n >= 0)
-    {
-        result = DD_NthNodeInList(node->children, n);
-    }
-    return result;
+    return DD_NthNodeInList(node->first_child, node->last_child, n);
 }
 
 static DD_Expr _dd_nil_expr = {0};
-static DD_Type _dd_nil_type = {0};
 
 DD_FUNCTION_IMPL DD_Expr *
 DD_NilExpr(void)
 {
     return &_dd_nil_expr;
-}
-
-DD_FUNCTION_IMPL DD_Type *
-DD_NilType(void)
-{
-    return &_dd_nil_type;
 }
 
 DD_FUNCTION_IMPL DD_Expr *
@@ -1219,25 +1221,6 @@ DD_MakeExpr(DD_Node *node, DD_ExprKind kind, DD_Expr *left, DD_Expr *right)
         expr = DD_NilExpr();
     }
     return expr;
-}
-
-DD_FUNCTION_IMPL DD_Type *
-DD_MakeType(DD_Node *node, DD_TypeKind kind, DD_Type *parent, DD_Type *operand, DD_Expr *expr)
-{
-    DD_Type *type = calloc(1, sizeof(*type));
-    if(type)
-    {
-        type->node = node ? node : DD_NilNode();
-        type->kind = kind;
-        type->parent = parent;
-        type->operand = operand;
-        type->expr = expr;
-    }
-    else
-    {
-        type = DD_NilType();
-    }
-    return type;
 }
 
 typedef struct _DD_NodeParseCtx _DD_NodeParseCtx;
@@ -1282,55 +1265,16 @@ DD_ParseAsExpr(DD_Node *node)
     return expr;
 }
 
-DD_FUNCTION_IMPL DD_Type *
-DD_ParseAsType(DD_Node *node)
-{
-    DD_Type *first_type = 0;
-    DD_Type *last_type = 0;
-#define _DD_PushType(p) { if(last_type) { last_type->operand = (p); last_type = last_type->operand; } else { first_type = last_type = (p); } }
-    _DD_NodeParseCtx ctx = { node->children.first };
-    for(;;)
-    {
-        DD_Node *atom = 0;
-        DD_Node *expr = 0;
-        if(_DD_RequireNode(&ctx, DD_S8Lit("*")))
-        {
-            DD_Type *ptr = DD_MakeType(0, DD_TypeKind_Pointer, last_type, 0, 0);
-            _DD_PushType(ptr);
-        }
-        else if(_DD_RequireNodeKind(&ctx, DD_NodeKind_Set, &expr))
-        {
-            DD_Type *array = DD_MakeType(0, DD_TypeKind_Array, last_type, 0, DD_ParseAsExpr(expr));
-            _DD_PushType(array);
-        }
-        else if(_DD_RequireNodeKind(&ctx, DD_NodeKind_Identifier, &atom))
-        {
-            DD_Type *atom_type = DD_MakeType(atom, DD_TypeKind_Atom, last_type, 0, 0);
-            _DD_PushType(atom_type);
-        }
-        else
-        {
-            break;
-        }
-    }
-#undef _DD_PushType
-    if(first_type == 0)
-    {
-        first_type = DD_NilType();
-    }
-    return first_type;
-}
-
 DD_FUNCTION_IMPL void
 DD_OutputTree(FILE *file, DD_Node *node)
 {
-    for(DD_Node *tag = node->tags.first; tag; tag = tag->next)
+    for(DD_Node *tag = node->first_tag; !DD_NodeIsNil(tag); tag = tag->next)
     {
         fprintf(file, "@%.*s", DD_StringExpand(tag->string));
-        if(tag->children.first)
+        if(!DD_NodeIsNil(tag->first_child))
         {
             fprintf(file, "(");
-            for(DD_Node *child = tag->children.first; child; child = child->next)
+            for(DD_Node *child = tag->first_child; !DD_NodeIsNil(child); child = child->next)
             {
                 DD_OutputTree(file, child);
                 fprintf(file, ", ");
@@ -1344,10 +1288,10 @@ DD_OutputTree(FILE *file, DD_Node *node)
     }
     
     fprintf(file, "%.*s", DD_StringExpand(node->whole_string));
-    if(node->children.first)
+    if(!DD_NodeIsNil(node->first_child))
     {
         fprintf(file, ":\n{\n");
-        for(DD_Node *child = node->children.first; child; child = child->next)
+        for(DD_Node *child = node->first_child; !DD_NodeIsNil(child); child = child->next)
         {
             DD_OutputTree(file, child);
             fprintf(file, ",\n");
@@ -1393,7 +1337,7 @@ DD_OutputTree_C_Struct(FILE *file, DD_Node *node)
                 DD_StringExpand(node->string),
                 DD_StringExpand(node->string));
         fprintf(file, "struct %.*s\n{\n", DD_StringExpand(node->string));
-        for(DD_Node *child = node->children.first; child; child = child->next)
+        for(DD_Node *child = node->first_child; !DD_NodeIsNil(child); child = child->next)
         {
             DD_OutputTree_C_Decl(file, child);
         }
@@ -1406,46 +1350,23 @@ DD_OutputTree_C_Decl(FILE *file, DD_Node *node)
 {
     if(node)
     {
-        DD_Type *type = DD_ParseAsType(node);
-        DD_OutputType_C_PreArray(file, type);
+        DD_Expr *type = DD_ParseAsExpr(node);
+        DD_OutputType_C_LHS(file, type);
         fprintf(file, " %.*s", DD_StringExpand(node->string));
-        DD_OutputType_C_Array(file, type);
+        DD_OutputType_C_RHS(file, type);
     }
 }
 
 DD_FUNCTION_IMPL void
-DD_OutputType_C_PreArray(FILE *file, DD_Type *type)
+DD_OutputType_C_LHS(FILE *file, DD_Expr *type)
 {
-    for(DD_Type *base_type = type; base_type; base_type = base_type->operand)
-    {
-        if(base_type->kind == DD_TypeKind_Atom)
-        {
-            fprintf(file, "%.*s", DD_StringExpand(base_type->node->string));
-            for(DD_Type *op = base_type->parent; op; op = op->parent)
-            {
-                switch(op->kind)
-                {
-                    case DD_TypeKind_Pointer: fprintf(file, "*"); break;
-                    default: break;
-                }
-            }
-            break;
-        }
-    }
+    
 }
 
 DD_FUNCTION_IMPL void
-DD_OutputType_C_Array(FILE *file, DD_Type *type)
+DD_OutputType_C_RHS(FILE *file, DD_Expr *type)
 {
-    for(DD_Type *t = type; t; t = t->operand)
-    {
-        if(t->kind == DD_TypeKind_Array)
-        {
-            fprintf(file, "[");
-            DD_OutputExpr(file, t->expr);
-            fprintf(file, "]");
-        }
-    }
+    
 }
 
 DD_FUNCTION_IMPL DD_CommandLine
@@ -1597,10 +1518,8 @@ DD_LoadEntireFile(DD_String8 filename)
     return file_contents;
 }
 
-#if DD_OS
 DD_FUNCTION_IMPL DD_b32
 DD_FileIter_Increment(DD_FileIter *it, DD_String8 path, DD_FileInfo *out_info)
 {
     return _DD_OS_IMPL_FileIter_Increment(it, path, out_info);
 }
-#endif

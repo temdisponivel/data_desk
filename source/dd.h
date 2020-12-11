@@ -1,18 +1,144 @@
 #ifndef DD_H
 #define DD_H
 
-#if defined(DD_WIN32) || defined(DD_POSIX)
-#define DD_OS 1
+// NOTE(rjf): Compiler cracking from the 4th dimension
+
+#if defined(_MSC_VER)
+
+# define DD_COMPILER_CL 1
+
+# if defined(_WIN32)
+#  define DD_OS_WINDOWS 1
+# else
+#  error This compiler/platform combo is not supported yet
+# endif
+
+# if defined(_M_AMD64)
+#  define DD_ARCH_X64 1
+# elif defined(_M_IX86)
+#  define DD_ARCH_X86 1
+# elif defined(_M_ARM64)
+#  define DD_ARCH_ARM64 1
+# elif defined(_M_ARM)
+#  define DD_ARCH_ARM32 1
+# else
+#  error architecture not supported yet
+# endif
+
+#if _MSC_VER >= 1920
+#define DD_COMPILER_CL_YEAR 2019
+#elif _MSC_VER >= 1910
+#define DD_COMPILER_CL_YEAR 2017
+#elif _MSC_VER >= 1900
+#define DD_COMPILER_CL_YEAR 2015
+#elif _MSC_VER >= 1800
+#define DD_COMPILER_CL_YEAR 2013
+#elif _MSC_VER >= 1700
+#define DD_COMPILER_CL_YEAR 2012
+#elif _MSC_VER >= 1600
+#define DD_COMPILER_CL_YEAR 2010
+#elif _MSC_VER >= 1500
+#define DD_COMPILER_CL_YEAR 2008
+#elif _MSC_VER >= 1400
+#define DD_COMPILER_CL_YEAR 2005
 #else
-#define DD_OS 0
+#define DD_COMPILER_CL_YEAR 0
 #endif
 
-#ifndef DD_WIN32
-#define DD_WIN32 0
+#elif defined(__clang__)
+
+# define DD_COMPILER_CLANG 1
+
+# if defined(__APPLE__) && defined(__MACH__)
+#  define DD_OS_MAC 1
+# elif defined(__gnu_linux__)
+#  define DD_OS_LINUX 1
+# else
+#  error This compiler/platform combo is not supported yet
+# endif
+
+# if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64)
+#  define DD_ARCH_X64 1
+# elif defined(i386) || defined(__i386) || defined(__i386__)
+#  define DD_ARCH_X86 1
+# elif defined(__aarch64__)
+#  define DD_ARCH_ARM64 1
+# elif defined(__arm__)
+#  define DD_ARCH_ARM32 1
+# else
+#  error architecture not supported yet
+# endif
+
+#elif defined(__GNUC__) || defined(__GNUG__)
+
+# define DD_COMPILER_GCC 1
+
+# if defined(__gnu_linux__)
+#  define DD_OS_LINUX 1
+# else
+#  error This compiler/platform combo is not supported yet
+# endif
+
+# if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64)
+#  define DD_ARCH_X64 1
+# elif defined(i386) || defined(__i386) || defined(__i386__)
+#  define DD_ARCH_X86 1
+# elif defined(__aarch64__)
+#  define DD_ARCH_ARM64 1
+# elif defined(__arm__)
+#  define DD_ARCH_ARM32 1
+# else
+#  error architecture not supported yet
+# endif
+
+#else
+# error This compiler is not supported yet
 #endif
 
-#ifndef DD_POSIX
-#define DD_POSIX 0
+#if defined(DD_ARCH_X64)
+# define DD_ARCH_64BIT 1
+#elif defined(DD_ARCH_X86)
+# define DD_ARCH_32BIT 1
+
+#endif
+
+// zeroify
+
+#if !defined(DD_ARCH_32BIT)
+#define DD_ARCH_32BIT 0
+#endif
+#if !defined(DD_ARCH_64BIT)
+#define DD_ARCH_64BIT 0
+#endif
+#if !defined(DD_ARCH_X64)
+#define DD_ARCH_X64 0
+#endif
+#if !defined(DD_ARCH_X86)
+#define DD_ARCH_X86 0
+#endif
+#if !defined(DD_ARCH_ARM64)
+#define DD_ARCH_ARM64 0
+#endif
+#if !defined(DD_ARCH_ARM32)
+#define DD_ARCH_ARM32 0
+#endif
+#if !defined(DD_COMPILER_CL)
+#define DD_COMPILER_CL 0
+#endif
+#if !defined(DD_COMPILER_GCC)
+#define DD_COMPILER_GCC 0
+#endif
+#if !defined(DD_COMPILER_CLANG)
+#define DD_COMPILER_CLANG 0
+#endif
+#if !defined(DD_OS_WINDOWS)
+#define DD_OS_WINDOWS 0
+#endif
+#if !defined(DD_OS_LINUX)
+#define DD_OS_LINUX 0
+#endif
+#if !defined(DD_OS_MAC)
+#define DD_OS_MAC 0
 #endif
 
 #define DD_FUNCTION
@@ -69,7 +195,7 @@ enum
 //~ Node kinds that comprise the language.
 typedef enum DD_NodeKind
 {
-    DD_NodeKind_Null,
+    DD_NodeKind_Nil,
     DD_NodeKind_Identifier,
     DD_NodeKind_Symbol,
     DD_NodeKind_NumericLiteral,
@@ -84,24 +210,18 @@ DD_NodeKind;
 //~ Node type and helpers.
 
 typedef struct DD_Node DD_Node;
-typedef struct DD_NodeList DD_NodeList;
-
-struct DD_NodeList
-{
-    DD_Node *first;
-    DD_Node *last;
-};
-
 struct DD_Node
 {
     // Tree relationship pointers.
     DD_Node *next;
     DD_Node *prev;
     DD_Node *parent;
-    DD_NodeList children;
+    DD_Node *first_child;
+    DD_Node *last_child;
     
     // Tag list.
-    DD_NodeList tags;
+    DD_Node *first_tag;
+    DD_Node *last_tag;
     
     // Node info.
     DD_NodeKind kind;
@@ -110,8 +230,11 @@ struct DD_Node
     DD_u64 string_hash;
     
     // Source code location information.
-    DD_String8 file;
-    DD_u64 line;
+    // TODO(rjf): Consistent naming, file => filename
+    // TODO(rjf): Store at ptr instead, API call to find line/column from at + filename?
+    DD_String8 filename;
+    DD_u8 *file_contents;
+    DD_u8 *at;
 };
 
 //~ String-To-Node table
@@ -142,7 +265,7 @@ struct DD_NodeTable
 
 typedef enum DD_TokenKind
 {
-    DD_TokenKind_Null,
+    DD_TokenKind_Nil,
     
     // A group of characters that begins with an underscore or alphabetic character,
     // and consists of numbers, alphabetic characters, or underscores after that.
@@ -171,6 +294,10 @@ typedef enum DD_TokenKind
     // "<<", ">>", "<=", ">=", "+=", "-=", "*=", "/=", "::", ":=", "==", "&=", "|=", "->"
     DD_TokenKind_Symbol,
     
+    DD_TokenKind_WhitespaceMin,
+    DD_TokenKind_Newline,
+    DD_TokenKind_WhitespaceMax,
+    
     DD_TokenKind_MAX,
 }
 DD_TokenKind;
@@ -184,16 +311,6 @@ struct DD_Token
     DD_String8 outer_string;
 };
 
-//~ Struct used for tokenization state.
-typedef struct DD_Tokenizer DD_Tokenizer;
-struct DD_Tokenizer
-{
-    DD_u8 *at;
-    DD_u64 at_line;
-    DD_String8 filename;
-    DD_String8 file_contents;
-};
-
 //~ Parsing State
 
 typedef struct DD_Error DD_Error;
@@ -203,37 +320,46 @@ struct DD_Error
     DD_String8 string;
     DD_String8 filename;
     DD_Node *node;
-    DD_u64 line;
 };
 
 typedef struct DD_ParseCtx DD_ParseCtx;
 struct DD_ParseCtx
 {
-    DD_NodeList roots;
+    DD_Node *first_root;
+    DD_Node *last_root;
     DD_Error *first_error;
     DD_Error *last_error;
+    DD_u8 *at;
+    DD_String8 filename;
+    DD_String8 file_contents;
 };
 
-//~ Parse results.
 typedef struct DD_ParseResult DD_ParseResult;
 struct DD_ParseResult
 {
-    DD_NodeList roots;
+    DD_Node *node;
     DD_Error *first_error;
+    DD_u64 bytes_parsed;
 };
 
 //~ Expression and Type-Expression parser helper types.
 
+// TODO(rjf): Lego brick these, Expr merged with Type
+
 typedef enum DD_ExprKind
 {
-    DD_ExprKind_Null,
+    DD_ExprKind_Nil,
     
+    // NOTE(rjf): Atom
     DD_ExprKind_Atom,
+    
+    // NOTE(rjf): Arithmetic
     DD_ExprKind_Add,
     DD_ExprKind_Subtract,
     DD_ExprKind_Multiply,
     DD_ExprKind_Divide,
     
+    // NOTE(rjf): Comparison
     DD_ExprKind_IsEqual,
     DD_ExprKind_IsNotEqual,
     DD_ExprKind_LessThan,
@@ -241,14 +367,23 @@ typedef enum DD_ExprKind
     DD_ExprKind_LessThanEqualTo,
     DD_ExprKind_GreaterThanEqualTo,
     
+    // NOTE(rjf): Bools
     DD_ExprKind_BoolAnd,
     DD_ExprKind_BoolOr,
     DD_ExprKind_BoolNot,
+    
+    // NOTE(rjf): Bitwise
     DD_ExprKind_BitAnd,
     DD_ExprKind_BitOr,
     DD_ExprKind_BitNot,
     DD_ExprKind_BitXor,
+    
+    // NOTE(rjf): Unary numeric
     DD_ExprKind_Negative,
+    
+    // NOTE(rjf): Type
+    DD_ExprKind_Pointer,
+    DD_ExprKind_Array,
     
     DD_ExprKind_MAX,
 }
@@ -259,35 +394,15 @@ struct DD_Expr
 {
     DD_Node *node;
     DD_ExprKind kind;
+    DD_Expr *parent;
     DD_Expr *sub[2];
-};
-
-typedef enum DD_TypeKind
-{
-    DD_TypeKind_Null,
-    
-    DD_TypeKind_Atom,
-    DD_TypeKind_Pointer,
-    DD_TypeKind_Array,
-    
-    DD_TypeKind_MAX,
-}
-DD_TypeKind;
-
-typedef struct DD_Type DD_Type;
-struct DD_Type
-{
-    DD_Node *node;
-    DD_TypeKind kind;
-    DD_Type *parent;
-    DD_Type *operand;
-    DD_Expr *expr;
 };
 
 //~ Command line parsing helper types.
 typedef struct DD_CommandLine DD_CommandLine;
 struct DD_CommandLine
 {
+    // TODO(rjf): Linked-list vs. array?
     DD_String8 *arguments;
     int argument_count;
 };
@@ -304,6 +419,7 @@ typedef struct DD_FileInfo DD_FileInfo;
 struct DD_FileInfo
 {
     DD_FileFlags flags;
+    // TODO(rjf): Only have filename
     DD_String8 path;
     DD_String8 extension;
     DD_u64 file_size;
@@ -324,35 +440,50 @@ DD_FUNCTION DD_u8  DD_CharToUpper(DD_u8 c);
 DD_FUNCTION DD_u8  DD_CharToLower(DD_u8 c);
 
 //~ String Functions
+// TODO(rjf): Move away from zero-strings, size == 0
 DD_FUNCTION DD_String8     DD_S8(DD_u8 *str, DD_u64 size);
 #define DD_S8CString(s)    DD_S8((DD_u8 *)(s), DD_CalculateCStringLength(s))
 #define DD_S8Lit(s)        (DD_String8){(DD_u8 *)(s), sizeof(s)-1}
 #define DD_ZeroString()    DD_S8(0, 0)
 DD_FUNCTION DD_b32         DD_StringIsZero(DD_String8 str);
 DD_FUNCTION DD_String8     DD_StringSubstring(DD_String8 str, DD_u64 min, DD_u64 max);
+// TODO(rjf): Skip/Chop, Prefix/Suffix => size instead of position
 DD_FUNCTION DD_String8     DD_StringPrefix(DD_String8 str, DD_u64 max);
 DD_FUNCTION DD_String8     DD_StringSuffix(DD_String8 str, DD_u64 min);
 
 DD_FUNCTION DD_b32         DD_StringMatch(DD_String8 a, DD_String8 b, DD_StringMatchFlags flags);
-DD_FUNCTION DD_b32         DD_StringFindSubstring(DD_String8 str, DD_String8 substring, DD_u64 occurrence, DD_StringMatchFlags flags, DD_u64 *start);
+// TODO(rjf): Return position of occurrence, or haystack.size, compose w/ exprs
+DD_FUNCTION DD_b32         DD_StringFindSubstring(DD_String8 str, DD_String8 substring,
+                                                  
+                                                  // TODO(rjf): Pass in p, not occurrence, avoid n^2
+                                                  DD_u64 occurrence,
+                                                  DD_StringMatchFlags flags,
+                                                  DD_u64 *start);
 DD_FUNCTION DD_b32         DD_StringFindLastSubstring(DD_String8 str, DD_String8 substring, DD_StringMatchFlags flags, DD_u64 *start);
 
+// TODO(rjf): Rename: X from Y
+// TODO(rjf): FilenameFromPath
+// TODO(rjf): BasenameFromFilename
 DD_FUNCTION DD_String8     DD_WithoutExtension(DD_String8 string);
 DD_FUNCTION DD_String8     DD_WithoutFolder(DD_String8 string);
 DD_FUNCTION DD_String8     DD_ExtensionString(DD_String8 string);
 DD_FUNCTION DD_String8     DD_FolderString(DD_String8 string);
 
+// TODO(rjf): Trash C strings, use string copy
 DD_FUNCTION char *         DD_CStringFromString8(DD_String8 string);
 DD_FUNCTION DD_String8     DD_PushStringFV(char *fmt, va_list args);
 DD_FUNCTION DD_String8     DD_PushStringF(char *fmt, ...);
 DD_FUNCTION char *         DD_PushCStringFV(char *fmt, va_list args);
 DD_FUNCTION char *         DD_PushCStringF(char *fmt, ...);
 #define DD_StringExpand(s) (int)(s).size, (s).str
+
 DD_FUNCTION void           DD_PushStringToList(DD_String8List *list, DD_String8 string);
+// TODO(rjf): Zero to_push on output
 DD_FUNCTION void           DD_PushStringListToList(DD_String8List *list, DD_String8List to_push);
 DD_FUNCTION DD_String8List DD_SplitString(DD_String8 string, int split_count, DD_String8 *splits);
 DD_FUNCTION DD_String8List DD_SplitStringByString(DD_String8 string, DD_String8 split);
 DD_FUNCTION DD_String8List DD_SplitStringByCharacter(DD_String8 string, DD_u8 character);
+// TODO(rjf): Radix
 DD_FUNCTION int            DD_IntFromString(DD_String8 string);
 DD_FUNCTION float          DD_FloatFromString(DD_String8 string);
 DD_FUNCTION DD_u64         DD_HashString(DD_String8 string);
@@ -362,40 +493,43 @@ DD_FUNCTION DD_u64         DD_CalculateCStringLength(char *cstr);
 DD_FUNCTION DD_NodeTableSlot *DD_NodeTable_Lookup(DD_NodeTable *table, DD_String8 string);
 DD_FUNCTION DD_b32            DD_NodeTable_Insert(DD_NodeTable *table, DD_NodeTableCollisionRule collision_rule, DD_String8 string, DD_Node *node);
 
-//~ Tokenization Functions
-DD_FUNCTION DD_Token     DD_TokenZero(void);
-DD_FUNCTION DD_Tokenizer DD_Tokenizer_Start(DD_String8 filename, DD_String8 file_contents);
-DD_FUNCTION DD_Token     DD_Tokenizer_Peek(DD_Tokenizer *tokenizer);
-DD_FUNCTION DD_b32       DD_Tokenizer_PeekMatch(DD_Tokenizer *tokenizer, DD_String8 string);
-DD_FUNCTION void         DD_Tokenizer_Next(DD_Tokenizer *tokenizer);
-DD_FUNCTION DD_b32       DD_Tokenizer_Require(DD_Tokenizer *tokenizer, DD_String8 string);
-DD_FUNCTION DD_b32       DD_Tokenizer_RequireKind(DD_Tokenizer *tokenizer, DD_TokenKind kind, DD_Token *out_token);
+//~ Parsing Functions
+DD_FUNCTION DD_Token       DD_ZeroToken(void);
+DD_FUNCTION DD_b32         DD_TokenKindIsWhitespace(DD_TokenKind kind);
+DD_FUNCTION DD_ParseCtx    DD_Parse_InitializeCtx(DD_String8 filename, DD_String8 contents);
+DD_FUNCTION DD_Token       DD_Parse_PeekAll(DD_ParseCtx *ctx);
+DD_FUNCTION DD_Token       DD_Parse_PeekNonWhitespace(DD_ParseCtx *ctx);
+DD_FUNCTION DD_b32         DD_Parse_PeekMatch(DD_ParseCtx *ctx, DD_String8 string);
+DD_FUNCTION DD_b32         DD_Parse_TokenMatch(DD_Token token, DD_String8 string, DD_StringMatchFlags flags);
+DD_FUNCTION DD_b32         DD_Parse_Require(DD_ParseCtx *ctx, DD_String8 string);
+DD_FUNCTION DD_b32         DD_Parse_RequireKind(DD_ParseCtx *ctx, DD_TokenKind kind, DD_Token *out_token);
+DD_FUNCTION DD_ParseResult DD_ParseOneNode     (DD_String8 filename, DD_String8 contents);
+DD_FUNCTION DD_Node *      DD_ParseWholeString (DD_String8 filename, DD_String8 contents);
+DD_FUNCTION DD_Node *      DD_ParseWholeFile   (DD_String8 filename);
 
 //~ Tree/List Building Functions
 DD_FUNCTION DD_b32   DD_NodeIsNil(DD_Node *node);
 DD_FUNCTION DD_Node *DD_NilNode(void);
-DD_FUNCTION DD_Node *DD_MakeNode(DD_NodeKind kind, DD_String8 file, DD_u64 line, DD_Token token);
-DD_FUNCTION DD_Node *DD_MakeNode_Tokenizer(DD_NodeKind kind, DD_Tokenizer *tokenizer, DD_Token token);
-DD_FUNCTION void     DD_PushNodeToList(DD_NodeList *list, DD_Node *parent, DD_Node *node);
-DD_FUNCTION void     DD_PushListToList(DD_NodeList *list, DD_Node *parent, DD_NodeList to_push);
+// TODO(rjf): DD_MakeNode needs to be more user-friendly
+DD_FUNCTION DD_Node *DD_MakeNodeFromToken(DD_NodeKind kind, DD_String8 filename, DD_u8 *file, DD_u8 *at, DD_Token token);
+DD_FUNCTION DD_Node *DD_MakeNodeFromString(DD_NodeKind kind, DD_String8 filename, DD_u8 *file, DD_u8 *at, DD_String8 string);
+// TODO(rjf): NodeList, do not put in public API
+DD_FUNCTION void     DD_PushSibling(DD_Node **first, DD_Node **last, DD_Node *parent, DD_Node *new_sibling);
 DD_FUNCTION void     DD_PushChild(DD_Node *parent, DD_Node *new_child);
 DD_FUNCTION void     DD_PushTag(DD_Node *node, DD_Node *tag);
-DD_FUNCTION void     DD_PushChildren(DD_Node *parent, DD_NodeList children);
-DD_FUNCTION void     DD_PushTags(DD_Node *node, DD_NodeList tags);
-
-//~ Parsing Functions
-DD_FUNCTION DD_ParseCtx    DD_Parse_Begin(void);
-DD_FUNCTION void           DD_Parse_Filename(DD_ParseCtx *ctx, DD_String8 filename);
-DD_FUNCTION void           DD_Parse_String(DD_ParseCtx *ctx, DD_String8 filename, DD_String8 string);
-DD_FUNCTION void           DD_Parse_Tokenizer(DD_ParseCtx *ctx, DD_Tokenizer tokenizer);
-DD_FUNCTION DD_Node *      DD_Parse(DD_ParseCtx *ctx, DD_Tokenizer *tokenizer);
-DD_FUNCTION DD_ParseResult DD_Parse_End(DD_ParseCtx *ctx);
 
 //~ Introspection Helpers
-DD_FUNCTION DD_Node *DD_NodeInList(DD_NodeList list, DD_String8 string);
-DD_FUNCTION DD_Node *DD_NthNodeInList(DD_NodeList list, int n);
+#define DD_EachNode(it, first) DD_Node *it = (first); !DD_NodeIsNil(it); it = it->next
+DD_FUNCTION DD_Node *DD_NodeInList(DD_Node *first, DD_Node *last, DD_String8 string);
+DD_FUNCTION DD_Node *DD_NthNodeInList(DD_Node *first, DD_Node *last, int n);
 DD_FUNCTION int      DD_IndexFromNode(DD_Node *node);
 DD_FUNCTION DD_Node *DD_NextNodeSibling(DD_Node *last, DD_String8 string);
+// TODO(rjf): TagFromNode or TagFromParent
+// TODO(rjf): ChildFromNode or ChildFromParent
+// TODO(rjf): String
+// TODO(rjf): 
+// TODO(rjf): ChildFromString
+// TODO(rjf): ChildFromIndex
 DD_FUNCTION DD_Node *DD_TagOnNode(DD_Node *node, DD_String8 tag_string);
 DD_FUNCTION DD_Node *DD_ChildOnNode(DD_Node *node, DD_String8 child_string);
 DD_FUNCTION DD_Node *DD_NthTagArg(DD_Node *node, DD_String8 tag_string, int n);
@@ -403,11 +537,8 @@ DD_FUNCTION DD_Node *DD_NthChild(DD_Node *node, int n);
 
 //~ Expression and Type-Expression Helper Functions
 DD_FUNCTION DD_Expr *DD_NilExpr(void);
-DD_FUNCTION DD_Type *DD_NilType(void);
 DD_FUNCTION DD_Expr *DD_MakeExpr(DD_Node *node, DD_ExprKind kind, DD_Expr *left, DD_Expr *right);
-DD_FUNCTION DD_Type *DD_MakeType(DD_Node *node, DD_TypeKind kind, DD_Type *parent, DD_Type *operand, DD_Expr *expr);
 DD_FUNCTION DD_Expr *DD_ParseAsExpr(DD_Node *node);
-DD_FUNCTION DD_Type *DD_ParseAsType(DD_Node *node);
 
 //~ Generation Functions
 DD_FUNCTION void DD_OutputTree(FILE *file, DD_Node *node);
@@ -415,8 +546,8 @@ DD_FUNCTION void DD_OutputExpr(FILE *file, DD_Expr *expr);
 DD_FUNCTION void DD_OutputTree_C_String(FILE *file, DD_Node *node);
 DD_FUNCTION void DD_OutputTree_C_Struct(FILE *file, DD_Node *node);
 DD_FUNCTION void DD_OutputTree_C_Decl(FILE *file, DD_Node *node);
-DD_FUNCTION void DD_OutputType_C_PreArray(FILE *file, DD_Type *type);
-DD_FUNCTION void DD_OutputType_C_Array(FILE *file, DD_Type *type);
+DD_FUNCTION void DD_OutputType_C_LHS(FILE *file, DD_Expr *type);
+DD_FUNCTION void DD_OutputType_C_RHS(FILE *file, DD_Expr *type);
 
 //~ Command Line Argument Helper Functions
 DD_FUNCTION DD_CommandLine DD_CommandLine_Start(int argument_count, char **arguments);
@@ -432,8 +563,7 @@ DD_FUNCTION DD_String8  DD_LoadEntireFile(DD_String8 filename);
 
 //~ Functions that require OS information... will be excluded from the build
 // if an OS is not specified.
-#if DD_OS
+// TODO(rjf): Decouple
 DD_FUNCTION DD_b32      DD_FileIter_Increment(DD_FileIter *it, DD_String8 path, DD_FileInfo *out_info);
-#endif
 
 #endif // DD_H
