@@ -66,7 +66,8 @@ int main(int argument_count, char **arguments)
    if(DD_StringMatch(file_info.extension, DD_S8Lit("dd"), DD_StringMatchFlag_CaseInsensitive) &&
       !DD_StringMatch(DD_WithoutFolder(DD_WithoutExtension(file_info.path)),
                       DD_WithoutFolder(DD_WithoutExtension(site_info_path)),
-                      DD_StringMatchFlag_CaseInsensitive))
+                      DD_StringMatchFlag_CaseInsensitive |
+                      DD_StringMatchFlag_SlashInsensitive))
    {
     printf("Processing site page at \"%.*s\"...\n", DD_StringExpand(file_info.path));
     DD_String8 folder = DD_FolderString(page_dir_path);

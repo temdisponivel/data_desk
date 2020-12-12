@@ -23,13 +23,19 @@ static DD_Node _dd_nil_node =
  .first_tag     = &_dd_nil_node,
  .last_tag      = &_dd_nil_node,
  .kind          = DD_NodeKind_Nil,
- .string        = {"`NIL DD NODE`", 13},
- .whole_string  = {"`NIL DD NODE`", 13},
+ .string        = {0},
+ .whole_string  = {0},
  .string_hash   = 0xdeadffffffffffull,
  .filename      = {"`NIL DD NODE`", 13},
  .file_contents = 0,
  .at            = 0,
 };
+
+DD_PRIVATE_FUNCTION_IMPL void
+_DD_MemoryZero(void *memory, DD_u64 size)
+{
+ memset(memory, 0, size);
+}
 
 DD_FUNCTION_IMPL DD_b32
 DD_CharIsAlpha(DD_u8 c)
@@ -66,6 +72,12 @@ DD_CharToLower(DD_u8 c)
  return (c >= 'A' && c <= 'Z') ? ('a' + (c - 'A')) : c;
 }
 
+DD_FUNCTION_IMPL DD_u8
+DD_CorrectSlash(DD_u8 c)
+{
+ return (c == '\\' ? '/' : c);
+}
+
 DD_FUNCTION_IMPL DD_String8
 DD_S8(DD_u8 *str, DD_u64 size)
 {
@@ -98,22 +110,34 @@ DD_StringSubstring(DD_String8 str, DD_u64 min, DD_u64 max)
 }
 
 DD_FUNCTION_IMPL DD_String8
-DD_StringPrefix(DD_String8 str, DD_u64 max)
+DD_StringSkip(DD_String8 str, DD_u64 max)
 {
  return DD_StringSubstring(str, 0, max);
 }
 
 DD_FUNCTION_IMPL DD_String8
-DD_StringSuffix(DD_String8 str, DD_u64 min)
+DD_StringChop(DD_String8 str, DD_u64 min)
 {
  return DD_StringSubstring(str, min, str.size);
+}
+
+DD_FUNCTION_IMPL DD_String8
+DD_StringPrefix(DD_String8 str, DD_u64 size)
+{
+ return DD_StringSubstring(str, 0, size);
+}
+
+DD_FUNCTION_IMPL DD_String8
+DD_StringSuffix(DD_String8 str, DD_u64 size)
+{
+ return DD_StringSubstring(str, str.size - size, size);
 }
 
 DD_FUNCTION_IMPL DD_b32
 DD_StringMatch(DD_String8 a, DD_String8 b, DD_StringMatchFlags flags)
 {
  int result = 0;
- if(a.str && b.str && a.size && b.size && a.size == b.size)
+ if(a.size == b.size || flags & DD_StringMatchFlag_RightSideSloppy)
  {
   result = 1;
   for(DD_u64 i = 0; i < a.size; i += 1)
@@ -122,6 +146,10 @@ DD_StringMatch(DD_String8 a, DD_String8 b, DD_StringMatchFlags flags)
    if(flags & DD_StringMatchFlag_CaseInsensitive)
    {
     match |= (DD_CharToLower(a.str[i]) == DD_CharToLower(b.str[i]));
+   }
+   if(flags & DD_StringMatchFlag_SlashInsensitive)
+   {
+    match |= (DD_CorrectSlash(a.str[i]) == DD_CorrectSlash(b.str[i]));
    }
    if(match == 0)
    {
@@ -133,53 +161,41 @@ DD_StringMatch(DD_String8 a, DD_String8 b, DD_StringMatchFlags flags)
  return result;
 }
 
-DD_FUNCTION_IMPL DD_b32
-DD_StringFindSubstring(DD_String8 str, DD_String8 substring, DD_u64 occurrence, DD_StringMatchFlags flags, DD_u64 *start)
+DD_FUNCTION_IMPL DD_u64
+DD_FindSubstring(DD_String8 str, DD_String8 substring, DD_u64 start_pos, DD_StringMatchFlags flags)
 {
  DD_b32 found = 0;
- DD_u64 idx = 0;
- DD_u64 occurrence_idx = 0;
- 
- for(DD_u64 i = 0; i < str.size; i += 1)
+ DD_u64 found_idx = str.size;
+ for(DD_u64 i = start_pos; i < str.size; i += 1)
  {
-  if(i + substring.size <= str.size && str.str[i] == substring.str[0])
+  if(i + substring.size <= str.size)
   {
    DD_String8 substr_from_str = DD_StringSubstring(str, i, i+substring.size);
    if(DD_StringMatch(substr_from_str, substring, flags))
    {
-    occurrence_idx += 1;
-    if(occurrence_idx >= occurrence)
+    found_idx = i;
+    found = 1;
+    if(!(flags & DD_StringMatchFlag_FindLast))
     {
-     idx = i;
-     found = 1;
-     if(!(flags & DD_StringMatchFlag_FindLast))
-     {
-      break;
-     }
+     break;
     }
    }
   }
  }
- 
- if(found && start)
- {
-  *start = idx;
- }
- 
- return found;
+ return found_idx;
 }
 
-DD_FUNCTION_IMPL DD_b32
-DD_StringFindLastSubstring(DD_String8 str, DD_String8 substring, DD_StringMatchFlags flags, DD_u64 *start)
+DD_FUNCTION_IMPL DD_u64
+DD_FindLastSubstring(DD_String8 str, DD_String8 substring, DD_StringMatchFlags flags)
 {
- return DD_StringFindSubstring(str, substring, 0, flags | DD_StringMatchFlag_FindLast, start);
+ return DD_FindSubstring(str, substring, 0, flags | DD_StringMatchFlag_FindLast);
 }
 
 DD_FUNCTION_IMPL DD_String8
 DD_WithoutExtension(DD_String8 string)
 {
- DD_u64 period_pos = 0;
- if(DD_StringFindLastSubstring(string, DD_S8Lit("."), 0, &period_pos))
+ DD_u64 period_pos = DD_FindLastSubstring(string, DD_S8Lit("."), 0);
+ if(period_pos < string.size)
  {
   string.size = period_pos;
  }
@@ -189,17 +205,11 @@ DD_WithoutExtension(DD_String8 string)
 DD_FUNCTION_IMPL DD_String8
 DD_WithoutFolder(DD_String8 string)
 {
- DD_u64 fslash_pos = 0;
- DD_u64 bslash_pos = 0;
- DD_b32 slash = 0;
- slash |= DD_StringFindLastSubstring(string, DD_S8Lit("/"),  0, &fslash_pos);
- slash |= DD_StringFindLastSubstring(string, DD_S8Lit("\\"),  0, &bslash_pos);
- if(slash)
+ DD_u64 slash_pos = DD_FindLastSubstring(string, DD_S8Lit("/"), DD_StringMatchFlag_SlashInsensitive);
+ if(slash_pos < string.size)
  {
-  DD_u64 p = fslash_pos > bslash_pos ? fslash_pos : bslash_pos;
-  p += 1;
-  string.str += p;
-  string.size -= p;
+  string.str += slash_pos+1;
+  string.size -= slash_pos+1;
  }
  return string;
 }
@@ -207,8 +217,8 @@ DD_WithoutFolder(DD_String8 string)
 DD_FUNCTION_IMPL DD_String8
 DD_ExtensionString(DD_String8 string)
 {
- DD_u64 period_pos = 0;
- if(DD_StringFindLastSubstring(string, DD_S8Lit("."), 0, &period_pos))
+ DD_u64 period_pos = DD_FindLastSubstring(string, DD_S8Lit("."), 0);
+ if(period_pos < string.size)
  {
   string.str += period_pos+1;
   string.size -= period_pos+1;
@@ -219,15 +229,10 @@ DD_ExtensionString(DD_String8 string)
 DD_FUNCTION_IMPL DD_String8
 DD_FolderString(DD_String8 string)
 {
- DD_u64 fslash_pos = 0;
- DD_u64 bslash_pos = 0;
- DD_b32 slash = 0;
- slash |= DD_StringFindLastSubstring(string, DD_S8Lit("/"),  0, &fslash_pos);
- slash |= DD_StringFindLastSubstring(string, DD_S8Lit("\\"),  0, &bslash_pos);
- if(slash)
+ DD_u64 slash_pos = DD_FindLastSubstring(string, DD_S8Lit("/"), DD_StringMatchFlag_SlashInsensitive);
+ if(slash_pos < string.size)
  {
-  DD_u64 p = fslash_pos > bslash_pos ? fslash_pos : bslash_pos;
-  string.size = p;
+  string.size = slash_pos;
  }
  return string;
 }
@@ -308,20 +313,21 @@ DD_PushStringToList(DD_String8List *list, DD_String8 string)
 }
 
 DD_FUNCTION_IMPL void
-DD_PushStringListToList(DD_String8List *list, DD_String8List to_push)
+DD_PushStringListToList(DD_String8List *list, DD_String8List *to_push)
 {
- if(to_push.first)
+ if(to_push->first)
  {
   if(list->last == 0)
   {
-   *list = to_push;
+   *list = *to_push;
   }
   else
   {
-   list->last->next = to_push.first;
-   list->last = to_push.last;
+   list->last->next = to_push->first;
+   list->last = to_push->last;
   }
  }
+ _DD_MemoryZero(to_push, sizeof(*to_push));
 }
 
 DD_FUNCTION_IMPL DD_String8List

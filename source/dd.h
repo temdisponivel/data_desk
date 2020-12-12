@@ -187,9 +187,10 @@ struct DD_String8List
 typedef DD_u32 DD_StringMatchFlags;
 enum
 {
- DD_StringMatchFlag_CaseInsensitive = (1<<0),
- DD_StringMatchFlag_RightSideSloppy = (1<<1),
- DD_StringMatchFlag_FindLast        = (1<<2),
+ DD_StringMatchFlag_CaseInsensitive  = (1<<0),
+ DD_StringMatchFlag_RightSideSloppy  = (1<<1),
+ DD_StringMatchFlag_FindLast         = (1<<2),
+ DD_StringMatchFlag_SlashInsensitive = (1<<3),
 };
 
 //~ Node kinds that comprise the language.
@@ -434,25 +435,24 @@ DD_FUNCTION DD_b32 DD_CharIsDigit(DD_u8 c);
 DD_FUNCTION DD_b32 DD_CharIsSymbol(DD_u8 c);
 DD_FUNCTION DD_u8  DD_CharToUpper(DD_u8 c);
 DD_FUNCTION DD_u8  DD_CharToLower(DD_u8 c);
+DD_FUNCTION DD_u8  DD_CorrectSlash(DD_u8 c);
 
 //~ String Functions
 DD_FUNCTION DD_String8     DD_S8(DD_u8 *str, DD_u64 size);
 #define DD_S8CString(s)    DD_S8((DD_u8 *)(s), DD_CalculateCStringLength(s))
 #define DD_S8Lit(s)        (DD_String8){(DD_u8 *)(s), sizeof(s)-1}
 DD_FUNCTION DD_String8     DD_StringSubstring(DD_String8 str, DD_u64 min, DD_u64 max);
-// TODO(rjf): Skip/Chop, Prefix/Suffix => size instead of position
-DD_FUNCTION DD_String8     DD_StringPrefix(DD_String8 str, DD_u64 max);
-DD_FUNCTION DD_String8     DD_StringSuffix(DD_String8 str, DD_u64 min);
+DD_FUNCTION DD_String8     DD_StringSkip(DD_String8 str, DD_u64 max);
+DD_FUNCTION DD_String8     DD_StringChop(DD_String8 str, DD_u64 min);
+DD_FUNCTION DD_String8     DD_StringPrefix(DD_String8 str, DD_u64 size);
+DD_FUNCTION DD_String8     DD_StringSuffix(DD_String8 str, DD_u64 size);
 
 DD_FUNCTION DD_b32         DD_StringMatch(DD_String8 a, DD_String8 b, DD_StringMatchFlags flags);
 // TODO(rjf): Return position of occurrence, or haystack.size, compose w/ exprs
-DD_FUNCTION DD_b32         DD_StringFindSubstring(DD_String8 str, DD_String8 substring,
-                                                  
-                                                  // TODO(rjf): Pass in p, not occurrence, avoid n^2
-                                                  DD_u64 occurrence,
-                                                  DD_StringMatchFlags flags,
-                                                  DD_u64 *start);
-DD_FUNCTION DD_b32         DD_StringFindLastSubstring(DD_String8 str, DD_String8 substring, DD_StringMatchFlags flags, DD_u64 *start);
+// TODO(rjf): Pass in p, not occurrence, avoid n^2
+DD_FUNCTION DD_u64         DD_FindSubstring(DD_String8 str, DD_String8 substring,
+                                            DD_u64 start_pos, DD_StringMatchFlags flags);
+DD_FUNCTION DD_u64         DD_FindLastSubstring(DD_String8 str, DD_String8 substring, DD_StringMatchFlags flags);
 
 // TODO(rjf): Rename: X from Y
 // TODO(rjf): FilenameFromPath
@@ -471,8 +471,7 @@ DD_FUNCTION char *         DD_PushCStringF(char *fmt, ...);
 #define DD_StringExpand(s) (int)(s).size, (s).str
 
 DD_FUNCTION void           DD_PushStringToList(DD_String8List *list, DD_String8 string);
-// TODO(rjf): Zero to_push on output
-DD_FUNCTION void           DD_PushStringListToList(DD_String8List *list, DD_String8List to_push);
+DD_FUNCTION void           DD_PushStringListToList(DD_String8List *list, DD_String8List *to_push);
 DD_FUNCTION DD_String8List DD_SplitString(DD_String8 string, int split_count, DD_String8 *splits);
 DD_FUNCTION DD_String8List DD_SplitStringByString(DD_String8 string, DD_String8 split);
 DD_FUNCTION DD_String8List DD_SplitStringByCharacter(DD_String8 string, DD_u8 character);
