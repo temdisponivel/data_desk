@@ -421,6 +421,242 @@ DD_CalculateCStringLength(char *cstr)
     return i;
 }
 
+////////////////////////////////
+// NOTE(allen): Unicode
+
+DD_GLOBAL DD_u8 dd_utf8_class[32] = {
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,2,2,2,2,3,3,4,5,
+};
+
+DD_FUNCTION_IMPL DD_UnicodeConsume
+DD_CodepointFromUtf8(DD_u8 *str, DD_u64 max)
+{
+#define DD_bitmask1 0x01
+#define DD_bitmask2 0x03
+#define DD_bitmask3 0x07
+#define DD_bitmask4 0x0F
+#define DD_bitmask5 0x1F
+#define DD_bitmask6 0x3F
+#define DD_bitmask7 0x7F
+#define DD_bitmask8 0xFF
+#define DD_bitmask9  0x01FF
+#define DD_bitmask10 0x03FF
+    
+    DD_UnicodeConsume result = {~((DD_u32)0), 1};
+    DD_u8 byte = str[0];
+    DD_u8 byte_class = dd_utf8_class[byte >> 3];
+    switch (byte_class)
+    {
+        case 1:
+        {
+            result.codepoint = byte;
+        }break;
+        
+        case 2:
+        {
+            if (2 <= max)
+            {
+                DD_u8 cont_byte = str[1];
+                if (dd_utf8_class[cont_byte >> 3] == 0)
+                {
+                    result.codepoint = (byte & DD_bitmask5) << 6;
+                    result.codepoint |=  (cont_byte & DD_bitmask6);
+                    result.advance = 2;
+                }
+            }
+        }break;
+        
+        case 3:
+        {
+            if (3 <= max)
+            {
+                DD_u8 cont_byte[2] = {str[1], str[2]};
+                if (dd_utf8_class[cont_byte[0] >> 3] == 0 &&
+                    dd_utf8_class[cont_byte[1] >> 3] == 0)
+                {
+                    result.codepoint = (byte & DD_bitmask4) << 12;
+                    result.codepoint |= ((cont_byte[0] & DD_bitmask6) << 6);
+                    result.codepoint |=  (cont_byte[1] & DD_bitmask6);
+                    result.advance = 3;
+                }
+            }
+        }break;
+        
+        case 4:
+        {
+            if (4 <= max)
+            {
+                DD_u8 cont_byte[3] = {str[1], str[2], str[3]};
+                if (dd_utf8_class[cont_byte[0] >> 3] == 0 &&
+                    dd_utf8_class[cont_byte[1] >> 3] == 0 &&
+                    dd_utf8_class[cont_byte[2] >> 3] == 0)
+                {
+                    result.codepoint = (byte & DD_bitmask3) << 18;
+                    result.codepoint |= ((cont_byte[0] & DD_bitmask6) << 12);
+                    result.codepoint |= ((cont_byte[1] & DD_bitmask6) <<  6);
+                    result.codepoint |=  (cont_byte[2] & DD_bitmask6);
+                    result.advance = 4;
+                }
+            }
+        }break;
+    }
+    
+    return(result);
+}
+
+DD_FUNCTION_IMPL DD_UnicodeConsume
+DD_CodepointFromUtf16(DD_u16 *out, DD_u64 max)
+{
+    DD_UnicodeConsume result = {~((DD_u32)0), 1};
+    result.codepoint = out[0];
+    result.advance = 1;
+    if (1 < max && 0xD800 <= out[0] && out[0] < 0xDC00 && 0xDC00 <= out[1] && out[1] < 0xE000)
+    {
+        result.codepoint = ((out[0] - 0xD800) << 10) | (out[1] - 0xDC00);
+        result.advance = 2;
+    }
+    return(result);
+}
+
+DD_FUNCTION DD_u32
+DD_Utf8FromCodepoint(DD_u8 *out, DD_u32 codepoint)
+{
+#define DD_bit8 0x80
+    DD_u32 advance = 0;
+    if (codepoint <= 0x7F)
+    {
+        out[0] = (DD_u8)codepoint;
+        advance = 1;
+    }
+    else if (codepoint <= 0x7FF)
+    {
+        out[0] = (DD_bitmask2 << 6) | ((codepoint >> 6) & DD_bitmask5);
+        out[1] = DD_bit8 | (codepoint & DD_bitmask6);
+        advance = 2;
+    }
+    else if (codepoint <= 0xFFFF)
+    {
+        out[0] = (DD_bitmask3 << 5) | ((codepoint >> 12) & DD_bitmask4);
+        out[1] = DD_bit8 | ((codepoint >> 6) & DD_bitmask6);
+        out[2] = DD_bit8 | ( codepoint       & DD_bitmask6);
+        advance = 3;
+    }
+    else if (codepoint <= 0x10FFFF)
+    {
+        out[0] = (DD_bitmask4 << 3) | ((codepoint >> 18) & DD_bitmask3);
+        out[1] = DD_bit8 | ((codepoint >> 12) & DD_bitmask6);
+        out[2] = DD_bit8 | ((codepoint >>  6) & DD_bitmask6);
+        out[3] = DD_bit8 | ( codepoint        & DD_bitmask6);
+        advance = 4;
+    }
+    else
+    {
+        out[0] = '?';
+        advance = 1;
+    }
+    return(advance);
+}
+
+DD_FUNCTION DD_u32
+DD_Utf16FromCodepoint(DD_u16 *out, DD_u32 codepoint)
+{
+    DD_u32 advance = 1;
+    if (codepoint == ~((DD_u32)0))
+    {
+        out[0] = (DD_u16)'?';
+    }
+    else if (codepoint < 0x10000)
+    {
+        out[0] = (DD_u16)codepoint;
+    }
+    else
+    {
+        DD_u64 v = codepoint - 0x10000;
+        out[0] = 0xD800 + (v >> 10);
+        out[1] = 0xDC00 + (v & DD_bitmask10);
+        advance = 2;
+    }
+    return(advance);
+}
+
+DD_FUNCTION DD_String8
+DD_S8FromS16(DD_String16 in)
+{
+    DD_u64 cap = in.size*3;
+    DD_u8 *str = malloc(cap + 1);
+    DD_u16 *ptr = in.str;
+    DD_u16 *opl = ptr + in.size;
+    DD_u64 size = 0;
+    DD_UnicodeConsume consume;
+    for (;ptr < opl;)
+    {
+        consume = DD_CodepointFromUtf16(ptr, opl - ptr);
+        ptr += consume.advance;
+        size += DD_Utf8FromCodepoint(str + size, consume.codepoint);
+    }
+    str[size] = 0;
+    return(DD_S8(str, size));
+}
+
+DD_FUNCTION DD_String16
+DD_S16FromS8(DD_String8 in)
+{
+    DD_u64 cap = in.size*2;
+    DD_u16 *str = malloc(sizeof(DD_u16)*(cap + 1));
+    DD_u8 *ptr = in.str;
+    DD_u8 *opl = ptr + in.size;
+    DD_u64 size = 0;
+    DD_UnicodeConsume consume;
+    for (;ptr < opl;)
+    {
+        consume = DD_CodepointFromUtf8(ptr, opl - ptr);
+        ptr += consume.advance;
+        size += DD_Utf16FromCodepoint(str + size, consume.codepoint);
+    }
+    str[size] = 0;
+    DD_String16 result = {str, size};
+    return(result);
+}
+
+DD_FUNCTION DD_String8
+DD_S8FromS32(DD_String32 in)
+{
+    DD_u64 cap = in.size*4;
+    DD_u8 *str = (DD_u8*)malloc(cap + 1);
+    DD_u32 *ptr = in.str;
+    DD_u32 *opl = ptr + in.size;
+    DD_u64 size = 0;
+    DD_UnicodeConsume consume;
+    for (;ptr < opl; ptr += 1)
+    {
+        size += DD_Utf8FromCodepoint(str + size, *ptr);
+    }
+    str[size] = 0;
+    return(DD_S8(str, size));
+}
+
+DD_FUNCTION DD_String32
+DD_S32FromS8(DD_String8 in)
+{
+    DD_u64 cap = in.size;
+    DD_u32 *str = malloc(sizeof(DD_u32)*(cap + 1));
+    DD_u8 *ptr = in.str;
+    DD_u8 *opl = ptr + in.size;
+    DD_u64 size = 0;
+    DD_UnicodeConsume consume;
+    for (;ptr < opl;)
+    {
+        consume = DD_CodepointFromUtf8(ptr, opl - ptr);
+        ptr += consume.advance;
+        str[size] = consume.codepoint;
+        size += 1;
+    }
+    str[size] = 0;
+    DD_String32 result = {str, size};
+    return(result);
+}
+
+
 DD_PRIVATE_FUNCTION_IMPL void
 _DD_NodeTable_Initialize(DD_NodeTable *table)
 {

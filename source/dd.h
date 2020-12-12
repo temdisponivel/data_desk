@@ -142,6 +142,7 @@
 #endif
 
 #define DD_FUNCTION
+#define DD_GLOBAL static
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -170,6 +171,20 @@ struct DD_String8
     DD_u64 size;
 };
 
+typedef struct DD_String16 DD_String16;
+struct DD_String16
+{
+    DD_u16 *str;
+    DD_u64 size;
+};
+
+typedef struct DD_String32 DD_String32;
+struct DD_String32
+{
+    DD_u32 *str;
+    DD_u64 size;
+};
+
 typedef struct DD_String8Node DD_String8Node;
 struct DD_String8Node
 {
@@ -190,6 +205,12 @@ enum
     DD_StringMatchFlag_CaseInsensitive = (1<<0),
     DD_StringMatchFlag_RightSideSloppy = (1<<1),
     DD_StringMatchFlag_FindLast        = (1<<2),
+};
+
+typedef struct DD_UnicodeConsume DD_UnicodeConsume;
+struct DD_UnicodeConsume{
+    DD_u32 codepoint;
+    DD_u32 advance;
 };
 
 //~ Node kinds that comprise the language.
@@ -488,6 +509,19 @@ DD_FUNCTION int            DD_IntFromString(DD_String8 string);
 DD_FUNCTION float          DD_FloatFromString(DD_String8 string);
 DD_FUNCTION DD_u64         DD_HashString(DD_String8 string);
 DD_FUNCTION DD_u64         DD_CalculateCStringLength(char *cstr);
+
+//~ Unicode Conversions
+DD_FUNCTION DD_UnicodeConsume DD_CodepointFromUtf8(DD_u8 *str, DD_u64 max);
+DD_FUNCTION DD_UnicodeConsume DD_CodepointFromUtf16(DD_u16 *str, DD_u64 max);
+
+DD_FUNCTION DD_u32 DD_Utf8FromCodepoint(DD_u8 *out, DD_u32 codepoint);
+DD_FUNCTION DD_u32 DD_Utf16FromCodepoint(DD_u16 *out, DD_u32 codepoint);
+
+DD_FUNCTION DD_String8     DD_S8FromS16(DD_String16 str);
+DD_FUNCTION DD_String16    DD_S16FromS8(DD_String8 str);
+
+DD_FUNCTION DD_String8     DD_S8FromS32(DD_String32 str);
+DD_FUNCTION DD_String32    DD_S32FromS8(DD_String8 str);
 
 //~ String-To-Node-List Table
 DD_FUNCTION DD_NodeTableSlot *DD_NodeTable_Lookup(DD_NodeTable *table, DD_String8 string);
