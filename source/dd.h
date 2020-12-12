@@ -416,9 +416,7 @@ typedef struct DD_FileInfo DD_FileInfo;
 struct DD_FileInfo
 {
  DD_FileFlags flags;
- // TODO(rjf): Only have filename
- DD_String8 path;
- DD_String8 extension;
+ DD_String8 filename;
  DD_u64 file_size;
 };
 
@@ -448,26 +446,19 @@ DD_FUNCTION DD_String8     DD_StringPrefix(DD_String8 str, DD_u64 size);
 DD_FUNCTION DD_String8     DD_StringSuffix(DD_String8 str, DD_u64 size);
 
 DD_FUNCTION DD_b32         DD_StringMatch(DD_String8 a, DD_String8 b, DD_StringMatchFlags flags);
-// TODO(rjf): Return position of occurrence, or haystack.size, compose w/ exprs
-// TODO(rjf): Pass in p, not occurrence, avoid n^2
 DD_FUNCTION DD_u64         DD_FindSubstring(DD_String8 str, DD_String8 substring,
                                             DD_u64 start_pos, DD_StringMatchFlags flags);
 DD_FUNCTION DD_u64         DD_FindLastSubstring(DD_String8 str, DD_String8 substring, DD_StringMatchFlags flags);
 
-// TODO(rjf): Rename: X from Y
-// TODO(rjf): FilenameFromPath
-// TODO(rjf): BasenameFromFilename
-DD_FUNCTION DD_String8     DD_WithoutExtension(DD_String8 string);
-DD_FUNCTION DD_String8     DD_WithoutFolder(DD_String8 string);
-DD_FUNCTION DD_String8     DD_ExtensionString(DD_String8 string);
-DD_FUNCTION DD_String8     DD_FolderString(DD_String8 string);
+DD_FUNCTION DD_String8     DD_TrimExtension(DD_String8 string);
+DD_FUNCTION DD_String8     DD_TrimFolder(DD_String8 string);
+DD_FUNCTION DD_String8     DD_ExtensionFromPath(DD_String8 string);
+DD_FUNCTION DD_String8     DD_FolderFromPath(DD_String8 string);
 
-// TODO(rjf): Trash C strings, use string copy
-DD_FUNCTION char *         DD_CStringFromString8(DD_String8 string);
+DD_FUNCTION DD_String8     DD_PushStringCopy(DD_String8 string);
 DD_FUNCTION DD_String8     DD_PushStringFV(char *fmt, va_list args);
 DD_FUNCTION DD_String8     DD_PushStringF(char *fmt, ...);
-DD_FUNCTION char *         DD_PushCStringFV(char *fmt, va_list args);
-DD_FUNCTION char *         DD_PushCStringF(char *fmt, ...);
+
 #define DD_StringExpand(s) (int)(s).size, (s).str
 
 DD_FUNCTION void           DD_PushStringToList(DD_String8List *list, DD_String8 string);
@@ -502,30 +493,24 @@ DD_FUNCTION DD_Node *      DD_ParseWholeFile   (DD_String8 filename);
 //~ Tree/List Building Functions
 DD_FUNCTION DD_b32   DD_NodeIsNil(DD_Node *node);
 DD_FUNCTION DD_Node *DD_NilNode(void);
-// TODO(rjf): DD_MakeNode needs to be more user-friendly
 DD_FUNCTION DD_Node *DD_MakeNodeFromToken(DD_NodeKind kind, DD_String8 filename, DD_u8 *file, DD_u8 *at, DD_Token token);
 DD_FUNCTION DD_Node *DD_MakeNodeFromString(DD_NodeKind kind, DD_String8 filename, DD_u8 *file, DD_u8 *at, DD_String8 string);
-// TODO(rjf): NodeList, do not put in public API
 DD_FUNCTION void     DD_PushSibling(DD_Node **first, DD_Node **last, DD_Node *parent, DD_Node *new_sibling);
 DD_FUNCTION void     DD_PushChild(DD_Node *parent, DD_Node *new_child);
 DD_FUNCTION void     DD_PushTag(DD_Node *node, DD_Node *tag);
 
 //~ Introspection Helpers
 #define DD_EachNode(it, first) DD_Node *it = (first); !DD_NodeIsNil(it); it = it->next
-DD_FUNCTION DD_Node *DD_NodeInList(DD_Node *first, DD_Node *last, DD_String8 string);
-DD_FUNCTION DD_Node *DD_NthNodeInList(DD_Node *first, DD_Node *last, int n);
+DD_FUNCTION DD_Node *DD_NodeFromString(DD_Node *first, DD_Node *last, DD_String8 string);
+DD_FUNCTION DD_Node *DD_NodeFromIndex(DD_Node *first, DD_Node *last, int n);
 DD_FUNCTION int      DD_IndexFromNode(DD_Node *node);
 DD_FUNCTION DD_Node *DD_NextNodeSibling(DD_Node *last, DD_String8 string);
-// TODO(rjf): TagFromNode or TagFromParent
-// TODO(rjf): ChildFromNode or ChildFromParent
-// TODO(rjf): String
-// TODO(rjf): 
-// TODO(rjf): ChildFromString
-// TODO(rjf): ChildFromIndex
-DD_FUNCTION DD_Node *DD_TagOnNode(DD_Node *node, DD_String8 tag_string);
-DD_FUNCTION DD_Node *DD_ChildOnNode(DD_Node *node, DD_String8 child_string);
-DD_FUNCTION DD_Node *DD_NthTagArg(DD_Node *node, DD_String8 tag_string, int n);
-DD_FUNCTION DD_Node *DD_NthChild(DD_Node *node, int n);
+DD_FUNCTION DD_Node *DD_ChildFromString(DD_Node *node, DD_String8 child_string);
+DD_FUNCTION DD_Node *DD_TagFromString(DD_Node *node, DD_String8 tag_string);
+DD_FUNCTION DD_Node *DD_ChildFromIndex(DD_Node *node, int n);
+DD_FUNCTION DD_Node *DD_TagFromIndex(DD_Node *node, int n);
+DD_FUNCTION DD_Node *DD_TagArgFromIndex(DD_Node *node, DD_String8 tag_string, int n);
+DD_FUNCTION DD_b32   DD_NodeHasTag(DD_Node *node, DD_String8 tag_string);
 
 //~ Expression and Type-Expression Helper Functions
 DD_FUNCTION DD_Expr *DD_NilExpr(void);

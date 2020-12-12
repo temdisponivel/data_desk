@@ -37,6 +37,20 @@ _DD_MemoryZero(void *memory, DD_u64 size)
  memset(memory, 0, size);
 }
 
+DD_PRIVATE_FUNCTION_IMPL void
+_DD_MemoryCopy(void *dest, void *src, DD_u64 size)
+{
+ memcpy(dest, src, size);
+}
+
+DD_PRIVATE_FUNCTION_IMPL void
+_DD_WriteStringToBuffer(DD_String8 string, DD_u64 max, void *dest)
+{
+ DD_u64 write_size = string.size;
+ if(write_size > max) write_size = max;
+ _DD_MemoryCopy(dest, string.str, write_size);
+}
+
 DD_FUNCTION_IMPL DD_b32
 DD_CharIsAlpha(DD_u8 c)
 {
@@ -192,7 +206,7 @@ DD_FindLastSubstring(DD_String8 str, DD_String8 substring, DD_StringMatchFlags f
 }
 
 DD_FUNCTION_IMPL DD_String8
-DD_WithoutExtension(DD_String8 string)
+DD_TrimExtension(DD_String8 string)
 {
  DD_u64 period_pos = DD_FindLastSubstring(string, DD_S8Lit("."), 0);
  if(period_pos < string.size)
@@ -203,7 +217,7 @@ DD_WithoutExtension(DD_String8 string)
 }
 
 DD_FUNCTION_IMPL DD_String8
-DD_WithoutFolder(DD_String8 string)
+DD_TrimFolder(DD_String8 string)
 {
  DD_u64 slash_pos = DD_FindLastSubstring(string, DD_S8Lit("/"), DD_StringMatchFlag_SlashInsensitive);
  if(slash_pos < string.size)
@@ -215,7 +229,7 @@ DD_WithoutFolder(DD_String8 string)
 }
 
 DD_FUNCTION_IMPL DD_String8
-DD_ExtensionString(DD_String8 string)
+DD_ExtensionFromPath(DD_String8 string)
 {
  DD_u64 period_pos = DD_FindLastSubstring(string, DD_S8Lit("."), 0);
  if(period_pos < string.size)
@@ -227,7 +241,7 @@ DD_ExtensionString(DD_String8 string)
 }
 
 DD_FUNCTION_IMPL DD_String8
-DD_FolderString(DD_String8 string)
+DD_FolderFromPath(DD_String8 string)
 {
  DD_u64 slash_pos = DD_FindLastSubstring(string, DD_S8Lit("/"), DD_StringMatchFlag_SlashInsensitive);
  if(slash_pos < string.size)
@@ -237,15 +251,14 @@ DD_FolderString(DD_String8 string)
  return string;
 }
 
-DD_FUNCTION_IMPL char *
-DD_CStringFromString8(DD_String8 string)
+DD_FUNCTION_IMPL DD_String8
+DD_PushStringCopy(DD_String8 string)
 {
- char *result = calloc(string.size+1, 1);
- for(DD_u64 i = 0; i < string.size; i += 1)
- {
-  result[i] = string.str[i];
- }
- return result;
+ DD_String8 res;
+ res.size = string.size;
+ res.str = calloc(string.size+1, 1);
+ _DD_MemoryCopy(res.str, string.str, string.size);
+ return res;
 }
 
 DD_FUNCTION_IMPL DD_String8
@@ -268,29 +281,6 @@ DD_PushStringF(char *fmt, ...)
  va_list args;
  va_start(args, fmt);
  result = DD_PushStringFV(fmt, args);
- va_end(args);
- return result;
-}
-
-DD_FUNCTION_IMPL char *
-DD_PushCStringFV(char *fmt, va_list args)
-{
- char *result = 0;
- va_list args2;
- va_copy(args2, args);
- DD_u64 needed_bytes = vsnprintf(0, 0, fmt, args)+1;
- result = calloc(needed_bytes, 1);
- vsnprintf(result, needed_bytes, fmt, args2);
- return result;
-}
-
-DD_FUNCTION_IMPL char *
-DD_PushCStringF(char *fmt, ...)
-{
- char *result = 0;
- va_list args;
- va_start(args, fmt);
- result = DD_PushCStringFV(fmt, args);
  va_end(args);
  return result;
 }
@@ -391,14 +381,16 @@ DD_SplitStringByCharacter(DD_String8 string, DD_u8 character)
 DD_FUNCTION_IMPL int
 DD_IntFromString(DD_String8 string)
 {
- char *str = DD_CStringFromString8(string);
+ char str[64];
+ _DD_WriteStringToBuffer(string, sizeof(str), str);
  return atoi(str);
 }
 
 DD_FUNCTION_IMPL float
 DD_FloatFromString(DD_String8 string)
 {
- char *str = DD_CStringFromString8(string);
+ char str[64];
+ _DD_WriteStringToBuffer(string, sizeof(str), str);
  return atof(str);
 }
 
@@ -1110,7 +1102,7 @@ DD_PushTag(DD_Node *node, DD_Node *tag)
 }
 
 DD_FUNCTION_IMPL DD_Node *
-DD_NodeInList(DD_Node *first, DD_Node *last, DD_String8 string)
+DD_NodeFromString(DD_Node *first, DD_Node *last, DD_String8 string)
 {
  DD_Node *result = DD_NilNode();
  for(DD_Node *node = first; !DD_NodeIsNil(node); node = node->next)
@@ -1125,7 +1117,7 @@ DD_NodeInList(DD_Node *first, DD_Node *last, DD_String8 string)
 }
 
 DD_FUNCTION_IMPL DD_Node *
-DD_NthNodeInList(DD_Node *first, DD_Node *last, int n)
+DD_NodeFromIndex(DD_Node *first, DD_Node *last, int n)
 {
  DD_Node *result = DD_NilNode();
  if(n >= 0)
@@ -1173,28 +1165,40 @@ DD_NextNodeSibling(DD_Node *last, DD_String8 string)
 }
 
 DD_FUNCTION_IMPL DD_Node *
-DD_TagOnNode(DD_Node *node, DD_String8 tag_string)
+DD_ChildFromString(DD_Node *node, DD_String8 child_string)
 {
- return DD_NodeInList(node->first_tag, node->last_tag, tag_string);
+ return DD_NodeFromString(node->first_child, node->last_child, child_string);
 }
 
 DD_FUNCTION_IMPL DD_Node *
-DD_ChildOnNode(DD_Node *node, DD_String8 child_string)
+DD_TagFromString(DD_Node *node, DD_String8 tag_string)
 {
- return DD_NodeInList(node->first_child, node->last_child, child_string);
+ return DD_NodeFromString(node->first_tag, node->last_tag, tag_string);
 }
 
 DD_FUNCTION_IMPL DD_Node *
-DD_NthTagArg(DD_Node *node, DD_String8 tag_string, int n)
+DD_ChildFromIndex(DD_Node *node, int n)
 {
- DD_Node *tag = DD_TagOnNode(node, tag_string);
- return DD_NthChild(tag, n);
+ return DD_NodeFromIndex(node->first_child, node->last_child, n);
 }
 
 DD_FUNCTION_IMPL DD_Node *
-DD_NthChild(DD_Node *node, int n)
+DD_TagFromIndex(DD_Node *node, int n)
 {
- return DD_NthNodeInList(node->first_child, node->last_child, n);
+ return DD_NodeFromIndex(node->first_child, node->last_child, n);
+}
+
+DD_FUNCTION_IMPL DD_Node *
+DD_TagArgFromIndex(DD_Node *node, DD_String8 tag_string, int n)
+{
+ DD_Node *tag = DD_TagFromString(node, tag_string);
+ return DD_ChildFromIndex(tag, n);
+}
+
+DD_FUNCTION_IMPL DD_b32
+DD_NodeHasTag(DD_Node *node, DD_String8 tag_string)
+{
+ return !DD_NodeIsNil(DD_TagFromString(node, tag_string));
 }
 
 static DD_Expr _dd_nil_expr = {0};
@@ -1502,7 +1506,7 @@ DD_FUNCTION_IMPL DD_String8
 DD_LoadEntireFile(DD_String8 filename)
 {
  DD_String8 file_contents = {0};
- FILE *file = fopen(DD_CStringFromString8(filename), "r");
+ FILE *file = fopen(DD_PushStringCopy(filename).str, "r");
  if(file)
  {
   fseek(file, 0, SEEK_END);

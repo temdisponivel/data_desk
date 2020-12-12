@@ -63,17 +63,17 @@ int main(int argument_count, char **arguments)
   DD_FileInfo file_info = {0};
   for(DD_FileIter it = {0}; DD_FileIter_Increment(&it, page_dir_path, &file_info);)
   {
-   if(DD_StringMatch(file_info.extension, DD_S8Lit("dd"), DD_StringMatchFlag_CaseInsensitive) &&
-      !DD_StringMatch(DD_WithoutFolder(DD_WithoutExtension(file_info.path)),
-                      DD_WithoutFolder(DD_WithoutExtension(site_info_path)),
+   if(DD_StringMatch(DD_ExtensionFromPath(file_info.filename), DD_S8Lit("dd"), DD_StringMatchFlag_CaseInsensitive) &&
+      !DD_StringMatch(DD_TrimFolder(DD_TrimExtension(file_info.filename)),
+                      DD_TrimFolder(DD_TrimExtension(site_info_path)),
                       DD_StringMatchFlag_CaseInsensitive |
                       DD_StringMatchFlag_SlashInsensitive))
    {
-    printf("Processing site page at \"%.*s\"...\n", DD_StringExpand(file_info.path));
-    DD_String8 folder = DD_FolderString(page_dir_path);
+    printf("Processing site page at \"%.*s\"...\n", DD_StringExpand(file_info.filename));
+    DD_String8 folder = DD_FolderFromPath(page_dir_path);
     DD_String8 path = DD_PushStringF("%.*s/%.*s",
                                      DD_StringExpand(folder),
-                                     DD_StringExpand(file_info.path));
+                                     DD_StringExpand(file_info.filename));
     printf("%.*s\n", DD_StringExpand(path));
     DD_PushSibling(&first_root, &last_root, DD_NilNode(), DD_ParseWholeFile(path));
    }
@@ -126,8 +126,8 @@ int main(int argument_count, char **arguments)
  {
   PageInfo page_info = ParsePageInfo(root);
   
-  DD_String8 name_without_extension = DD_WithoutFolder(DD_WithoutExtension(root->filename));
-  FILE *file = fopen(DD_PushCStringF("%.*s.html", DD_StringExpand(name_without_extension)), "w");
+  DD_String8 name_without_extension = DD_TrimFolder(DD_TrimExtension(root->filename));
+  FILE *file = fopen(DD_PushStringF("%.*s.html", DD_StringExpand(name_without_extension)).str, "w");
   if(file)
   {
    fprintf(file, "<!DOCTYPE html>\n");
@@ -382,17 +382,17 @@ GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
   {
    char *html_tag = "p";
    char *style = "paragraph";
-   if(!DD_NodeIsNil(DD_TagOnNode(node, DD_S8Lit("title"))))
+   if(DD_NodeHasTag(node, DD_S8Lit("title")))
    {
     html_tag = "h1";
     style = "title";
    }
-   else if(!DD_NodeIsNil(DD_TagOnNode(node, DD_S8Lit("subtitle"))))
+   else if(DD_NodeHasTag(node, DD_S8Lit("subtitle")))
    {
     html_tag = "h2";
     style = "subtitle";
    }
-   else if(!DD_NodeIsNil(DD_TagOnNode(node, DD_S8Lit("code"))))
+   else if(DD_NodeHasTag(node, DD_S8Lit("code")))
    {
     html_tag = "pre";
     style = "code";
@@ -414,22 +414,22 @@ GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
       DD_ParseResult parse =  DD_ParseOneNode(node->filename, DD_StringSubstring(strnode->string, i, strnode->string.size));
       if(!DD_NodeIsNil(parse.node))
       {
-       if(!DD_NodeIsNil(DD_TagOnNode(parse.node, DD_S8Lit("i"))))
+       if(DD_NodeHasTag(node, DD_S8Lit("i")))
        {
         fprintf(file, "<i>%.*s</i>", DD_StringExpand(parse.node->string));
        }
-       else if(!DD_NodeIsNil(DD_TagOnNode(parse.node, DD_S8Lit("b"))))
+       else if(DD_NodeHasTag(node, DD_S8Lit("b")))
        {
         fprintf(file, "<strong>%.*s</strong>", DD_StringExpand(parse.node->string));
        }
-       else if(!DD_NodeIsNil(DD_TagOnNode(parse.node, DD_S8Lit("code"))))
+       else if(DD_NodeHasTag(node, DD_S8Lit("code")))
        {
         fprintf(file, "<span class=\"inline_code\">%.*s</span>", DD_StringExpand(parse.node->string));
        }
-       else if(!DD_NodeIsNil(DD_TagOnNode(parse.node, DD_S8Lit("link"))))
+       else if(DD_NodeHasTag(node, DD_S8Lit("link")))
        {
-        DD_Node *text = DD_NthChild(parse.node, 0);
-        DD_Node *link = DD_NthChild(parse.node, 1);
+        DD_Node *text = DD_ChildFromIndex(parse.node, 0);
+        DD_Node *link = DD_ChildFromIndex(parse.node, 1);
         fprintf(file, "<a class=\"link\" href=\"%.*s\">%.*s</a>",
                 DD_StringExpand(link->string),
                 DD_StringExpand(text->string));
@@ -447,8 +447,8 @@ GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
        
        for(DD_EachNode(dict_link, site_info->link_dictionary->first_child))
        {
-        text = DD_NthChild(dict_link, 0);
-        link = DD_NthChild(dict_link, 1);
+        text = DD_ChildFromIndex(dict_link, 0);
+        link = DD_ChildFromIndex(dict_link, 1);
         DD_String8 substring = DD_StringSubstring(strnode->string, i, i+text->string.size);
         if(DD_StringMatch(substring, text->string, 0))
         {
@@ -474,7 +474,7 @@ GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
   
   case DD_NodeKind_Set:
   {
-   if(!DD_NodeIsNil(DD_TagOnNode(node, DD_S8Lit("list"))))
+   if(DD_NodeHasTag(node, DD_S8Lit("list")))
    {
     fprintf(file, "<ul class=\"list\">\n");
     for(DD_EachNode(child, node->first_child))
@@ -491,19 +491,19 @@ GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
     }
     fprintf(file, "</ul>\n");
    }
-   else if(!DD_NodeIsNil(DD_TagOnNode(node, DD_S8Lit("img"))))
+   else if(DD_NodeHasTag(node, DD_S8Lit("img")))
    {
-    DD_Node *src = DD_NthChild(node, 0);
-    DD_Node *alt = DD_NthChild(node, 1);
+    DD_Node *src = DD_ChildFromIndex(node, 0);
+    DD_Node *alt = DD_ChildFromIndex(node, 1);
     fprintf(file, "<div class=\"img_container\"><img class=\"img\" src=\"%.*s\"></img></div>\n", DD_StringExpand(src->string));
    }
-   else if(!DD_NodeIsNil(DD_TagOnNode(node, DD_S8Lit("youtube"))))
+   else if(DD_NodeHasTag(node, DD_S8Lit("youtube")))
    {
-    DD_Node *id = DD_NthChild(node, 0);
+    DD_Node *id = DD_ChildFromIndex(node, 0);
     fprintf(file, "<iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/%.*s\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen></iframe>\n",
             DD_StringExpand(id->string));
    }
-   else if(!DD_NodeIsNil(DD_TagOnNode(node, DD_S8Lit("lister"))))
+   else if(DD_NodeHasTag(node, DD_S8Lit("lister")))
    {
     static int lister_idx = 0;
     fprintf(file, "<input autofocus id=\"lister_search_%i\" class=\"lister_search\" oninput=\"SearchInput(event, %i)\" onkeydown=\"SearchKeyDown(event, %i)\" placeholder=\"Filter...\"></input>", lister_idx, lister_idx, lister_idx);
@@ -511,7 +511,7 @@ GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
     lister_idx += 1;
     
     DD_Node *index_string = 0;
-    for(DD_u64 idx = 0; !DD_NodeIsNil(index_string = DD_NthChild(node, idx)); idx += 1)
+    for(DD_u64 idx = 0; !DD_NodeIsNil(index_string = DD_ChildFromIndex(node, idx)); idx += 1)
     {
      for(DD_NodeTableSlot *slot = DD_NodeTable_Lookup(index_table, index_string->string);
          slot; slot = slot->next)
@@ -521,7 +521,7 @@ GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
        PageInfo info = ParsePageInfo(slot->node);
        
        DD_String8 filename = slot->node->filename;
-       DD_String8 filename_no_ext = DD_WithoutExtension(DD_WithoutFolder(filename));
+       DD_String8 filename_no_ext = DD_TrimExtension(DD_TrimFolder(filename));
        DD_String8 link = DD_PushStringF("%.*s.html", DD_StringExpand(filename_no_ext));
        DD_String8 name = info.title->string;
        DD_String8 date = MakeDateString(info.date);
