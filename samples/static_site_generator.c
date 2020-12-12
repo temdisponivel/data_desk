@@ -153,9 +153,9 @@ int main(int argument_count, char **arguments)
     fprintf(file, "<meta name=\"twitter:site\" content=\"%.*s\">\n", DD_StringExpand(twitter_handle));
     fprintf(file, "<link rel=\"stylesheet\" type=\"text/css\" href=\"style.css\">\n");
     fprintf(file, "<script src=\"site.js\"></script>\n");
-    if(!DD_StringIsZero(title))
+    if(title.size > 0)
     {
-     if(!DD_StringIsZero(site_title))
+     if(site_title.size > 0)
      {
       fprintf(file, "<title>%.*s | %.*s</title>\n", DD_StringExpand(title), DD_StringExpand(site_title));
      }
@@ -164,7 +164,7 @@ int main(int argument_count, char **arguments)
       fprintf(file, "<title>%.*s</title>\n", DD_StringExpand(title));
      }
     }
-    else if(!DD_StringIsZero(site_title))
+    else if(site_title.size > 0)
     {
      fprintf(file, "<title>%.*s</title>\n", DD_StringExpand(site_title));
     }
@@ -197,7 +197,7 @@ int main(int argument_count, char **arguments)
     }
     
     // NOTE(rjf): Title.
-    if(!DD_StringIsZero(title))
+    if(title.size > 0)
     {
      fprintf(file, "<h1 class=\"title\">%.*s</h1>", DD_StringExpand(title));
     }
@@ -212,7 +212,7 @@ int main(int argument_count, char **arguments)
     if(page_info.date)
     {
      DD_String8 date_string = MakeDateString(page_info.date);
-     if(!DD_StringIsZero(date_string))
+     if(date_string.size > 0)
      {
       fprintf(file, "<h3 class=\"date\">%.*s</h3>", DD_StringExpand(date_string));
      }
@@ -539,7 +539,7 @@ GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
        fprintf(file, "%.*s\n", DD_StringExpand(name));
        fprintf(file, "</div>\n");
        
-       if(!DD_StringIsZero(date))
+       if(date.size > 0)
        {
         fprintf(file, "<div class=\"lister_item_date\">\n");
         fprintf(file, "%.*s\n", DD_StringExpand(date));

@@ -439,7 +439,6 @@ DD_FUNCTION DD_u8  DD_CharToLower(DD_u8 c);
 DD_FUNCTION DD_String8     DD_S8(DD_u8 *str, DD_u64 size);
 #define DD_S8CString(s)    DD_S8((DD_u8 *)(s), DD_CalculateCStringLength(s))
 #define DD_S8Lit(s)        (DD_String8){(DD_u8 *)(s), sizeof(s)-1}
-DD_FUNCTION DD_b32         DD_StringIsZero(DD_String8 str);
 DD_FUNCTION DD_String8     DD_StringSubstring(DD_String8 str, DD_u64 min, DD_u64 max);
 // TODO(rjf): Skip/Chop, Prefix/Suffix => size instead of position
 DD_FUNCTION DD_String8     DD_StringPrefix(DD_String8 str, DD_u64 max);
