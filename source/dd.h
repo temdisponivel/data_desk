@@ -167,8 +167,8 @@ typedef int64_t  DD_b64;
 typedef struct DD_String8 DD_String8;
 struct DD_String8
 {
-    DD_u8 *str;
-    DD_u64 size;
+ DD_u8 *str;
+ DD_u64 size;
 };
 
 typedef struct DD_String16 DD_String16;
@@ -188,23 +188,24 @@ struct DD_String32
 typedef struct DD_String8Node DD_String8Node;
 struct DD_String8Node
 {
-    DD_String8Node *next;
-    DD_String8 string;
+ DD_String8Node *next;
+ DD_String8 string;
 };
 
 typedef struct DD_String8List DD_String8List;
 struct DD_String8List
 {
-    DD_String8Node *first;
-    DD_String8Node *last;
+ DD_String8Node *first;
+ DD_String8Node *last;
 };
 
 typedef DD_u32 DD_StringMatchFlags;
 enum
 {
-    DD_StringMatchFlag_CaseInsensitive = (1<<0),
-    DD_StringMatchFlag_RightSideSloppy = (1<<1),
-    DD_StringMatchFlag_FindLast        = (1<<2),
+ DD_StringMatchFlag_CaseInsensitive  = (1<<0),
+ DD_StringMatchFlag_RightSideSloppy  = (1<<1),
+ DD_StringMatchFlag_FindLast         = (1<<2),
+ DD_StringMatchFlag_SlashInsensitive = (1<<3),
 };
 
 typedef struct DD_UnicodeConsume DD_UnicodeConsume;
@@ -216,15 +217,15 @@ struct DD_UnicodeConsume{
 //~ Node kinds that comprise the language.
 typedef enum DD_NodeKind
 {
-    DD_NodeKind_Nil,
-    DD_NodeKind_Identifier,
-    DD_NodeKind_Symbol,
-    DD_NodeKind_NumericLiteral,
-    DD_NodeKind_StringLiteral,
-    DD_NodeKind_CharLiteral,
-    DD_NodeKind_Set,
-    DD_NodeKind_Tag,
-    DD_NodeKind_MAX,
+ DD_NodeKind_Nil,
+ DD_NodeKind_Identifier,
+ DD_NodeKind_Symbol,
+ DD_NodeKind_NumericLiteral,
+ DD_NodeKind_StringLiteral,
+ DD_NodeKind_CharLiteral,
+ DD_NodeKind_Set,
+ DD_NodeKind_Tag,
+ DD_NodeKind_MAX,
 }
 DD_NodeKind;
 
@@ -233,93 +234,91 @@ DD_NodeKind;
 typedef struct DD_Node DD_Node;
 struct DD_Node
 {
-    // Tree relationship pointers.
-    DD_Node *next;
-    DD_Node *prev;
-    DD_Node *parent;
-    DD_Node *first_child;
-    DD_Node *last_child;
-    
-    // Tag list.
-    DD_Node *first_tag;
-    DD_Node *last_tag;
-    
-    // Node info.
-    DD_NodeKind kind;
-    DD_String8 string;
-    DD_String8 whole_string;
-    DD_u64 string_hash;
-    
-    // Source code location information.
-    // TODO(rjf): Consistent naming, file => filename
-    // TODO(rjf): Store at ptr instead, API call to find line/column from at + filename?
-    DD_String8 filename;
-    DD_u8 *file_contents;
-    DD_u8 *at;
+ // Tree relationship pointers.
+ DD_Node *next;
+ DD_Node *prev;
+ DD_Node *parent;
+ DD_Node *first_child;
+ DD_Node *last_child;
+ 
+ // Tag list.
+ DD_Node *first_tag;
+ DD_Node *last_tag;
+ 
+ // Node info.
+ DD_NodeKind kind;
+ DD_String8 string;
+ DD_String8 whole_string;
+ DD_u64 string_hash;
+ 
+ // Source code location information.
+ DD_String8 filename;
+ DD_u8 *file_contents;
+ DD_u8 *at;
 };
 
 //~ String-To-Node table
 
 typedef enum DD_NodeTableCollisionRule
 {
-    DD_NodeTableCollisionRule_Chain,
-    DD_NodeTableCollisionRule_Overwrite,
+ DD_NodeTableCollisionRule_Chain,
+ DD_NodeTableCollisionRule_Overwrite,
 }
 DD_NodeTableCollisionRule;
 
 typedef struct DD_NodeTableSlot DD_NodeTableSlot;
 struct DD_NodeTableSlot
 {
-    DD_NodeTableSlot *next;
-    DD_u64 hash;
-    DD_Node *node;
+ DD_NodeTableSlot *next;
+ DD_u64 hash;
+ DD_Node *node;
 };
 
 typedef struct DD_NodeTable DD_NodeTable;
 struct DD_NodeTable
 {
-    DD_u64 table_size;
-    DD_NodeTableSlot **table;
+ DD_u64 table_size;
+ DD_NodeTableSlot **table;
 };
 
 //~ Token kinds.
 
 typedef enum DD_TokenKind
 {
-    DD_TokenKind_Nil,
-    
-    // A group of characters that begins with an underscore or alphabetic character,
-    // and consists of numbers, alphabetic characters, or underscores after that.
-    DD_TokenKind_Identifier,
-    
-    // A group of characters beginning with a numeric character or a '-', and then
-    // consisting of only numbers, alphabetic characters, or '.'s after that.
-    DD_TokenKind_NumericLiteral,
-    
-    // A group of arbitrary characters, grouped together by a " character, OR by a
-    // """ symbol at the beginning and end of the group. String literals beginning with
-    // " are to only be specified on a single line, but """ strings can exist across
-    // many lines.
-    DD_TokenKind_StringLiteral,
-    
-    // A group of arbitrary characters, grouped together by a ' character at the beginning,
-    // and a ' character at the end.
-    DD_TokenKind_CharLiteral,
-    
-    // A group of symbolic characters, where symbolic characters means any of the following:
-    // ~!@#$%^&*()-+=[{]}:;<>,./?|\
+ DD_TokenKind_Nil,
+ 
+ // A group of characters that begins with an underscore or alphabetic character,
+ // and consists of numbers, alphabetic characters, or underscores after that.
+ DD_TokenKind_Identifier,
+ 
+ // A group of characters beginning with a numeric character or a '-', and then
+ // consisting of only numbers, alphabetic characters, or '.'s after that.
+ DD_TokenKind_NumericLiteral,
+ 
+ // A group of arbitrary characters, grouped together by a " character, OR by a
+ // """ symbol at the beginning and end of the group. String literals beginning with
+ // " are to only be specified on a single line, but """ strings can exist across
+ // many lines.
+ DD_TokenKind_StringLiteral,
+ 
+ // A group of arbitrary characters, grouped together by a ' character at the beginning,
+ // and a ' character at the end.
+ DD_TokenKind_CharLiteral,
+ 
+ // A group of symbolic characters, where symbolic characters means any of the following:
+ // ~!@#$%^&*()-+=[{]}:;<>,./?|\
 //
-    // Groups of multiple characters are only allowed in specific circumstances. Most of these
-    // are only 1 character long, but some groups are allowed:
-    //
-    // "<<", ">>", "<=", ">=", "+=", "-=", "*=", "/=", "::", ":=", "==", "&=", "|=", "->"
-    DD_TokenKind_Symbol,
-    
-    DD_TokenKind_WhitespaceMin,
-    DD_TokenKind_Newline,
-    DD_TokenKind_WhitespaceMax,
-    
-    DD_TokenKind_MAX,
+ // Groups of multiple characters are only allowed in specific circumstances. Most of these
+ // are only 1 character long, but some groups are allowed:
+ //
+ // "<<", ">>", "<=", ">=", "+=", "-=", "*=", "/=", "::", ":=", "==", "&=", "|=", "->"
+ DD_TokenKind_Symbol,
+ 
+ DD_TokenKind_WhitespaceMin,
+ DD_TokenKind_Newline,
+ DD_TokenKind_WhitespaceMax,
+ 
+ DD_TokenKind_MAX,
 }
 DD_TokenKind;
 
@@ -327,9 +326,9 @@ DD_TokenKind;
 typedef struct DD_Token DD_Token;
 struct DD_Token
 {
-    DD_TokenKind kind;
-    DD_String8 string;
-    DD_String8 outer_string;
+ DD_TokenKind kind;
+ DD_String8 string;
+ DD_String8 outer_string;
 };
 
 //~ Parsing State
@@ -337,95 +336,93 @@ struct DD_Token
 typedef struct DD_Error DD_Error;
 struct DD_Error
 {
-    DD_Error *next;
-    DD_String8 string;
-    DD_String8 filename;
-    DD_Node *node;
+ DD_Error *next;
+ DD_String8 string;
+ DD_String8 filename;
+ DD_Node *node;
 };
 
 typedef struct DD_ParseCtx DD_ParseCtx;
 struct DD_ParseCtx
 {
-    DD_Node *first_root;
-    DD_Node *last_root;
-    DD_Error *first_error;
-    DD_Error *last_error;
-    DD_u8 *at;
-    DD_String8 filename;
-    DD_String8 file_contents;
+ DD_Node *first_root;
+ DD_Node *last_root;
+ DD_Error *first_error;
+ DD_Error *last_error;
+ DD_u8 *at;
+ DD_String8 filename;
+ DD_String8 file_contents;
 };
 
 typedef struct DD_ParseResult DD_ParseResult;
 struct DD_ParseResult
 {
-    DD_Node *node;
-    DD_Error *first_error;
-    DD_u64 bytes_parsed;
+ DD_Node *node;
+ DD_Error *first_error;
+ DD_u64 bytes_parsed;
 };
 
 //~ Expression and Type-Expression parser helper types.
 
-// TODO(rjf): Lego brick these, Expr merged with Type
-
 typedef enum DD_ExprKind
 {
-    DD_ExprKind_Nil,
-    
-    // NOTE(rjf): Atom
-    DD_ExprKind_Atom,
-    
-    // NOTE(rjf): Arithmetic
-    DD_ExprKind_Add,
-    DD_ExprKind_Subtract,
-    DD_ExprKind_Multiply,
-    DD_ExprKind_Divide,
-    
-    // NOTE(rjf): Comparison
-    DD_ExprKind_IsEqual,
-    DD_ExprKind_IsNotEqual,
-    DD_ExprKind_LessThan,
-    DD_ExprKind_GreaterThan,
-    DD_ExprKind_LessThanEqualTo,
-    DD_ExprKind_GreaterThanEqualTo,
-    
-    // NOTE(rjf): Bools
-    DD_ExprKind_BoolAnd,
-    DD_ExprKind_BoolOr,
-    DD_ExprKind_BoolNot,
-    
-    // NOTE(rjf): Bitwise
-    DD_ExprKind_BitAnd,
-    DD_ExprKind_BitOr,
-    DD_ExprKind_BitNot,
-    DD_ExprKind_BitXor,
-    
-    // NOTE(rjf): Unary numeric
-    DD_ExprKind_Negative,
-    
-    // NOTE(rjf): Type
-    DD_ExprKind_Pointer,
-    DD_ExprKind_Array,
-    
-    DD_ExprKind_MAX,
+ DD_ExprKind_Nil,
+ 
+ // NOTE(rjf): Atom
+ DD_ExprKind_Atom,
+ 
+ // NOTE(rjf): Arithmetic
+ DD_ExprKind_Add,
+ DD_ExprKind_Subtract,
+ DD_ExprKind_Multiply,
+ DD_ExprKind_Divide,
+ 
+ // NOTE(rjf): Comparison
+ DD_ExprKind_IsEqual,
+ DD_ExprKind_IsNotEqual,
+ DD_ExprKind_LessThan,
+ DD_ExprKind_GreaterThan,
+ DD_ExprKind_LessThanEqualTo,
+ DD_ExprKind_GreaterThanEqualTo,
+ 
+ // NOTE(rjf): Bools
+ DD_ExprKind_BoolAnd,
+ DD_ExprKind_BoolOr,
+ DD_ExprKind_BoolNot,
+ 
+ // NOTE(rjf): Bitwise
+ DD_ExprKind_BitAnd,
+ DD_ExprKind_BitOr,
+ DD_ExprKind_BitNot,
+ DD_ExprKind_BitXor,
+ 
+ // NOTE(rjf): Unary numeric
+ DD_ExprKind_Negative,
+ 
+ // NOTE(rjf): Type
+ DD_ExprKind_Pointer,
+ DD_ExprKind_Array,
+ 
+ DD_ExprKind_MAX,
 }
 DD_ExprKind;
 
 typedef struct DD_Expr DD_Expr;
 struct DD_Expr
 {
-    DD_Node *node;
-    DD_ExprKind kind;
-    DD_Expr *parent;
-    DD_Expr *sub[2];
+ DD_Node *node;
+ DD_ExprKind kind;
+ DD_Expr *parent;
+ DD_Expr *sub[2];
 };
 
 //~ Command line parsing helper types.
 typedef struct DD_CommandLine DD_CommandLine;
 struct DD_CommandLine
 {
-    // TODO(rjf): Linked-list vs. array?
-    DD_String8 *arguments;
-    int argument_count;
+ // TODO(rjf): Linked-list vs. array?
+ DD_String8 *arguments;
+ int argument_count;
 };
 
 //~ File system access types.
@@ -433,24 +430,24 @@ struct DD_CommandLine
 typedef DD_u32 DD_FileFlags;
 enum
 {
-    DD_FileFlag_Directory = (1<<0),
+ DD_FileFlag_Directory = (1<<0),
 };
 
 typedef struct DD_FileInfo DD_FileInfo;
 struct DD_FileInfo
 {
-    DD_FileFlags flags;
-    // TODO(rjf): Only have filename
-    DD_String8 path;
-    DD_String8 extension;
-    DD_u64 file_size;
+ DD_FileFlags flags;
+ // TODO(rjf): Only have filename
+ DD_String8 path;
+ DD_String8 extension;
+ DD_u64 file_size;
 };
 
 typedef struct DD_FileIter DD_FileIter;
 struct DD_FileIter
 {
-    // This is opaque state to store OS-specific file-system iteration data.
-    DD_u64 state;
+ // This is opaque state to store OS-specific file-system iteration data.
+ DD_u64 state;
 };
 
 //~ Basic Utility Functions
@@ -459,28 +456,24 @@ DD_FUNCTION DD_b32 DD_CharIsDigit(DD_u8 c);
 DD_FUNCTION DD_b32 DD_CharIsSymbol(DD_u8 c);
 DD_FUNCTION DD_u8  DD_CharToUpper(DD_u8 c);
 DD_FUNCTION DD_u8  DD_CharToLower(DD_u8 c);
+DD_FUNCTION DD_u8  DD_CorrectSlash(DD_u8 c);
 
 //~ String Functions
-// TODO(rjf): Move away from zero-strings, size == 0
 DD_FUNCTION DD_String8     DD_S8(DD_u8 *str, DD_u64 size);
 #define DD_S8CString(s)    DD_S8((DD_u8 *)(s), DD_CalculateCStringLength(s))
 #define DD_S8Lit(s)        (DD_String8){(DD_u8 *)(s), sizeof(s)-1}
-#define DD_ZeroString()    DD_S8(0, 0)
-DD_FUNCTION DD_b32         DD_StringIsZero(DD_String8 str);
 DD_FUNCTION DD_String8     DD_StringSubstring(DD_String8 str, DD_u64 min, DD_u64 max);
-// TODO(rjf): Skip/Chop, Prefix/Suffix => size instead of position
-DD_FUNCTION DD_String8     DD_StringPrefix(DD_String8 str, DD_u64 max);
-DD_FUNCTION DD_String8     DD_StringSuffix(DD_String8 str, DD_u64 min);
+DD_FUNCTION DD_String8     DD_StringSkip(DD_String8 str, DD_u64 max);
+DD_FUNCTION DD_String8     DD_StringChop(DD_String8 str, DD_u64 min);
+DD_FUNCTION DD_String8     DD_StringPrefix(DD_String8 str, DD_u64 size);
+DD_FUNCTION DD_String8     DD_StringSuffix(DD_String8 str, DD_u64 size);
 
 DD_FUNCTION DD_b32         DD_StringMatch(DD_String8 a, DD_String8 b, DD_StringMatchFlags flags);
 // TODO(rjf): Return position of occurrence, or haystack.size, compose w/ exprs
-DD_FUNCTION DD_b32         DD_StringFindSubstring(DD_String8 str, DD_String8 substring,
-                                                  
-                                                  // TODO(rjf): Pass in p, not occurrence, avoid n^2
-                                                  DD_u64 occurrence,
-                                                  DD_StringMatchFlags flags,
-                                                  DD_u64 *start);
-DD_FUNCTION DD_b32         DD_StringFindLastSubstring(DD_String8 str, DD_String8 substring, DD_StringMatchFlags flags, DD_u64 *start);
+// TODO(rjf): Pass in p, not occurrence, avoid n^2
+DD_FUNCTION DD_u64         DD_FindSubstring(DD_String8 str, DD_String8 substring,
+                                            DD_u64 start_pos, DD_StringMatchFlags flags);
+DD_FUNCTION DD_u64         DD_FindLastSubstring(DD_String8 str, DD_String8 substring, DD_StringMatchFlags flags);
 
 // TODO(rjf): Rename: X from Y
 // TODO(rjf): FilenameFromPath
@@ -499,8 +492,7 @@ DD_FUNCTION char *         DD_PushCStringF(char *fmt, ...);
 #define DD_StringExpand(s) (int)(s).size, (s).str
 
 DD_FUNCTION void           DD_PushStringToList(DD_String8List *list, DD_String8 string);
-// TODO(rjf): Zero to_push on output
-DD_FUNCTION void           DD_PushStringListToList(DD_String8List *list, DD_String8List to_push);
+DD_FUNCTION void           DD_PushStringListToList(DD_String8List *list, DD_String8List *to_push);
 DD_FUNCTION DD_String8List DD_SplitString(DD_String8 string, int split_count, DD_String8 *splits);
 DD_FUNCTION DD_String8List DD_SplitStringByString(DD_String8 string, DD_String8 split);
 DD_FUNCTION DD_String8List DD_SplitStringByCharacter(DD_String8 string, DD_u8 character);
