@@ -2,7 +2,7 @@
 #include "dd.c"
 
 // TODO(allen): DD_ASSERT
-#define DD_ASSERT(c) if (!c) { *(DD_u64*)0 = 0; }
+#define DD_ASSERT(c) if (!(c)) { *(DD_u64*)0 = 0; }
 
 void run_test_on_string(DD_String8 string)
 {
@@ -26,3 +26,4 @@ int main(void)
     
     return 0;
 }
+
