@@ -99,7 +99,15 @@
 # define DD_ARCH_64BIT 1
 #elif defined(DD_ARCH_X86)
 # define DD_ARCH_32BIT 1
+#endif
 
+// NOTE(allen): Review @rjf; Building in C++
+// Added language cracking. Handy for a few pesky problems that can't be solved
+// strictly within the intersection of C & C++
+#if defined(__cplusplus)
+# define DD_LANG_CPP 1
+#else
+# define DD_LANG_C 1
 #endif
 
 // zeroify
@@ -140,14 +148,39 @@
 #if !defined(DD_OS_MAC)
 #define DD_OS_MAC 0
 #endif
+#if !defined(DD_LANG_C)
+#define DD_LANG_C 0
+#endif
+#if !defined(DD_LANG_CPP)
+#define DD_LANG_CPP 0
+#endif
 
 #define DD_FUNCTION
 #define DD_GLOBAL static
+
+// NOTE(allen): Review @rjf; Building in C++
+// In order to link to C functions from C++ code, we need to mark them as using
+// C linkage. In particular I mean FindFirstFileA, FindNextFileA right now.
+// We don't necessarily need to apply this to the DD functions if the user is
+// building from source, so I haven't done that.
+
+#if DD_LANG_C
+# define DD_C_LINKAGE_BEGIN
+# define DD_C_LINKAGE_END
+#else
+# define DD_C_LINKAGE_BEGIN extern "C"{
+# define DD_C_LINKAGE_END }
+#endif
 
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+
+
+// NOTE(allen): Review @rjf; Building in C++
+// In C++ compiler I have to include this to get memset and memcpy to compile
+#include <string.h>
 
 typedef int8_t   DD_i8;
 typedef int16_t  DD_i16;
@@ -459,7 +492,13 @@ DD_FUNCTION DD_u8  DD_CorrectSlash(DD_u8 c);
 //~ String Functions
 DD_FUNCTION DD_String8     DD_S8(DD_u8 *str, DD_u64 size);
 #define DD_S8CString(s)    DD_S8((DD_u8 *)(s), DD_CalculateCStringLength(s))
+
+#if DD_LANG_C
 #define DD_S8Lit(s)        (DD_String8){(DD_u8 *)(s), sizeof(s)-1}
+#elif DD_LANG_CPP
+#define DD_S8Lit(s)        DD_S8((DD_u8*)(s), sizeof(s) - 1)
+#endif
+
 DD_FUNCTION DD_String8     DD_StringSubstring(DD_String8 str, DD_u64 min, DD_u64 max);
 DD_FUNCTION DD_String8     DD_StringSkip(DD_String8 str, DD_u64 max);
 DD_FUNCTION DD_String8     DD_StringChop(DD_String8 str, DD_u64 min);
