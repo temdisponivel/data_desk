@@ -13,6 +13,32 @@ DD_PRIVATE_FUNCTION_IMPL DD_b32 _DD_OS_IMPL_FileIter_Increment(DD_FileIter *it, 
 
 //~
 
+// NOTE(allen): Review @rjf; Building in C++
+// While very latest version of C++ have designated initializers
+// I would like to be able to build on more simple versions, so I
+// ditched the designated initializers in favor of the extra work
+// of maintaining order based initializers.
+
+static DD_Node _dd_nil_node =
+{
+ &_dd_nil_node, // next
+ &_dd_nil_node, // prev
+ &_dd_nil_node, // parent
+ &_dd_nil_node, // first_child
+ &_dd_nil_node, // last_child
+ &_dd_nil_node, // first_tag
+ &_dd_nil_node, // last_tag
+ DD_NodeKind_Nil,
+ 0, // flags
+ {0}, // string
+ {0}, // whole_string
+ 0xdeadffffffffffull,
+ {(DD_u8*)"`NIL DD NODE`", 13},
+ 0,
+ 0,
+};
+
+#if 0
 static DD_Node _dd_nil_node =
 {
  .next          = &_dd_nil_node,
@@ -30,6 +56,7 @@ static DD_Node _dd_nil_node =
  .file_contents = 0,
  .at            = 0,
 };
+#endif
 
 DD_PRIVATE_FUNCTION_IMPL void
 _DD_MemoryZero(void *memory, DD_u64 size)
@@ -256,7 +283,7 @@ DD_PushStringCopy(DD_String8 string)
 {
  DD_String8 res;
  res.size = string.size;
- res.str = calloc(string.size+1, 1);
+ res.str = (DD_u8*)calloc(string.size+1, 1);
  _DD_MemoryCopy(res.str, string.str, string.size);
  return res;
 }
@@ -268,9 +295,9 @@ DD_PushStringFV(char *fmt, va_list args)
  va_list args2;
  va_copy(args2, args);
  DD_u64 needed_bytes = vsnprintf(0, 0, fmt, args)+1;
- result.str = calloc(needed_bytes, 1);
+ result.str = (DD_u8*)calloc(needed_bytes, 1);
  result.size = needed_bytes-1;
- vsnprintf(result.str, needed_bytes, fmt, args2);
+ vsnprintf((char*)result.str, needed_bytes, fmt, args2);
  return result;
 }
 
@@ -288,7 +315,7 @@ DD_PushStringF(char *fmt, ...)
 DD_FUNCTION_IMPL void
 DD_PushStringToList(DD_String8List *list, DD_String8 string)
 {
- DD_String8Node *node = calloc(1, sizeof(*node));
+ DD_String8Node *node = (DD_String8Node*)calloc(1, sizeof(*node));
  node->next = 0;
  node->string = string;
  if(list->last == 0)
@@ -575,7 +602,7 @@ DD_FUNCTION DD_String8
 DD_S8FromS16(DD_String16 in)
 {
  DD_u64 cap = in.size*3;
- DD_u8 *str = malloc(cap + 1);
+ DD_u8 *str = (DD_u8*)malloc(cap + 1);
  DD_u16 *ptr = in.str;
  DD_u16 *opl = ptr + in.size;
  DD_u64 size = 0;
@@ -594,7 +621,7 @@ DD_FUNCTION DD_String16
 DD_S16FromS8(DD_String8 in)
 {
  DD_u64 cap = in.size*2;
- DD_u16 *str = malloc(sizeof(DD_u16)*(cap + 1));
+ DD_u16 *str = (DD_u16*)malloc(sizeof(DD_u16)*(cap + 1));
  DD_u8 *ptr = in.str;
  DD_u8 *opl = ptr + in.size;
  DD_u64 size = 0;
@@ -631,7 +658,7 @@ DD_FUNCTION DD_String32
 DD_S32FromS8(DD_String8 in)
 {
  DD_u64 cap = in.size;
- DD_u32 *str = malloc(sizeof(DD_u32)*(cap + 1));
+ DD_u32 *str = (DD_u32*)malloc(sizeof(DD_u32)*(cap + 1));
  DD_u8 *ptr = in.str;
  DD_u8 *opl = ptr + in.size;
  DD_u64 size = 0;
@@ -655,7 +682,7 @@ _DD_NodeTable_Initialize(DD_NodeTable *table)
  if(table->table_size == 0)
  {
   table->table_size = 4096;
-  table->table = calloc(table->table_size, sizeof(DD_NodeTableSlot *));
+  table->table = (DD_NodeTableSlot**)calloc(table->table_size, sizeof(DD_NodeTableSlot *));
  }
 }
 
@@ -698,7 +725,7 @@ DD_NodeTable_Insert(DD_NodeTable *table, DD_NodeTableCollisionRule collision_rul
  
  if(slot == 0 || (slot != 0 && collision_rule == DD_NodeTableCollisionRule_Chain))
  {
-  slot = calloc(1, sizeof(*slot));
+  slot = (DD_NodeTableSlot*)calloc(1, sizeof(*slot));
   if(slot)
   {
    slot->next = table->table[index];
@@ -1011,7 +1038,7 @@ DD_Parse_RequireKind(DD_ParseCtx *ctx, DD_TokenKind kind, DD_Token *out_token)
 DD_PRIVATE_FUNCTION_IMPL void
 _DD_Error(DD_ParseCtx *ctx, char *fmt, ...)
 {
- DD_Error *error = calloc(1, sizeof(*error));
+ DD_Error *error = (DD_Error*)calloc(1, sizeof(*error));
  error->filename = ctx->filename;
  va_list args;
  va_start(args, fmt);
@@ -1023,7 +1050,7 @@ DD_PRIVATE_FUNCTION_IMPL DD_Node *
 _DD_MakeNode(DD_NodeKind kind, DD_String8 string, DD_String8 whole_string, DD_String8 filename,
              DD_u8 *file_contents, DD_u8 *at)
 {
- DD_Node *node = calloc(1, sizeof(*node));
+ DD_Node *node = (DD_Node*)calloc(1, sizeof(*node));
  if(node)
  {
   node->kind = kind;
@@ -1449,7 +1476,7 @@ DD_NilExpr(void)
 DD_FUNCTION_IMPL DD_Expr *
 DD_MakeExpr(DD_Node *node, DD_ExprKind kind, DD_Expr *left, DD_Expr *right)
 {
- DD_Expr *expr = calloc(1, sizeof(*expr));
+ DD_Expr *expr = (DD_Expr*)calloc(1, sizeof(*expr));
  if(expr)
  {
   expr->node = node;
@@ -1592,30 +1619,109 @@ DD_OutputTree_C_Decl(FILE *file, DD_Node *node)
 {
  if(node)
  {
+  // TODO(allen): DD_ParseAsType?
   DD_Expr *type = DD_ParseAsExpr(node);
-  DD_OutputType_C_LHS(file, type);
-  fprintf(file, " %.*s", DD_StringExpand(node->string));
-  DD_OutputType_C_RHS(file, type);
+  DD_Output_C_DeclByNameAndType(file, node->string, type);
  }
+}
+
+DD_FUNCTION_IMPL void
+DD_Output_C_DeclByNameAndType(FILE *file, DD_String8 name, DD_Expr *type)
+{
+ DD_OutputType_C_LHS(file, type);
+ fprintf(file, " %.*s", DD_StringExpand(name));
+ DD_OutputType_C_RHS(file, type);
+}
+
+DD_PRIVATE_FUNCTION_IMPL DD_b32
+_DD_OutputType_C_NeedsParens(DD_Expr *type)
+{
+ DD_b32 result = 0;
+ if (type->kind == DD_ExprKind_Pointer &&
+     type->sub[0]->kind == DD_ExprKind_Array)
+ {
+  result = 1;
+ }
+ return(result);
 }
 
 DD_FUNCTION_IMPL void
 DD_OutputType_C_LHS(FILE *file, DD_Expr *type)
 {
- 
+ switch (type->kind)
+ {
+  case DD_ExprKind_Atom:
+  {
+   DD_Node *node = type->node;
+   fprintf(file, "%.*s", DD_StringExpand(node->whole_string));
+  }break;
+  
+  case DD_ExprKind_Pointer:
+  {
+   DD_OutputType_C_LHS(file, type->sub[0]);
+   if (_DD_OutputType_C_NeedsParens(type))
+   {
+    fprintf(file, "(");
+   }
+   fprintf(file, "*");
+  }break;
+  
+  case DD_ExprKind_Array:
+  {
+   DD_OutputType_C_LHS(file, type->sub[0]);
+   if (_DD_OutputType_C_NeedsParens(type))
+   {
+    fprintf(file, "(");
+   }
+  }break;
+  
+  default:
+  {
+   fprintf(file, "{ unexpected DD_ExprKind in type info }");
+  }break;
+ }
 }
 
 DD_FUNCTION_IMPL void
 DD_OutputType_C_RHS(FILE *file, DD_Expr *type)
 {
- 
+ switch (type->kind)
+ {
+  case DD_ExprKind_Atom:
+  {}break;
+  
+  case DD_ExprKind_Pointer:
+  {
+   if (_DD_OutputType_C_NeedsParens(type))
+   {
+    fprintf(file, ")");
+   }
+   DD_OutputType_C_RHS(file, type->sub[0]);
+  }break;
+  
+  case DD_ExprKind_Array:
+  {
+   if (_DD_OutputType_C_NeedsParens(type))
+   {
+    fprintf(file, ")");
+   }
+   fprintf(file, "[");
+   // TODO(allen): DD_OutputExpr_C(file type->sub[1]);
+   fprintf(file, "\"C expressions not implemented\"");
+   fprintf(file, "]");
+   DD_OutputType_C_RHS(file, type->sub[0]);
+  }break;
+  
+  default:
+  {}break;
+ }
 }
 
 DD_FUNCTION_IMPL DD_CommandLine
 DD_CommandLine_Start(int argument_count, char **arguments)
 {
  DD_CommandLine cmdln = {0};
- cmdln.arguments = calloc(sizeof(DD_String8), argument_count-1);
+ cmdln.arguments = (DD_String8*)calloc(sizeof(DD_String8), argument_count-1);
  for(int i = 1; i < argument_count; i += 1)
  {
   cmdln.arguments[i-1] = DD_PushStringF("%s", arguments[i]);
@@ -1743,13 +1849,13 @@ DD_FUNCTION_IMPL DD_String8
 DD_LoadEntireFile(DD_String8 filename)
 {
  DD_String8 file_contents = {0};
- FILE *file = fopen(DD_PushStringCopy(filename).str, "r");
+ FILE *file = fopen((char*)DD_PushStringCopy(filename).str, "r");
  if(file)
  {
   fseek(file, 0, SEEK_END);
   DD_u64 file_size = ftell(file);
   fseek(file, 0, SEEK_SET);
-  file_contents.str = calloc(1, file_size+1);
+  file_contents.str = (DD_u8*)calloc(1, file_size+1);
   if(file_contents.str)
   {
    file_contents.size = file_size;
