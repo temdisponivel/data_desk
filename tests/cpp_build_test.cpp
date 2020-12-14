@@ -1,5 +1,5 @@
-#include "dd.h"
-#include "dd.c"
+#include "md.h"
+#include "md.c"
 
 int main(void)
 {

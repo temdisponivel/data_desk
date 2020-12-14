@@ -39,32 +39,32 @@ typedef _WIN32_FIND_DATAA WIN32_FIND_DATAA;
 typedef _WIN32_FIND_DATAA *PWIN32_FIND_DATAA;
 typedef _WIN32_FIND_DATAA *LPWIN32_FIND_DATAA;
 
-DD_C_LINKAGE_BEGIN
+MD_C_LINKAGE_BEGIN
 
 HANDLE FindFirstFileA(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData);
 BOOL FindNextFileA(HANDLE hFindFile, LPWIN32_FIND_DATAA lpFindFileData);
 
-DD_C_LINKAGE_END
+MD_C_LINKAGE_END
 
 
 #pragma comment(lib, "User32.lib")
 
-DD_PRIVATE_FUNCTION_IMPL DD_b32
-_DD_OS_IMPL_FileIter_Increment(DD_FileIter *it, DD_String8 path, DD_FileInfo *out_info)
+MD_PRIVATE_FUNCTION_IMPL MD_b32
+_MD_OS_IMPL_FileIter_Increment(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_info)
 {
-    DD_b32 result = 0;
+    MD_b32 result = 0;
     
     WIN32_FIND_DATAA find_data = {0};
     HANDLE state = *(HANDLE *)(&it->state);
     if(state == 0)
     {
-        DD_b32 need_star = 0;
+        MD_b32 need_star = 0;
         if(path.str[path.size-1] == '/' ||
            path.str[path.size-1] == '\\')
         {
             need_star = 1;
         }
-        DD_String8 cpath = need_star ? DD_PushStringF("%.*s*", DD_StringExpand(path)) : path;
+        MD_String8 cpath = need_star ? MD_PushStringF("%.*s*", MD_StringExpand(path)) : path;
         state = FindFirstFileA((char*)cpath.str, &find_data);
         result = !!state;
     }
@@ -73,17 +73,17 @@ _DD_OS_IMPL_FileIter_Increment(DD_FileIter *it, DD_String8 path, DD_FileInfo *ou
         result = !!FindNextFileA(state, &find_data);
     }
     
-    it->state = *(DD_u64 *)(&state);
+    it->state = *(MD_u64 *)(&state);
     if(result)
     {
         out_info->flags = 0;
         if(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
         {
-            out_info->flags |= DD_FileFlag_Directory;
+            out_info->flags |= MD_FileFlag_Directory;
         }
-        out_info->filename = DD_PushStringF("%s", find_data.cFileName);
-        out_info->file_size = ((((DD_u64)find_data.nFileSizeHigh) << 32) |
-                               ((DD_u64)find_data.nFileSizeLow));
+        out_info->filename = MD_PushStringF("%s", find_data.cFileName);
+        out_info->file_size = ((((MD_u64)find_data.nFileSizeHigh) << 32) |
+                               ((MD_u64)find_data.nFileSizeLow));
     }
     
     return result;
