@@ -19,7 +19,6 @@ MD_PRIVATE_FUNCTION_IMPL MD_b32 _MD_OS_IMPL_FileIter_Increment(MD_FileIter *it, 
 // I would like to be able to build on more simple versions, so I
 // ditched the designated initializers in favor of the extra work
 // of maintaining order based initializers.
-
 static MD_Node _md_nil_node =
 {
     &_md_nil_node, // next
@@ -38,26 +37,6 @@ static MD_Node _md_nil_node =
     0,
     0,
 };
-
-#if 0
-static MD_Node _md_nil_node =
-{
-    .next          = &_md_nil_node,
-    .prev          = &_md_nil_node,
-    .parent        = &_md_nil_node,
-    .first_child   = &_md_nil_node,
-    .last_child    = &_md_nil_node,
-    .first_tag     = &_md_nil_node,
-    .last_tag      = &_md_nil_node,
-    .kind          = MD_NodeKind_Nil,
-    .string        = {0},
-    .whole_string  = {0},
-    .string_hash   = 0xdeadffffffffffull,
-    .filename      = {"`NIL DD NODE`", 13},
-    .file_contents = 0,
-    .at            = 0,
-};
-#endif
 
 MD_PRIVATE_FUNCTION_IMPL void
 _MD_MemoryZero(void *memory, MD_u64 size)

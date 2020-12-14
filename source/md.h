@@ -13,7 +13,7 @@
 // - Outputting anything to MD or C code ideally would do something
 //   smart with auto-indentation, since some people have wanted readable
 //   layout (if they aren't using 4coder with virtual whitespace basically)
-// 
+// - Building with Clang
 
 #ifndef MD_H
 #define MD_H
@@ -193,8 +193,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
-
-
 // NOTE(allen): Review @rjf; Building in C++
 // In C++ compiler I have to include this to get memset and memcpy to compile
 #include <string.h>
