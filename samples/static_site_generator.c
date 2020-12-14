@@ -74,7 +74,6 @@ int main(int argument_count, char **arguments)
     DD_String8 path = DD_PushStringF("%.*s/%.*s",
                                      DD_StringExpand(folder),
                                      DD_StringExpand(file_info.filename));
-    printf("%.*s\n", DD_StringExpand(path));
     DD_PushSibling(&first_root, &last_root, DD_NilNode(), DD_ParseWholeFile(path));
    }
   }
@@ -187,7 +186,7 @@ int main(int argument_count, char **arguments)
     // NOTE(rjf): Parent page back button.
     if(page_info.parent)
     {
-     fprintf(file, "<div class=\"standalone_link_container\"><a class=\"link\" href=\"%.*s.html\">Ã¢â€ Â Back</a></div>", DD_StringExpand(page_info.parent->string));
+     fprintf(file, "<div class=\"standalone_link_container\"><a class=\"link\" href=\"%.*s.html\">← Back</a></div>", DD_StringExpand(page_info.parent->string));
     }
     
     // NOTE(rjf): Banner.
@@ -251,7 +250,7 @@ ParsePageInfo(DD_Node *page)
  PageInfo info = {0};
  for(DD_EachNode(node, page->first_child))
  {
-  if(node->kind == DD_NodeKind_Set && !DD_NodeIsNil(node->first_child))
+  if(!DD_NodeIsNil(node->first_child))
   {
    if(DD_StringMatch(node->string, DD_S8Lit("title"), DD_StringMatchFlag_CaseInsensitive))
    {
@@ -284,7 +283,7 @@ ParseSiteInfo(DD_Node *site)
  SiteInfo info = {0};
  for(DD_EachNode(node, site->first_child))
  {
-  if(node->kind == DD_NodeKind_Set && !DD_NodeIsNil(node->first_child))
+  if(!DD_NodeIsNil(node->first_child))
   {
    if(DD_StringMatch(node->string, DD_S8Lit("title"), DD_StringMatchFlag_CaseInsensitive))
    {
@@ -339,7 +338,7 @@ MakeDateString(DD_Node *date)
   
   for(DD_EachNode(child, date->first_child))
   {
-   if(child->kind == DD_NodeKind_NumericLiteral)
+   if(child->flags & DD_NodeFlag_Numeric)
    {
     if      (year  == 0) year  = child;
     else if (month == 0) month = child;
@@ -375,199 +374,197 @@ MakeDateString(DD_Node *date)
 static void
 GeneratePageContent(DD_NodeTable *index_table, SiteInfo *site_info, PageInfo *page_info, FILE *file, DD_Node *node)
 {
- switch(node->kind)
+ 
+ //~ NOTE(rjf): Text blobs
+ if(DD_NodeIsNil(node->first_child) &&
+    (node->flags & DD_NodeFlag_StringLiteral ||
+     node->flags & DD_NodeFlag_CharLiteral))
  {
-  case DD_NodeKind_StringLiteral:
-  case DD_NodeKind_CharLiteral:
+  char *html_tag = "p";
+  char *style = "paragraph";
+  if(DD_NodeHasTag(node, DD_S8Lit("title")))
   {
-   char *html_tag = "p";
-   char *style = "paragraph";
-   if(DD_NodeHasTag(node, DD_S8Lit("title")))
+   html_tag = "h1";
+   style = "title";
+  }
+  else if(DD_NodeHasTag(node, DD_S8Lit("subtitle")))
+  {
+   html_tag = "h2";
+   style = "subtitle";
+  }
+  else if(DD_NodeHasTag(node, DD_S8Lit("code")))
+  {
+   html_tag = "pre";
+   style = "code";
+  }
+  
+  DD_String8 splits[] =
+  {
+   DD_S8Lit("\n\n"),
+  };
+  DD_String8List strlist = DD_SplitString(node->string, sizeof(splits)/sizeof(splits[0]), splits);
+  
+  for(DD_String8Node *strnode = strlist.first; strnode; strnode = strnode->next)
+  {
+   fprintf(file, "<%s class=\"%s\">", html_tag, style);
+   for(DD_u64 i = 0; i < strnode->string.size; i += 1)
    {
-    html_tag = "h1";
-    style = "title";
-   }
-   else if(DD_NodeHasTag(node, DD_S8Lit("subtitle")))
-   {
-    html_tag = "h2";
-    style = "subtitle";
-   }
-   else if(DD_NodeHasTag(node, DD_S8Lit("code")))
-   {
-    html_tag = "pre";
-    style = "code";
-   }
-   
-   DD_String8 splits[] =
-   {
-    DD_S8Lit("\n\n"),
-   };
-   DD_String8List strlist = DD_SplitString(node->string, sizeof(splits)/sizeof(splits[0]), splits);
-   
-   for(DD_String8Node *strnode = strlist.first; strnode; strnode = strnode->next)
-   {
-    fprintf(file, "<%s class=\"%s\">", html_tag, style);
-    for(DD_u64 i = 0; i < strnode->string.size; i += 1)
+    if(strnode->string.str[i] == '@')
     {
-     if(strnode->string.str[i] == '@')
+     DD_ParseResult parse =  DD_ParseOneNode(node->filename, DD_StringSubstring(strnode->string, i, strnode->string.size));
+     if(!DD_NodeIsNil(parse.node))
      {
-      DD_ParseResult parse =  DD_ParseOneNode(node->filename, DD_StringSubstring(strnode->string, i, strnode->string.size));
-      if(!DD_NodeIsNil(parse.node))
+      if(DD_NodeHasTag(node, DD_S8Lit("i")))
       {
-       if(DD_NodeHasTag(node, DD_S8Lit("i")))
+       fprintf(file, "<i>%.*s</i>", DD_StringExpand(parse.node->string));
+      }
+      else if(DD_NodeHasTag(node, DD_S8Lit("b")))
+      {
+       fprintf(file, "<strong>%.*s</strong>", DD_StringExpand(parse.node->string));
+      }
+      else if(DD_NodeHasTag(node, DD_S8Lit("code")))
+      {
+       fprintf(file, "<span class=\"inline_code\">%.*s</span>", DD_StringExpand(parse.node->string));
+      }
+      else if(DD_NodeHasTag(node, DD_S8Lit("link")))
+      {
+       DD_Node *text = DD_ChildFromIndex(parse.node, 0);
+       DD_Node *link = DD_ChildFromIndex(parse.node, 1);
+       fprintf(file, "<a class=\"link\" href=\"%.*s\">%.*s</a>",
+               DD_StringExpand(link->string),
+               DD_StringExpand(text->string));
+      }
+     }
+     i += parse.bytes_parsed - 1;
+    }
+    else
+    {
+     DD_b32 dict_word = 0;
+     if(site_info->link_dictionary)
+     {
+      DD_Node *text = DD_NilNode();
+      DD_Node *link = DD_NilNode();
+      
+      for(DD_EachNode(dict_link, site_info->link_dictionary->first_child))
+      {
+       text = DD_ChildFromIndex(dict_link, 0);
+       link = DD_ChildFromIndex(dict_link, 1);
+       DD_String8 substring = DD_StringSubstring(strnode->string, i, i+text->string.size);
+       if(DD_StringMatch(substring, text->string, 0))
        {
-        fprintf(file, "<i>%.*s</i>", DD_StringExpand(parse.node->string));
-       }
-       else if(DD_NodeHasTag(node, DD_S8Lit("b")))
-       {
-        fprintf(file, "<strong>%.*s</strong>", DD_StringExpand(parse.node->string));
-       }
-       else if(DD_NodeHasTag(node, DD_S8Lit("code")))
-       {
-        fprintf(file, "<span class=\"inline_code\">%.*s</span>", DD_StringExpand(parse.node->string));
-       }
-       else if(DD_NodeHasTag(node, DD_S8Lit("link")))
-       {
-        DD_Node *text = DD_ChildFromIndex(parse.node, 0);
-        DD_Node *link = DD_ChildFromIndex(parse.node, 1);
         fprintf(file, "<a class=\"link\" href=\"%.*s\">%.*s</a>",
                 DD_StringExpand(link->string),
                 DD_StringExpand(text->string));
+        dict_word = 1;
+        i += text->string.size-1;
+        break;
        }
       }
-      i += parse.bytes_parsed - 1;
      }
-     else
+     
+     if(!dict_word)
      {
-      DD_b32 dict_word = 0;
-      if(site_info->link_dictionary)
-      {
-       DD_Node *text = DD_NilNode();
-       DD_Node *link = DD_NilNode();
-       
-       for(DD_EachNode(dict_link, site_info->link_dictionary->first_child))
-       {
-        text = DD_ChildFromIndex(dict_link, 0);
-        link = DD_ChildFromIndex(dict_link, 1);
-        DD_String8 substring = DD_StringSubstring(strnode->string, i, i+text->string.size);
-        if(DD_StringMatch(substring, text->string, 0))
-        {
-         fprintf(file, "<a class=\"link\" href=\"%.*s\">%.*s</a>",
-                 DD_StringExpand(link->string),
-                 DD_StringExpand(text->string));
-         dict_word = 1;
-         i += text->string.size-1;
-         break;
-        }
-       }
-      }
-      
-      if(!dict_word)
-      {
-       fprintf(file, "%c", strnode->string.str[i]);
-      }
+      fprintf(file, "%c", strnode->string.str[i]);
      }
     }
-    fprintf(file, "</%s>\n", html_tag);
    }
-  }break;
-  
-  case DD_NodeKind_Set:
+   fprintf(file, "</%s>\n", html_tag);
+  }
+ }
+ 
+ if(!DD_NodeIsNil(node->first_child))
+ {
+  if(DD_NodeHasTag(node, DD_S8Lit("list")))
   {
-   if(DD_NodeHasTag(node, DD_S8Lit("list")))
+   fprintf(file, "<ul class=\"list\">\n");
+   for(DD_EachNode(child, node->first_child))
    {
-    fprintf(file, "<ul class=\"list\">\n");
-    for(DD_EachNode(child, node->first_child))
+    if(DD_NodeIsNil(child->first_child))
     {
-     if(DD_NodeIsNil(child->first_child))
+     fprintf(file, "<li class=\"list_item\">\n");
+    }
+    GeneratePageContent(index_table, site_info, page_info, file, child);
+    if(DD_NodeIsNil(child->first_child))
+    {
+     fprintf(file, "</li>\n");
+    }
+   }
+   fprintf(file, "</ul>\n");
+  }
+  else if(DD_NodeHasTag(node, DD_S8Lit("img")))
+  {
+   DD_Node *src = DD_ChildFromIndex(node, 0);
+   DD_Node *alt = DD_ChildFromIndex(node, 1);
+   fprintf(file, "<div class=\"img_container\"><img class=\"img\" src=\"%.*s\"></img></div>\n", DD_StringExpand(src->string));
+  }
+  else if(DD_NodeHasTag(node, DD_S8Lit("youtube")))
+  {
+   DD_Node *id = DD_ChildFromIndex(node, 0);
+   fprintf(file, "<iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/%.*s\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen></iframe>\n",
+           DD_StringExpand(id->string));
+  }
+  else if(DD_NodeHasTag(node, DD_S8Lit("lister")))
+  {
+   static int lister_idx = 0;
+   fprintf(file, "<input autofocus id=\"lister_search_%i\" class=\"lister_search\" oninput=\"SearchInput(event, %i)\" onkeydown=\"SearchKeyDown(event, %i)\" placeholder=\"Filter...\"></input>", lister_idx, lister_idx, lister_idx);
+   fprintf(file, "<ul id=\"lister_%i\" class=\"lister\">\n", lister_idx);
+   lister_idx += 1;
+   
+   DD_Node *index_string = 0;
+   for(DD_u64 idx = 0; !DD_NodeIsNil(index_string = DD_ChildFromIndex(node, idx)); idx += 1)
+   {
+    for(DD_NodeTableSlot *slot = DD_NodeTable_Lookup(index_table, index_string->string);
+        slot; slot = slot->next)
+    {
+     if(slot->node)
      {
-      fprintf(file, "<li class=\"list_item\">\n");
-     }
-     GeneratePageContent(index_table, site_info, page_info, file, child);
-     if(DD_NodeIsNil(child->first_child))
-     {
+      PageInfo info = ParsePageInfo(slot->node);
+      
+      DD_String8 filename = slot->node->filename;
+      DD_String8 filename_no_ext = DD_TrimExtension(DD_TrimFolder(filename));
+      DD_String8 link = DD_PushStringF("%.*s.html", DD_StringExpand(filename_no_ext));
+      DD_String8 name = info.title->string;
+      DD_String8 date = MakeDateString(info.date);
+      
+      fprintf(file, "<a class=\"lister_item_link\" href=\"%.*s\">\n", DD_StringExpand(link));
+      fprintf(file, "<li class=\"lister_item\">\n");
+      
+      if(info.header_image)
+      {
+       fprintf(file, "<div class=\"lister_item_img\" style=\"background-image:url('%.*s');\">",
+               DD_StringExpand(info.header_image->string));
+      }
+      
+      fprintf(file, "<div class=\"lister_item_text\">\n");
+      fprintf(file, "<div class=\"lister_item_title\">\n");
+      fprintf(file, "%.*s\n", DD_StringExpand(name));
+      fprintf(file, "</div>\n");
+      
+      if(date.size > 0)
+      {
+       fprintf(file, "<div class=\"lister_item_date\">\n");
+       fprintf(file, "%.*s\n", DD_StringExpand(date));
+       fprintf(file, "</div>\n");
+      }
+      
+      if(info.desc)
+      {
+       fprintf(file, "<div class=\"lister_item_desc\">\n");
+       fprintf(file, "%.*s\n", DD_StringExpand(info.desc->string));
+       fprintf(file, "</div>\n");
+      }
+      if(info.header_image)
+      {
+       fprintf(file, "</div>\n");
+      }
+      fprintf(file, "</div>\n");
+      fprintf(file, "</a>\n");
+      
       fprintf(file, "</li>\n");
      }
     }
-    fprintf(file, "</ul>\n");
    }
-   else if(DD_NodeHasTag(node, DD_S8Lit("img")))
-   {
-    DD_Node *src = DD_ChildFromIndex(node, 0);
-    DD_Node *alt = DD_ChildFromIndex(node, 1);
-    fprintf(file, "<div class=\"img_container\"><img class=\"img\" src=\"%.*s\"></img></div>\n", DD_StringExpand(src->string));
-   }
-   else if(DD_NodeHasTag(node, DD_S8Lit("youtube")))
-   {
-    DD_Node *id = DD_ChildFromIndex(node, 0);
-    fprintf(file, "<iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/%.*s\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen></iframe>\n",
-            DD_StringExpand(id->string));
-   }
-   else if(DD_NodeHasTag(node, DD_S8Lit("lister")))
-   {
-    static int lister_idx = 0;
-    fprintf(file, "<input autofocus id=\"lister_search_%i\" class=\"lister_search\" oninput=\"SearchInput(event, %i)\" onkeydown=\"SearchKeyDown(event, %i)\" placeholder=\"Filter...\"></input>", lister_idx, lister_idx, lister_idx);
-    fprintf(file, "<ul id=\"lister_%i\" class=\"lister\">\n", lister_idx);
-    lister_idx += 1;
-    
-    DD_Node *index_string = 0;
-    for(DD_u64 idx = 0; !DD_NodeIsNil(index_string = DD_ChildFromIndex(node, idx)); idx += 1)
-    {
-     for(DD_NodeTableSlot *slot = DD_NodeTable_Lookup(index_table, index_string->string);
-         slot; slot = slot->next)
-     {
-      if(slot->node)
-      {
-       PageInfo info = ParsePageInfo(slot->node);
-       
-       DD_String8 filename = slot->node->filename;
-       DD_String8 filename_no_ext = DD_TrimExtension(DD_TrimFolder(filename));
-       DD_String8 link = DD_PushStringF("%.*s.html", DD_StringExpand(filename_no_ext));
-       DD_String8 name = info.title->string;
-       DD_String8 date = MakeDateString(info.date);
-       
-       fprintf(file, "<a class=\"lister_item_link\" href=\"%.*s\">\n", DD_StringExpand(link));
-       fprintf(file, "<li class=\"lister_item\">\n");
-       
-       if(info.header_image)
-       {
-        fprintf(file, "<div class=\"lister_item_img\" style=\"background-image:url('%.*s');\">",
-                DD_StringExpand(info.header_image->string));
-       }
-       
-       fprintf(file, "<div class=\"lister_item_text\">\n");
-       fprintf(file, "<div class=\"lister_item_title\">\n");
-       fprintf(file, "%.*s\n", DD_StringExpand(name));
-       fprintf(file, "</div>\n");
-       
-       if(date.size > 0)
-       {
-        fprintf(file, "<div class=\"lister_item_date\">\n");
-        fprintf(file, "%.*s\n", DD_StringExpand(date));
-        fprintf(file, "</div>\n");
-       }
-       
-       if(info.desc)
-       {
-        fprintf(file, "<div class=\"lister_item_desc\">\n");
-        fprintf(file, "%.*s\n", DD_StringExpand(info.desc->string));
-        fprintf(file, "</div>\n");
-       }
-       if(info.header_image)
-       {
-        fprintf(file, "</div>\n");
-       }
-       fprintf(file, "</div>\n");
-       fprintf(file, "</a>\n");
-       
-       fprintf(file, "</li>\n");
-      }
-     }
-    }
-    fprintf(file, "</ul>\n");
-   }
-  }break;
-  
-  default: break;
+   fprintf(file, "</ul>\n");
+  }
  }
 }

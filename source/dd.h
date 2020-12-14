@@ -174,15 +174,15 @@ struct DD_String8
 typedef struct DD_String16 DD_String16;
 struct DD_String16
 {
-    DD_u16 *str;
-    DD_u64 size;
+ DD_u16 *str;
+ DD_u64 size;
 };
 
 typedef struct DD_String32 DD_String32;
 struct DD_String32
 {
-    DD_u32 *str;
-    DD_u64 size;
+ DD_u32 *str;
+ DD_u64 size;
 };
 
 typedef struct DD_String8Node DD_String8Node;
@@ -210,26 +210,40 @@ enum
 
 typedef struct DD_UnicodeConsume DD_UnicodeConsume;
 struct DD_UnicodeConsume{
-    DD_u32 codepoint;
-    DD_u32 advance;
+ DD_u32 codepoint;
+ DD_u32 advance;
 };
 
-//~ Node kinds that comprise the language.
+//~ Node type that forms all ASTs.
+
 typedef enum DD_NodeKind
 {
  DD_NodeKind_Nil,
- DD_NodeKind_Identifier,
- DD_NodeKind_Symbol,
- DD_NodeKind_NumericLiteral,
- DD_NodeKind_StringLiteral,
- DD_NodeKind_CharLiteral,
- DD_NodeKind_Set,
+ DD_NodeKind_File,
+ DD_NodeKind_Label,
+ DD_NodeKind_UnnamedSet,
  DD_NodeKind_Tag,
  DD_NodeKind_MAX,
 }
 DD_NodeKind;
 
-//~ Node type and helpers.
+typedef DD_u32 DD_NodeFlags;
+enum
+{
+ DD_NodeFlag_ParenLeft        = (1<<0),
+ DD_NodeFlag_ParenRight       = (1<<1),
+ DD_NodeFlag_BracketLeft      = (1<<2),
+ DD_NodeFlag_BracketRight     = (1<<3),
+ DD_NodeFlag_BraceLeft        = (1<<4),
+ DD_NodeFlag_BraceRight       = (1<<5),
+ DD_NodeFlag_BeforeSemicolon  = (1<<6),
+ DD_NodeFlag_BeforeComma      = (1<<7),
+ DD_NodeFlag_BeforeArrow      = (1<<8),
+ DD_NodeFlag_Numeric          = (1<<9),
+ DD_NodeFlag_Identifier       = (1<<10),
+ DD_NodeFlag_StringLiteral    = (1<<11),
+ DD_NodeFlag_CharLiteral      = (1<<12),
+};
 
 typedef struct DD_Node DD_Node;
 struct DD_Node
@@ -247,6 +261,7 @@ struct DD_Node
  
  // Node info.
  DD_NodeKind kind;
+ DD_NodeFlags flags;
  DD_String8 string;
  DD_String8 whole_string;
  DD_u64 string_hash;
