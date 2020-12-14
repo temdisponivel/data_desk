@@ -14,6 +14,7 @@
 //   smart with auto-indentation, since some people have wanted readable
 //   layout (if they aren't using 4coder with virtual whitespace basically)
 // - Building with Clang
+// - Split out C-related stuff into helper language layers
 
 #ifndef MD_H
 #define MD_H
@@ -429,16 +430,33 @@ struct MD_ParseResult
 
 typedef enum MD_ExprKind
 {
+    // VERY_IMPORTANT_NOTE(rjf): If this enum is ever changed, ensure that
+    // it is kept in-sync with the MD_ExprPrecFromExprKind and the following
+    // functions:
+    //
+    // MD_BinaryExprKindFromNode
+    // MD_PreUnaryExprKindFromNode
+    // MD_PostUnaryExprKindFromNode
+    
     MD_ExprKind_Nil,
     
     // NOTE(rjf): Atom
     MD_ExprKind_Atom,
+    
+    // NOTE(rjf): Access
+    MD_ExprKind_Dot,
+    MD_ExprKind_Arrow,
+    MD_ExprKind_Call,
+    MD_ExprKind_Subscript,
+    MD_ExprKind_Dereference,
+    MD_ExprKind_Reference,
     
     // NOTE(rjf): Arithmetic
     MD_ExprKind_Add,
     MD_ExprKind_Subtract,
     MD_ExprKind_Multiply,
     MD_ExprKind_Divide,
+    MD_ExprKind_Mod,
     
     // NOTE(rjf): Comparison
     MD_ExprKind_IsEqual,
@@ -458,6 +476,8 @@ typedef enum MD_ExprKind
     MD_ExprKind_BitOr,
     MD_ExprKind_BitNot,
     MD_ExprKind_BitXor,
+    MD_ExprKind_LeftShift,
+    MD_ExprKind_RightShift,
     
     // NOTE(rjf): Unary numeric
     MD_ExprKind_Negative,
@@ -469,6 +489,8 @@ typedef enum MD_ExprKind
     MD_ExprKind_MAX,
 }
 MD_ExprKind;
+
+typedef MD_i32 MD_ExprPrec;
 
 typedef struct MD_Expr MD_Expr;
 struct MD_Expr
@@ -617,10 +639,14 @@ MD_FUNCTION MD_b32   MD_NodeHasTag(MD_Node *node, MD_String8 tag_string);
 #define MD_EachNode(it, first) MD_Node *it = (first); !MD_NodeIsNil(it); it = it->next
 
 //~ Expression and Type-Expression Helper Functions
-MD_FUNCTION MD_Expr *MD_NilExpr(void);
-MD_FUNCTION MD_Expr *MD_MakeExpr(MD_Node *node, MD_ExprKind kind, MD_Expr *left, MD_Expr *right);
-MD_FUNCTION MD_Expr *MD_ParseAsExpr(MD_Node *node);
-// TODO(allen): MD_ParseAsType?
+MD_FUNCTION MD_Expr *     MD_NilExpr(void);
+MD_FUNCTION MD_b32        MD_ExprIsNil(MD_Expr *expr);
+MD_FUNCTION MD_ExprKind   MD_PreUnaryExprKindFromNode(MD_Node *node);
+MD_FUNCTION MD_ExprKind   MD_BinaryExprKindFromNode(MD_Node *node);
+MD_FUNCTION MD_ExprPrec   MD_ExprPrecFromExprKind(MD_ExprKind kind);
+MD_FUNCTION MD_Expr *     MD_MakeExpr(MD_Node *node, MD_ExprKind kind, MD_Expr *left, MD_Expr *right);
+MD_FUNCTION MD_Expr *     MD_ParseAsExpr(MD_Node *first, MD_Node *last);
+MD_FUNCTION MD_Expr *     MD_ParseAsType(MD_Node *first, MD_Node *last);
 
 //~ Generation Functions
 MD_FUNCTION void MD_OutputTree(FILE *file, MD_Node *node);
