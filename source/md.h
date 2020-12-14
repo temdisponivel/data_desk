@@ -1,5 +1,20 @@
 //~ Metadesk Library
 
+// TODO List
+//
+// - Expression/Type helper
+//   - Parsing things as a type, getting basic type info
+//   - Parsing things to an expression tree (MD_Expr), helpers for
+//     interpreting an MD_Expr tree
+// - Radix for MD_IntFromString
+// - Freeing calls, allow hooking the allocator with an arena or
+//   something so that someone can use this for work at an application/game's
+//   runtime
+// - Outputting anything to MD or C code ideally would do something
+//   smart with auto-indentation, since some people have wanted readable
+//   layout (if they aren't using 4coder with virtual whitespace basically)
+// 
+
 #ifndef MD_H
 #define MD_H
 
@@ -590,7 +605,6 @@ MD_FUNCTION void     MD_PushChild(MD_Node *parent, MD_Node *new_child);
 MD_FUNCTION void     MD_PushTag(MD_Node *node, MD_Node *tag);
 
 //~ Introspection Helpers
-#define MD_EachNode(it, first) MD_Node *it = (first); !MD_NodeIsNil(it); it = it->next
 MD_FUNCTION MD_Node *MD_NodeFromString(MD_Node *first, MD_Node *last, MD_String8 string);
 MD_FUNCTION MD_Node *MD_NodeFromIndex(MD_Node *first, MD_Node *last, int n);
 MD_FUNCTION int      MD_IndexFromNode(MD_Node *node);
@@ -601,6 +615,8 @@ MD_FUNCTION MD_Node *MD_ChildFromIndex(MD_Node *node, int n);
 MD_FUNCTION MD_Node *MD_TagFromIndex(MD_Node *node, int n);
 MD_FUNCTION MD_Node *MD_TagArgFromIndex(MD_Node *node, MD_String8 tag_string, int n);
 MD_FUNCTION MD_b32   MD_NodeHasTag(MD_Node *node, MD_String8 tag_string);
+// NOTE(rjf): For-Loop Helper
+#define MD_EachNode(it, first) MD_Node *it = (first); !MD_NodeIsNil(it); it = it->next
 
 //~ Expression and Type-Expression Helper Functions
 MD_FUNCTION MD_Expr *MD_NilExpr(void);

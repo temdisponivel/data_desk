@@ -1,12 +1,12 @@
 version(1);
 
-project_name = "DD";
+project_name = "metadesk";
 
 patterns =
 {
 	"*.c",
 	"*.cpp",
-	"*.ds",
+	"*.md",
 	"*.h",
 	"*.bat",
 	"*.sh",
