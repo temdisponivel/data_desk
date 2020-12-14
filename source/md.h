@@ -294,6 +294,13 @@ enum
     MD_NodeFlag_CharLiteral      = (1<<12),
 };
 
+typedef MD_u32 MD_NodeMatchFlags;
+enum
+{
+    MD_NodeMatchFlag_Tags         = (1<<0),
+    MD_NodeMatchFlag_TagArguments = (1<<1),
+};
+
 typedef struct MD_Node MD_Node;
 struct MD_Node
 {
@@ -533,7 +540,8 @@ struct MD_FileIter
     MD_u64 state;
 };
 
-//~ Basic Utility Functions
+//~ Basic Utilities
+#define MD_Assert(c) if (!(c)) { *(volatile MD_u64 *)0 = 0; }
 MD_FUNCTION MD_b32 MD_CharIsAlpha(MD_u8 c);
 MD_FUNCTION MD_b32 MD_CharIsDigit(MD_u8 c);
 MD_FUNCTION MD_b32 MD_CharIsSymbol(MD_u8 c);
@@ -541,7 +549,7 @@ MD_FUNCTION MD_u8  MD_CharToUpper(MD_u8 c);
 MD_FUNCTION MD_u8  MD_CharToLower(MD_u8 c);
 MD_FUNCTION MD_u8  MD_CorrectSlash(MD_u8 c);
 
-//~ String Functions
+//~ Strings
 MD_FUNCTION MD_String8     MD_S8(MD_u8 *str, MD_u64 size);
 #define MD_S8CString(s)    MD_S8((MD_u8 *)(s), MD_CalculateCStringLength(s))
 
@@ -587,13 +595,10 @@ MD_FUNCTION MD_u64         MD_CalculateCStringLength(char *cstr);
 //~ Unicode Conversions
 MD_FUNCTION MD_UnicodeConsume MD_CodepointFromUtf8(MD_u8 *str, MD_u64 max);
 MD_FUNCTION MD_UnicodeConsume MD_CodepointFromUtf16(MD_u16 *str, MD_u64 max);
-
 MD_FUNCTION MD_u32 MD_Utf8FromCodepoint(MD_u8 *out, MD_u32 codepoint);
 MD_FUNCTION MD_u32 MD_Utf16FromCodepoint(MD_u16 *out, MD_u32 codepoint);
-
 MD_FUNCTION MD_String8     MD_S8FromS16(MD_String16 str);
 MD_FUNCTION MD_String16    MD_S16FromS8(MD_String8 str);
-
 MD_FUNCTION MD_String8     MD_S8FromS32(MD_String32 str);
 MD_FUNCTION MD_String32    MD_S32FromS8(MD_String8 str);
 
@@ -601,7 +606,7 @@ MD_FUNCTION MD_String32    MD_S32FromS8(MD_String8 str);
 MD_FUNCTION MD_NodeTableSlot *MD_NodeTable_Lookup(MD_NodeTable *table, MD_String8 string);
 MD_FUNCTION MD_b32            MD_NodeTable_Insert(MD_NodeTable *table, MD_NodeTableCollisionRule collision_rule, MD_String8 string, MD_Node *node);
 
-//~ Parsing Functions
+//~ Parsing
 MD_FUNCTION MD_Token       MD_ZeroToken(void);
 MD_FUNCTION MD_b32         MD_TokenKindIsWhitespace(MD_TokenKind kind);
 MD_FUNCTION MD_ParseCtx    MD_Parse_InitializeCtx(MD_String8 filename, MD_String8 contents);
@@ -615,7 +620,7 @@ MD_FUNCTION MD_ParseResult MD_ParseOneNode     (MD_String8 filename, MD_String8 
 MD_FUNCTION MD_Node *      MD_ParseWholeString (MD_String8 filename, MD_String8 contents);
 MD_FUNCTION MD_Node *      MD_ParseWholeFile   (MD_String8 filename);
 
-//~ Tree/List Building Functions
+//~ Tree/List Building
 MD_FUNCTION MD_b32   MD_NodeIsNil(MD_Node *node);
 MD_FUNCTION MD_Node *MD_NilNode(void);
 MD_FUNCTION MD_Node *MD_MakeNodeFromToken(MD_NodeKind kind, MD_String8 filename, MD_u8 *file, MD_u8 *at, MD_Token token);
@@ -638,7 +643,11 @@ MD_FUNCTION MD_b32   MD_NodeHasTag(MD_Node *node, MD_String8 tag_string);
 // NOTE(rjf): For-Loop Helper
 #define MD_EachNode(it, first) MD_Node *it = (first); !MD_NodeIsNil(it); it = it->next
 
-//~ Expression and Type-Expression Helper Functions
+//~ Tree Comparison/Verification
+MD_FUNCTION MD_b32 MD_NodeMatch(MD_Node *a, MD_Node *b, MD_StringMatchFlags str_flags, MD_NodeMatchFlags node_flags);
+MD_FUNCTION MD_b32 MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_StringMatchFlags str_flags, MD_NodeMatchFlags node_flags);
+
+//~ Expression and Type-Expression Helper
 MD_FUNCTION MD_Expr *     MD_NilExpr(void);
 MD_FUNCTION MD_b32        MD_ExprIsNil(MD_Expr *expr);
 MD_FUNCTION MD_ExprKind   MD_PreUnaryExprKindFromNode(MD_Node *node);
@@ -648,7 +657,7 @@ MD_FUNCTION MD_Expr *     MD_MakeExpr(MD_Node *node, MD_ExprKind kind, MD_Expr *
 MD_FUNCTION MD_Expr *     MD_ParseAsExpr(MD_Node *first, MD_Node *last);
 MD_FUNCTION MD_Expr *     MD_ParseAsType(MD_Node *first, MD_Node *last);
 
-//~ Generation Functions
+//~ Generation
 MD_FUNCTION void MD_OutputTree(FILE *file, MD_Node *node);
 MD_FUNCTION void MD_OutputExpr(FILE *file, MD_Expr *expr);
 MD_FUNCTION void MD_OutputTree_C_String(FILE *file, MD_Node *node);
@@ -658,7 +667,7 @@ MD_FUNCTION void MD_Output_C_DeclByNameAndType(FILE *file, MD_String8 name, MD_E
 MD_FUNCTION void MD_OutputType_C_LHS(FILE *file, MD_Expr *type);
 MD_FUNCTION void MD_OutputType_C_RHS(FILE *file, MD_Expr *type);
 
-//~ Command Line Argument Helper Functions
+//~ Command Line Argument Helper
 MD_FUNCTION MD_CommandLine MD_CommandLine_Start(int argument_count, char **arguments);
 MD_FUNCTION MD_b32         MD_CommandLine_Flag(MD_CommandLine *cmdln, MD_String8 string);
 MD_FUNCTION MD_b32         MD_CommandLine_FlagStrings(MD_CommandLine *cmdln, MD_String8 string, int out_count, MD_String8 *out);
@@ -667,7 +676,7 @@ MD_FUNCTION MD_b32         MD_CommandLine_FlagString(MD_CommandLine *cmdln, MD_S
 MD_FUNCTION MD_b32         MD_CommandLine_FlagInteger(MD_CommandLine *cmdln, MD_String8 string, MD_i64 *out);
 MD_FUNCTION MD_b32         MD_CommandLine_Increment(MD_CommandLine *cmdln, MD_String8 **string_ptr);
 
-//~ File System Functions
+//~ File System
 MD_FUNCTION MD_String8  MD_LoadEntireFile(MD_String8 filename);
 
 //~ Functions that require OS information... will be excluded from the build
