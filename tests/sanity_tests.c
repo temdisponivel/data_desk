@@ -17,7 +17,7 @@ BeginTest(char *name)
     {
         spaces = 0;
     }
-    printf("\"%s\" %.*s ", name, spaces, "------------------------------");
+    printf("\"%s\" %.*s [", name, spaces, "------------------------------");
     test_ctx.number_of_tests = 0;
     test_ctx.number_passed = 0;
 }
@@ -35,7 +35,7 @@ EndTest(void)
 {
     int spaces = 10 - test_ctx.number_of_tests;
     if(spaces < 0) { spaces = 0; }
-    printf("%.*s ", spaces, "                                      ");
+    printf("]%.*s ", spaces, "                                      ");
     printf("[%i/%i] %i passed, %i tests, ",
            test_ctx.number_passed, test_ctx.number_of_tests,
            test_ctx.number_passed, test_ctx.number_of_tests);
