@@ -818,11 +818,16 @@ _MD_PushNodeToList(MD_Node **firstp, MD_Node **lastp, MD_Node *parent, MD_Node *
     }
 }
 
-// TODO(allen): Review @rjf; Why is bump private?
-MD_PRIVATE_FUNCTION_IMPL void
-_MD_Parse_Bump(MD_ParseCtx *ctx, MD_Token token)
+MD_FUNCTION_IMPL void
+MD_Parse_Bump(MD_ParseCtx *ctx, MD_Token token)
 {
     ctx->at = token.outer_string.str + token.outer_string.size;
+}
+
+MD_FUNCTION_IMPL void
+MD_Parse_BumpNext(MD_ParseCtx *ctx)
+{
+    MD_Parse_Bump(ctx, MD_Parse_LexNext(ctx));
 }
 
 MD_FUNCTION_IMPL MD_Token
@@ -987,7 +992,7 @@ MD_Parse_PeekSkipSome(MD_ParseCtx *ctx, MD_TokenGroups skip_groups)
         if ((skip_comment    && MD_TokenKindIsComment(result.kind)) ||
             (skip_whitespace && MD_TokenKindIsWhitespace(result.kind)) ||
             (skip_regular    && MD_TokenKindIsRegular(result.kind))){
-            _MD_Parse_Bump(ctx, result);
+            MD_Parse_Bump(ctx, result);
             goto loop;
         }
     }
@@ -1015,7 +1020,7 @@ MD_Parse_Require(MD_ParseCtx *ctx, MD_String8 string)
     if(MD_StringMatch(token_any.string, string, 0))
     {
         result = 1;
-        _MD_Parse_Bump(ctx, token_any);
+        MD_Parse_Bump(ctx, token_any);
         goto end;
     }
     
@@ -1023,7 +1028,7 @@ MD_Parse_Require(MD_ParseCtx *ctx, MD_String8 string)
     if(MD_StringMatch(token_regular.string, string, 0))
     {
         result = 1;
-        _MD_Parse_Bump(ctx, token_regular);
+        MD_Parse_Bump(ctx, token_regular);
         goto end;
     }
     
@@ -1050,7 +1055,7 @@ MD_Parse_RequireKind(MD_ParseCtx *ctx, MD_TokenKind kind, MD_Token *out_token)
     if(token.kind == kind)
     {
         result = 1;
-        _MD_Parse_Bump(ctx, token);
+        MD_Parse_Bump(ctx, token);
         if(out_token)
         {
             *out_token = token;

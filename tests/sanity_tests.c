@@ -32,16 +32,16 @@ TestResult(MD_b32 result)
 static void
 EndTest(void)
 {
-    printf("[%i/%i] %i tests, %i passed ... ",
+    printf("[%i/%i] %i passed out of %i ... ",
            test_ctx.number_passed, test_ctx.number_of_tests,
            test_ctx.number_passed, test_ctx.number_of_tests);
     if(test_ctx.number_of_tests == test_ctx.number_passed)
     {
-        printf("SUCCESS");
+        printf("SUCCESS ( )");
     }
     else
     {
-        printf("FAILED");
+        printf("FAILED  (X)");
     }
     printf("\n");
 }
@@ -75,6 +75,15 @@ int main(void)
         MD_String8 string = MD_S8Lit("abc def 123 456 123_456 abc123 123abc");
         MD_ParseCtx ctx = MD_Parse_InitializeCtx(MD_S8Lit(""), string);
         TestResult(TokenMatch(MD_Parse_LexNext(&ctx), MD_S8Lit("abc"), MD_TokenKind_Identifier));
+        TestResult(TokenMatch(MD_Parse_LexNext(&ctx), MD_S8Lit(" "), MD_TokenKind_Whitespace));
+        TestResult(TokenMatch(MD_Parse_LexNext(&ctx), MD_S8Lit("def"), MD_TokenKind_Identifier));
+        TestResult(TokenMatch(MD_Parse_LexNext(&ctx), MD_S8Lit(" "), MD_TokenKind_Whitespace));
+        TestResult(TokenMatch(MD_Parse_LexNext(&ctx), MD_S8Lit("123"), MD_TokenKind_NumericLiteral));
+        TestResult(TokenMatch(MD_Parse_LexNext(&ctx), MD_S8Lit(" "), MD_TokenKind_Whitespace));
+        TestResult(TokenMatch(MD_Parse_LexNext(&ctx), MD_S8Lit("456"), MD_TokenKind_NumericLiteral));
+        TestResult(TokenMatch(MD_Parse_LexNext(&ctx), MD_S8Lit(" "), MD_TokenKind_Whitespace));
+        // TODO(rjf): Enable once numeric literal lexing is fixed
+        //TestResult(TokenMatch(MD_Parse_LexNext(&ctx), MD_S8Lit("123_456"), MD_TokenKind_NumericLiteral));
     }
     
     Test("Empty Sets")
