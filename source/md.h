@@ -244,6 +244,8 @@ struct MD_String8Node
 typedef struct MD_String8List MD_String8List;
 struct MD_String8List
 {
+    MD_u64 node_count;
+    MD_u64 total_size;
     MD_String8Node *first;
     MD_String8Node *last;
 };
@@ -600,9 +602,11 @@ MD_FUNCTION MD_String8     MD_PushStringF(char *fmt, ...);
 
 MD_FUNCTION void           MD_PushStringToList(MD_String8List *list, MD_String8 string);
 MD_FUNCTION void           MD_PushStringListToList(MD_String8List *list, MD_String8List *to_push);
+// TODO(rjf): Just simplify to a single splitter
 MD_FUNCTION MD_String8List MD_SplitString(MD_String8 string, int split_count, MD_String8 *splits);
 MD_FUNCTION MD_String8List MD_SplitStringByString(MD_String8 string, MD_String8 split);
 MD_FUNCTION MD_String8List MD_SplitStringByCharacter(MD_String8 string, MD_u8 character);
+MD_FUNCTION MD_String8     MD_JoinStringList(MD_String8List list);
 // TODO(rjf): Radix
 MD_FUNCTION int            MD_IntFromString(MD_String8 string);
 MD_FUNCTION float          MD_FloatFromString(MD_String8 string);

@@ -136,5 +136,69 @@ int main(void)
         TestResult(CompareParsedWithTree(MD_S8Lit("+"),   MakeTestNode(MD_NodeKind_Label, MD_S8Lit("+"))));
     }
     
+    Test("Set Border Flags")
+    {
+        {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("(0, 100)"));
+            TestResult(parse.node->flags & MD_NodeFlag_ParenLeft &&
+                       parse.node->flags & MD_NodeFlag_ParenRight);
+        }
+        
+        {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("(0, 100]"));
+            TestResult(parse.node->flags & MD_NodeFlag_ParenLeft &&
+                       parse.node->flags & MD_NodeFlag_BracketRight);
+        }
+        
+        {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("[0, 100)"));
+            TestResult(parse.node->flags & MD_NodeFlag_BracketLeft &&
+                       parse.node->flags & MD_NodeFlag_ParenRight);
+        }
+        
+        {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("[0, 100]"));
+            TestResult(parse.node->flags & MD_NodeFlag_BracketLeft &&
+                       parse.node->flags & MD_NodeFlag_BracketRight);
+        }
+        
+        {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("{0, 100}"));
+            TestResult(parse.node->flags & MD_NodeFlag_BraceLeft &&
+                       parse.node->flags & MD_NodeFlag_BraceRight);
+        }
+    }
+    
+    Test("Node Separator Flags")
+    {
+        {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("(a, b)"));
+            TestResult(parse.node->first_child->flags & MD_NodeFlag_BeforeComma);
+        }
+        {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("(a; b)"));
+            TestResult(parse.node->first_child->flags & MD_NodeFlag_BeforeSemicolon);
+        }
+        {
+            // TODO(rjf): Enable this once we have digraphs.
+            // MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("(a -> b)"));
+            // TestResult(parse.node->first_child->flags & MD_NodeFlag_BeforeArrow);
+        }
+    }
+    
+    Test("Node Text Flags")
+    {
+        TestResult(MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("123")).node->flags &
+                   MD_NodeFlag_Numeric);
+        TestResult(MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("123_456_789")).node->flags &
+                   MD_NodeFlag_Numeric);
+        TestResult(MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("abc")).node->flags &
+                   MD_NodeFlag_Identifier);
+        TestResult(MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("\"foo\"")).node->flags &
+                   MD_NodeFlag_StringLiteral);
+        TestResult(MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("'foo'")).node->flags &
+                   MD_NodeFlag_CharLiteral);
+    }
+    
     return 0;
 }
