@@ -109,6 +109,15 @@ MD_S8(MD_u8 *str, MD_u64 size)
 }
 
 MD_FUNCTION_IMPL MD_String8
+MD_S8Range(MD_u8 *str, MD_u8 *opl)
+{
+    MD_String8 string;
+    string.str = str;
+    string.size = (MD_u64)(opl - str);
+    return string;
+}
+
+MD_FUNCTION_IMPL MD_String8
 MD_StringSubstring(MD_String8 str, MD_u64 min, MD_u64 max)
 {
     if(max > str.size)
@@ -131,15 +140,15 @@ MD_StringSubstring(MD_String8 str, MD_u64 min, MD_u64 max)
 }
 
 MD_FUNCTION_IMPL MD_String8
-MD_StringSkip(MD_String8 str, MD_u64 max)
+MD_StringSkip(MD_String8 str, MD_u64 min)
 {
-    return MD_StringSubstring(str, 0, max);
+    return MD_StringSubstring(str, min, str.size);
 }
 
 MD_FUNCTION_IMPL MD_String8
-MD_StringChop(MD_String8 str, MD_u64 min)
+MD_StringChop(MD_String8 str, MD_u64 nmax)
 {
-    return MD_StringSubstring(str, min, str.size);
+    return MD_StringSubstring(str, 0, str.size - nmax);
 }
 
 MD_FUNCTION_IMPL MD_String8
@@ -795,6 +804,175 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
     MD_Token token = {0};
     MD_u8 *one_past_last = ctx->file_contents.str + ctx->file_contents.size;
     
+    MD_u8 *first = ctx->at;
+    MD_u8 *at = first;
+    MD_u32 skip_chop_n = 0;
+    
+    if (first < one_past_last)
+    {
+        switch (*at)
+        {
+            // NOTE(allen): Whitespace parsing
+            case '\n':
+            {
+                token.kind = MD_TokenKind_Newline;
+                at += 1;
+            }break;
+            
+            case ' ': case '\r': case '\t': case '\f': case '\v':
+            {
+                token.kind = MD_TokenKind_Whitespace;
+                at += 1;
+                for (; at < one_past_last; at += 1)
+                {
+                    if (*at != ' ' && *at != '\r' && *at != '\t' && *at != '\f' && *at != '\v')
+                    {
+                        break;
+                    }
+                }
+            }break;
+            
+            // NOTE(allen): Comment parsing
+            case '/':
+            {
+                if (at + 1 < one_past_last)
+                {
+                    if (at[1] == '/')
+                    {
+                        at += 2;
+                        token.kind = MD_TokenKind_Comment;
+                        for (;at < one_past_last && *at != '\n'; at += 1);
+                    }
+                    else if (at[1] == '*')
+                    {
+                        at += 2;
+                        token.kind = MD_TokenKind_Comment;
+                        int counter = 1;
+                        for (;at < one_past_last && counter > 0; at += 1)
+                        {
+                            if (at + 1 < one_past_last)
+                            {
+                                if (at[0] == '*' && at[1] == '/')
+                                {
+                                    at += 1;
+                                    counter -= 1;
+                                }
+                                else if (at[0] == '/' && at[1] == '*')
+                                {
+                                    at += 1;
+                                    counter += 1;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (token.kind == MD_TokenKind_Nil) goto symbol_lex;
+            }break;
+            
+            // NOTE(allen): Strings
+            case '"':
+            {
+                token.kind = MD_TokenKind_StringLiteral;
+                if (at + 2 < one_past_last && at[1] == '"' && at[2] == '"')
+                {
+                    skip_chop_n = 3;
+                    at += 3;
+                    for (;at < one_past_last; at += 1)
+                    {
+                        if (at + 2 < one_past_last && at[0] == '"' && at[1] == '"' && at[2] == '"')
+                        {
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    // TODO(allen): escape sequences?
+                    skip_chop_n = 1;
+                    at += 1;
+                    for (;at < one_past_last && *at != '\n' && *at != '"'; at += 1);
+                }
+            }break;
+            
+            case '\'':
+            {
+                if (at + 2 < one_past_last && at[1] == '\'' && at[2] == '\'')
+                {
+                    token.kind = MD_TokenKind_StringLiteral;
+                    skip_chop_n = 3;
+                    at += 3;
+                    for (;at < one_past_last; at += 1)
+                    {
+                        if (at + 2 < one_past_last && at[0] == '\'' && at[1] == '\'' && at[2] == '\'')
+                        {
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    token.kind = MD_TokenKind_CharLiteral;
+                    // TODO(allen): escape sequences?
+                    skip_chop_n = 1;
+                    at += 1;
+                    for (;at < one_past_last && *at != '\n' && *at != '\''; at += 1);
+                }
+            }break;
+            
+            default:
+            {
+                if (MD_CharIsAlpha(*at))
+                {
+                    token.kind = MD_TokenKind_Identifier;
+                    at += 1;
+                    for (;at < one_past_last; at += 1)
+                    {
+                        if (!MD_CharIsAlpha(*at) &&
+                            !MD_CharIsDigit(*at) &&
+                            *at != '_')
+                        {
+                            break;
+                        }
+                    }
+                }
+                else if (MD_CharIsDigit(*at) ||
+                         (at + 1 < one_past_last && at[0] == '-' && MD_CharIsDigit(at[1])))
+                {
+                    token.kind = MD_TokenKind_NumericLiteral;
+                    at += 1;
+                    for (; at < one_past_last; at += 1)
+                    {
+                        if (!MD_CharIsAlpha(*at) &&
+                            !MD_CharIsDigit(*at) &&
+                            *at != '.')
+                        {
+                            break;
+                        }
+                    }
+                }
+                else if (MD_CharIsSymbol(*at))
+                {
+                    symbol_lex:
+                    token.kind = MD_TokenKind_Symbol;
+                    at += 1;
+                }
+            }break;
+        }
+        
+        token.outer_string = MD_S8Range(first, at);
+        token.string = MD_StringSkip(MD_StringChop(token.outer_string, skip_chop_n), skip_chop_n);
+        
+        ctx->at = at;
+    }
+    
+    return token;
+}
+
+#if 0
+{
+    MD_Token token = {0};
+    MD_u8 *one_past_last = ctx->file_contents.str + ctx->file_contents.size;
+    
     enum
     {
         MD_ReadMode_Normal,
@@ -954,6 +1132,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
     }
     return token;
 }
+#endif
 
 MD_FUNCTION_IMPL MD_Token
 MD_Parse_PeekSkipSome(MD_ParseCtx *ctx, MD_TokenGroups skip_groups)

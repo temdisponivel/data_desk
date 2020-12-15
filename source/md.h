@@ -574,9 +574,11 @@ MD_FUNCTION MD_String8     MD_S8(MD_u8 *str, MD_u64 size);
 #define MD_S8Lit(s)        MD_S8((MD_u8*)(s), sizeof(s) - 1)
 #endif
 
+MD_FUNCTION MD_String8     MD_S8Range(MD_u8 *str, MD_u8 *opl);
+
 MD_FUNCTION MD_String8     MD_StringSubstring(MD_String8 str, MD_u64 min, MD_u64 max);
-MD_FUNCTION MD_String8     MD_StringSkip(MD_String8 str, MD_u64 max);
-MD_FUNCTION MD_String8     MD_StringChop(MD_String8 str, MD_u64 min);
+MD_FUNCTION MD_String8     MD_StringSkip(MD_String8 str, MD_u64 min);
+MD_FUNCTION MD_String8     MD_StringChop(MD_String8 str, MD_u64 nmax);
 MD_FUNCTION MD_String8     MD_StringPrefix(MD_String8 str, MD_u64 size);
 MD_FUNCTION MD_String8     MD_StringSuffix(MD_String8 str, MD_u64 size);
 
