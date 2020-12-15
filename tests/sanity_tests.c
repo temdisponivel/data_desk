@@ -1,19 +1,6 @@
 #include "md.h"
 #include "md.c"
 
-static MD_Node *
-MakeTestNode(MD_NodeKind kind, MD_String8 string)
-{
-    return MD_MakeNodeFromString(kind, MD_S8Lit("`TEST_NODE`"), 0, 0, string);
-}
-
-static MD_b32
-CompareParsedWithTree(MD_String8 string, MD_Node *tree)
-{
-    MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), string);
-    return MD_NodeDeepMatch(tree, parse.node, 0, MD_NodeMatchFlag_Tags | MD_NodeMatchFlag_TagArguments);
-}
-
 static struct
 {
     int number_of_tests;
@@ -61,8 +48,34 @@ EndTest(void)
 
 #define Test(name) for(int _i_ = (BeginTest(name), 0); !_i_; _i_ += 1, EndTest())
 
+static MD_Node *
+MakeTestNode(MD_NodeKind kind, MD_String8 string)
+{
+    return MD_MakeNodeFromString(kind, MD_S8Lit("`TEST_NODE`"), 0, 0, string);
+}
+
+static MD_b32
+CompareParsedWithTree(MD_String8 string, MD_Node *tree)
+{
+    MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), string);
+    return MD_NodeDeepMatch(tree, parse.node, 0, MD_NodeMatchFlag_Tags | MD_NodeMatchFlag_TagArguments);
+}
+
+static MD_b32
+TokenMatch(MD_Token token, MD_String8 string, MD_TokenKind kind)
+{
+    return MD_StringMatch(string, token.string, 0) && token.kind == kind;
+}
+
 int main(void)
 {
+    
+    Test("Lexer")
+    {
+        MD_String8 string = MD_S8Lit("abc def 123 456 123_456 abc123 123abc");
+        MD_ParseCtx ctx = MD_Parse_InitializeCtx(MD_S8Lit(""), string);
+        TestResult(TokenMatch(MD_Parse_LexNext(&ctx), MD_S8Lit("abc"), MD_TokenKind_Identifier));
+    }
     
     Test("Empty Sets")
     {
