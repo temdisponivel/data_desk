@@ -27,12 +27,16 @@ TestResult(MD_b32 result)
 {
     test_ctx.number_of_tests += 1;
     test_ctx.number_passed += !!result;
+    printf(result ? "." : "X");
 }
 
 static void
 EndTest(void)
 {
-    printf("[%i/%i] %i passed out of %i ... ",
+    int spaces = 10 - test_ctx.number_of_tests;
+    if(spaces < 0) { spaces = 0; }
+    printf("%.*s ", spaces, "                                      ");
+    printf("[%i/%i] %i passed, %i tests, ",
            test_ctx.number_passed, test_ctx.number_of_tests,
            test_ctx.number_passed, test_ctx.number_of_tests);
     if(test_ctx.number_of_tests == test_ctx.number_passed)
