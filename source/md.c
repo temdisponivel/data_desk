@@ -792,6 +792,7 @@ _MD_PushNodeToList(MD_Node **firstp, MD_Node **lastp, MD_Node *parent, MD_Node *
     }
 }
 
+// TODO(allen): Review @rjf; Why is bump private?
 MD_PRIVATE_FUNCTION_IMPL void
 _MD_Parse_Bump(MD_ParseCtx *ctx, MD_Token token)
 {
@@ -802,14 +803,16 @@ MD_FUNCTION_IMPL MD_Token
 MD_Parse_LexNext(MD_ParseCtx *ctx)
 {
     MD_Token token = {0};
+    
     MD_u8 *one_past_last = ctx->file_contents.str + ctx->file_contents.size;
-    
     MD_u8 *first = ctx->at;
-    MD_u8 *at = first;
-    MD_u32 skip_chop_n = 0;
-    
     if (first < one_past_last)
     {
+        MD_u8 *at = first;
+        MD_u32 skip_chop_n = 0;
+        
+#define MD_TokenizerScan(cond) for (; at < one_past_last && (cond); at += 1)
+        
         switch (*at)
         {
             // NOTE(allen): Whitespace parsing
@@ -823,13 +826,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
             {
                 token.kind = MD_TokenKind_Whitespace;
                 at += 1;
-                for (; at < one_past_last; at += 1)
-                {
-                    if (*at != ' ' && *at != '\r' && *at != '\t' && *at != '\f' && *at != '\v')
-                    {
-                        break;
-                    }
-                }
+                MD_TokenizerScan(*at == ' ' || *at == '\r' || *at == '\t' || *at == '\f' || *at == '\v');
             }break;
             
             // NOTE(allen): Comment parsing
@@ -841,7 +838,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                     {
                         at += 2;
                         token.kind = MD_TokenKind_Comment;
-                        for (;at < one_past_last && *at != '\n'; at += 1);
+                        MD_TokenizerScan(*at != '\n');
                     }
                     else if (at[1] == '*')
                     {
@@ -877,20 +874,16 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 {
                     skip_chop_n = 3;
                     at += 3;
-                    for (;at < one_past_last; at += 1)
-                    {
-                        if (at + 2 < one_past_last && at[0] == '"' && at[1] == '"' && at[2] == '"')
-                        {
-                            break;
-                        }
-                    }
+                    MD_TokenizerScan(!(at + 2 < one_past_last && at[0] == '"' && at[1] == '"' && at[2] == '"'));
+                    at += 3;
                 }
                 else
                 {
                     // TODO(allen): escape sequences?
                     skip_chop_n = 1;
                     at += 1;
-                    for (;at < one_past_last && *at != '\n' && *at != '"'; at += 1);
+                    MD_TokenizerScan(*at != '\n' && *at != '"');
+                    if (*at == '"') at += 1;
                 }
             }break;
             
@@ -901,13 +894,8 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                     token.kind = MD_TokenKind_StringLiteral;
                     skip_chop_n = 3;
                     at += 3;
-                    for (;at < one_past_last; at += 1)
-                    {
-                        if (at + 2 < one_past_last && at[0] == '\'' && at[1] == '\'' && at[2] == '\'')
-                        {
-                            break;
-                        }
-                    }
+                    MD_TokenizerScan(!(at + 2 < one_past_last && at[0] == '\'' && at[1] == '\'' && at[2] == '\''));
+                    at += 3;
                 }
                 else
                 {
@@ -915,41 +903,29 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                     // TODO(allen): escape sequences?
                     skip_chop_n = 1;
                     at += 1;
-                    for (;at < one_past_last && *at != '\n' && *at != '\''; at += 1);
+                    MD_TokenizerScan(*at != '\n' && *at != '\'');
+                    if (*at == '\'') at += 1;
                 }
             }break;
             
+            // NOTE(allen): Identifiers, Numbers, Operators
             default:
             {
                 if (MD_CharIsAlpha(*at))
                 {
                     token.kind = MD_TokenKind_Identifier;
                     at += 1;
-                    for (;at < one_past_last; at += 1)
-                    {
-                        if (!MD_CharIsAlpha(*at) &&
-                            !MD_CharIsDigit(*at) &&
-                            *at != '_')
-                        {
-                            break;
-                        }
-                    }
+                    MD_TokenizerScan(MD_CharIsAlpha(*at) || MD_CharIsDigit(*at) || *at == '_');
                 }
+                
                 else if (MD_CharIsDigit(*at) ||
                          (at + 1 < one_past_last && at[0] == '-' && MD_CharIsDigit(at[1])))
                 {
                     token.kind = MD_TokenKind_NumericLiteral;
                     at += 1;
-                    for (; at < one_past_last; at += 1)
-                    {
-                        if (!MD_CharIsAlpha(*at) &&
-                            !MD_CharIsDigit(*at) &&
-                            *at != '.')
-                        {
-                            break;
-                        }
-                    }
+                    MD_TokenizerScan(MD_CharIsAlpha(*at) || MD_CharIsDigit(*at) || *at == '.');
                 }
+                
                 else if (MD_CharIsSymbol(*at))
                 {
                     symbol_lex:
@@ -960,179 +936,13 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
         }
         
         token.outer_string = MD_S8Range(first, at);
-        token.string = MD_StringSkip(MD_StringChop(token.outer_string, skip_chop_n), skip_chop_n);
+        token.string = MD_StringSubstring(token.outer_string, skip_chop_n, token.outer_string.size - skip_chop_n);
         
         ctx->at = at;
     }
     
     return token;
 }
-
-#if 0
-{
-    MD_Token token = {0};
-    MD_u8 *one_past_last = ctx->file_contents.str + ctx->file_contents.size;
-    
-    enum
-    {
-        MD_ReadMode_Normal,
-        MD_ReadMode_SingleLineComment,
-        MD_ReadMode_MultiLineComment,
-    };
-    int read_mode = MD_ReadMode_Normal;
-    int multiline_comment_nest = 0;
-    
-    for(MD_u64 i = 0; ctx->at + i < one_past_last; i += 1)
-    {
-        
-        if(read_mode == MD_ReadMode_SingleLineComment)
-        {
-            if(ctx->at[i] == '\n')
-            {
-                read_mode = MD_ReadMode_Normal;
-            }
-        }
-        else if(read_mode == MD_ReadMode_MultiLineComment)
-        {
-            if(ctx->at[i] == '/' && ctx->at[i+1] == '*')
-            {
-                multiline_comment_nest += 1;
-            }
-            if(ctx->at[i] == '*' && ctx->at[i+1] == '/')
-            {
-                multiline_comment_nest -= 1;
-            }
-            if(multiline_comment_nest <= 0)
-            {
-                read_mode = MD_ReadMode_Normal;
-            }
-        }
-        else
-        {
-#define MD_TokenizerLoop(name, start, cond) MD_u64 name = start; for(; ((cond)) && ctx->at + name < one_past_last; name += 1)
-            
-            // NOTE(rjf): Single-Line Comments
-            if(ctx->at[i] == '/' && ctx->at[i+1] == '/')
-            {
-                read_mode = MD_ReadMode_SingleLineComment;
-            }
-            
-            // NOTE(rjf): Multi-Line Comments
-            else if(ctx->at[i] == '/' && ctx->at[i+1] == '*')
-            {
-                read_mode = MD_ReadMode_MultiLineComment;
-                multiline_comment_nest = 1;
-            }
-            
-            // NOTE(rjf): Newlines
-            else if(ctx->at[i] == '\n')
-            {
-                token.kind = MD_TokenKind_Newline;
-                token.string.str = ctx->at + i;
-                token.string.size = 1;
-                token.outer_string = token.string;
-                break;
-            }
-            
-            // NOTE(rjf): Identifier
-            else if(MD_CharIsAlpha(ctx->at[i]))
-            {
-                MD_TokenizerLoop(j, i+1,
-                                 MD_CharIsAlpha(ctx->at[j]) ||
-                                 MD_CharIsDigit(ctx->at[j]) ||
-                                 ctx->at[j] == '_');
-                token.kind = MD_TokenKind_Identifier;
-                token.string.str = ctx->at + i;
-                token.string.size = j - i;
-                token.outer_string = token.string;
-                break;
-            }
-            
-            // NOTE(rjf): Numeric Literal
-            else if(MD_CharIsDigit(ctx->at[i]) ||
-                    (ctx->at + 1 < one_past_last &&
-                     ctx->at[i] == '-' && MD_CharIsDigit(ctx->at[i+1])))
-            {
-                MD_TokenizerLoop(j, i+1,
-                                 MD_CharIsAlpha(ctx->at[j]) ||
-                                 MD_CharIsDigit(ctx->at[j]) ||
-                                 ctx->at[j] == '.');
-                token.kind = MD_TokenKind_NumericLiteral;
-                token.string.str = ctx->at + i;
-                token.string.size = j - i;
-                token.outer_string = token.string;
-                break;
-            }
-            
-            // NOTE(rjf): Symbol
-            else if(MD_CharIsSymbol(ctx->at[i]))
-            {
-                token.kind = MD_TokenKind_Symbol;
-                token.string.str = ctx->at + i;
-                token.string.size = 1;
-                token.outer_string = token.string;
-                break;
-            }
-            
-            // NOTE(rjf): Multi-Line String Literal
-            else if(ctx->at+i+2  < one_past_last &&
-                    ctx->at[i] == '"' && ctx->at[i+1] == '"' && ctx->at[i+2] == '"')
-            {
-                MD_TokenizerLoop(j, i+3, !(ctx->at + j + 2 < one_past_last &&
-                                           ctx->at[j] == '"' && ctx->at[j+1] == '"' && ctx->at[j+2] == '"'));
-                token.kind = MD_TokenKind_StringLiteral;
-                token.string.str = ctx->at + i + 3;
-                token.string.size = j - (i + 3);
-                token.outer_string.str = ctx->at + i;
-                token.outer_string.size = (j + 3) - i;
-                break;
-            }
-            
-            // NOTE(rjf): Single-Line String Literal
-            else if(ctx->at[i] == '"')
-            {
-                MD_TokenizerLoop(j, i+1, ctx->at[j] != '"');
-                token.kind = MD_TokenKind_StringLiteral;
-                token.string.str = ctx->at + i + 1;
-                token.string.size = j - (i + 1);
-                token.outer_string.str = ctx->at + i;
-                token.outer_string.size = (j - i) + 1;
-                break;
-            }
-            
-            // NOTE(rjf): Single-Line Char Literal
-            else if(ctx->at[i] == '\'')
-            {
-                MD_TokenizerLoop(j, i+1, ctx->at[j] != '\'');
-                token.kind = MD_TokenKind_CharLiteral;
-                token.string.str = ctx->at + i + 1;
-                token.string.size = j - (i + 1);
-                token.outer_string.str = ctx->at + i;
-                token.outer_string.size = (j - i) + 1;
-                break;
-            }
-            
-            // NOTE(rjf): Multi-Line Char Literal
-            else if(ctx->at+i+2  < one_past_last &&
-                    ctx->at[i] == '\'' && ctx->at[i+1] == '\'' && ctx->at[i+2] == '\'')
-            {
-                MD_TokenizerLoop(j, i+3, !(ctx->at + j + 2 < one_past_last &&
-                                           ctx->at[j] == '\'' && ctx->at[j+1] == '\'' && ctx->at[j+2] == '\''));
-                token.kind = MD_TokenKind_StringLiteral;
-                token.string.str = ctx->at + i + 3;
-                token.string.size = j - (i + 3);
-                token.outer_string.str = ctx->at + i;
-                token.outer_string.size = (j + 3) - i;
-                break;
-            }
-            
-#undef MD_TokenizerLoop
-        }
-        
-    }
-    return token;
-}
-#endif
 
 MD_FUNCTION_IMPL MD_Token
 MD_Parse_PeekSkipSome(MD_ParseCtx *ctx, MD_TokenGroups skip_groups)

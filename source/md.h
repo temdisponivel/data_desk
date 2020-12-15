@@ -630,10 +630,8 @@ MD_FUNCTION MD_b32         MD_TokenKindIsComment(MD_TokenKind kind);
 MD_FUNCTION MD_b32         MD_TokenKindIsRegular(MD_TokenKind kind);
 MD_FUNCTION MD_ParseCtx    MD_Parse_InitializeCtx(MD_String8 filename, MD_String8 contents);
 
-// TODO(allen): why is peek in the public API and not "bump"?
 MD_FUNCTION MD_Token       MD_Parse_LexNext(MD_ParseCtx *ctx);
 MD_FUNCTION MD_Token       MD_Parse_PeekSkipSome(MD_ParseCtx *ctx, MD_TokenGroups skip_groups);
-MD_FUNCTION MD_b32         MD_Parse_PeekMatch(MD_ParseCtx *ctx, MD_String8 string);
 MD_FUNCTION MD_b32         MD_Parse_TokenMatch(MD_Token token, MD_String8 string, MD_StringMatchFlags flags);
 MD_FUNCTION MD_b32         MD_Parse_Require(MD_ParseCtx *ctx, MD_String8 string);
 MD_FUNCTION MD_b32         MD_Parse_RequireKind(MD_ParseCtx *ctx, MD_TokenKind kind, MD_Token *out_token);
