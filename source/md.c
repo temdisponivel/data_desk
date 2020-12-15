@@ -735,6 +735,18 @@ MD_TokenKindIsWhitespace(MD_TokenKind kind)
     return kind > MD_TokenKind_WhitespaceMin && kind < MD_TokenKind_WhitespaceMax;
 }
 
+MD_FUNCTION_IMPL MD_b32
+MD_TokenKindIsComment(MD_TokenKind kind)
+{
+    return(kind == MD_TokenKind_Comment);
+}
+
+MD_FUNCTION_IMPL MD_b32
+MD_TokenKindIsRegular(MD_TokenKind kind)
+{
+    return(kind > MD_TokenKind_RegularMin && kind < MD_TokenKind_RegularMax);
+}
+
 MD_FUNCTION_IMPL MD_ParseCtx
 MD_Parse_InitializeCtx(MD_String8 filename, MD_String8 contents)
 {
@@ -771,8 +783,14 @@ _MD_PushNodeToList(MD_Node **firstp, MD_Node **lastp, MD_Node *parent, MD_Node *
     }
 }
 
+MD_PRIVATE_FUNCTION_IMPL void
+_MD_Parse_Bump(MD_ParseCtx *ctx, MD_Token token)
+{
+    ctx->at = token.outer_string.str + token.outer_string.size;
+}
+
 MD_FUNCTION_IMPL MD_Token
-MD_Parse_PeekAll(MD_ParseCtx *ctx)
+MD_Parse_LexNext(MD_ParseCtx *ctx)
 {
     MD_Token token = {0};
     MD_u8 *one_past_last = ctx->file_contents.str + ctx->file_contents.size;
@@ -937,33 +955,33 @@ MD_Parse_PeekAll(MD_ParseCtx *ctx)
     return token;
 }
 
-MD_PRIVATE_FUNCTION_IMPL void
-_MD_Parse_Bump(MD_ParseCtx *ctx, MD_Token token)
-{
-    ctx->at = token.outer_string.str + token.outer_string.size;
-}
-
 MD_FUNCTION_IMPL MD_Token
-MD_Parse_PeekNonWhitespace(MD_ParseCtx *ctx)
+MD_Parse_PeekSkipSome(MD_ParseCtx *ctx, MD_TokenGroups skip_groups)
 {
-    MD_Token result = {0};
     MD_ParseCtx ctx_restore = *ctx;
     
-    for(MD_Token token = MD_Parse_PeekAll(ctx);; token = MD_Parse_PeekAll(ctx))
+    MD_b32 skip_comment    = (skip_groups & MD_TokenGroup_Comment);
+    MD_b32 skip_whitespace = (skip_groups & MD_TokenGroup_Whitespace);
+    MD_b32 skip_regular    = (skip_groups & MD_TokenGroup_Regular);
+    
+    MD_Token result = {0};
+    
+    loop:
     {
-        if(!MD_TokenKindIsWhitespace(token.kind))
-        {
-            result = token;
-            break;
+        result = MD_Parse_LexNext(ctx);
+        if ((skip_comment    && MD_TokenKindIsComment(result.kind)) ||
+            (skip_whitespace && MD_TokenKindIsWhitespace(result.kind)) ||
+            (skip_regular    && MD_TokenKindIsRegular(result.kind))){
+            _MD_Parse_Bump(ctx, result);
+            goto loop;
         }
-        else if(token.kind == MD_TokenKind_Nil)
-        {
-            break;
-        }
-        _MD_Parse_Bump(ctx, token);
     }
     
-    *ctx = ctx_restore;
+    {
+        // TODO(allen): I'm not a fan of what this implies.
+        *ctx = ctx_restore;
+    }
+    
     return result;
 }
 
@@ -978,19 +996,19 @@ MD_Parse_Require(MD_ParseCtx *ctx, MD_String8 string)
 {
     int result = 0;
     
-    MD_Token token_all = MD_Parse_PeekAll(ctx);
-    if(MD_StringMatch(token_all.string, string, 0))
+    MD_Token token_any = MD_Parse_PeekSkipSome(ctx, 0);
+    if(MD_StringMatch(token_any.string, string, 0))
     {
         result = 1;
-        _MD_Parse_Bump(ctx, token_all);
+        _MD_Parse_Bump(ctx, token_any);
         goto end;
     }
     
-    MD_Token token_nonws = MD_Parse_PeekNonWhitespace(ctx);
-    if(MD_StringMatch(token_nonws.string, string, 0))
+    MD_Token token_regular = MD_Parse_PeekSkipSome(ctx, MD_TokenGroup_Comment|MD_TokenGroup_Whitespace);
+    if(MD_StringMatch(token_regular.string, string, 0))
     {
         result = 1;
-        _MD_Parse_Bump(ctx, token_nonws);
+        _MD_Parse_Bump(ctx, token_regular);
         goto end;
     }
     
@@ -1002,7 +1020,18 @@ MD_FUNCTION_IMPL MD_b32
 MD_Parse_RequireKind(MD_ParseCtx *ctx, MD_TokenKind kind, MD_Token *out_token)
 {
     int result = 0;
-    MD_Token token = MD_TokenKindIsWhitespace(kind) ? MD_Parse_PeekAll(ctx) : MD_Parse_PeekNonWhitespace(ctx);
+    
+    MD_TokenGroups skip_groups = MD_TokenGroup_Comment|MD_TokenGroup_Whitespace;
+    if (MD_TokenKindIsWhitespace(kind))
+    {
+        skip_groups &= ~MD_TokenGroup_Whitespace;
+    }
+    if (MD_TokenKindIsComment(kind))
+    {
+        skip_groups &= ~MD_TokenGroup_Comment;
+    }
+    
+    MD_Token token = MD_Parse_PeekSkipSome(ctx, skip_groups);
     if(token.kind == kind)
     {
         result = 1;
@@ -1099,9 +1128,10 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     _MD_ParseTagList(ctx, &first_tag, &last_tag);
     
     // NOTE(rjf): Unnamed Sets
-    if(MD_Parse_TokenMatch(MD_Parse_PeekNonWhitespace(ctx), MD_S8Lit("("), 0) ||
-       MD_Parse_TokenMatch(MD_Parse_PeekNonWhitespace(ctx), MD_S8Lit("{"), 0) ||
-       MD_Parse_TokenMatch(MD_Parse_PeekNonWhitespace(ctx), MD_S8Lit("["), 0))
+    MD_TokenGroups skip_groups = MD_TokenGroup_Whitespace|MD_TokenGroup_Comment;
+    if(MD_Parse_TokenMatch(MD_Parse_PeekSkipSome(ctx, skip_groups), MD_S8Lit("("), 0) ||
+       MD_Parse_TokenMatch(MD_Parse_PeekSkipSome(ctx, skip_groups), MD_S8Lit("{"), 0) ||
+       MD_Parse_TokenMatch(MD_Parse_PeekSkipSome(ctx, skip_groups), MD_S8Lit("["), 0))
     {
         result.node = _MD_MakeNodeFromString_Ctx(ctx, MD_NodeKind_UnnamedSet, MD_S8Lit(""));
         _MD_ParseSet(ctx, result.node,
@@ -1507,7 +1537,7 @@ MD_NodeHasTag(MD_Node *node, MD_String8 tag_string)
     return !MD_NodeIsNil(MD_TagFromString(node, tag_string));
 }
 
-static MD_Expr _md_nil_expr =
+MD_GLOBAL MD_Expr _md_nil_expr =
 {
     &_md_nil_node,
     MD_ExprKind_Nil,

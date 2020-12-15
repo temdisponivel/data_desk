@@ -358,6 +358,8 @@ typedef enum MD_TokenKind
 {
     MD_TokenKind_Nil,
     
+    MD_TokenKind_RegularMin,
+    
     // A group of characters that begins with an underscore or alphabetic character,
     // and consists of numbers, alphabetic characters, or underscores after that.
     MD_TokenKind_Identifier,
@@ -385,7 +387,12 @@ typedef enum MD_TokenKind
     // "<<", ">>", "<=", ">=", "+=", "-=", "*=", "/=", "::", ":=", "==", "&=", "|=", "->"
     MD_TokenKind_Symbol,
     
+    MD_TokenKind_RegularMax,
+    
+    MD_TokenKind_Comment,
+    
     MD_TokenKind_WhitespaceMin,
+    MD_TokenKind_Whitespace,
     MD_TokenKind_Newline,
     MD_TokenKind_WhitespaceMax,
     
@@ -400,6 +407,14 @@ struct MD_Token
     MD_TokenKind kind;
     MD_String8 string;
     MD_String8 outer_string;
+};
+
+//~ Token groups.
+typedef MD_u32 MD_TokenGroups;
+enum{
+    MD_TokenGroup_Comment    = (1 << 0),
+    MD_TokenGroup_Whitespace = (1 << 1),
+    MD_TokenGroup_Regular    = (1 << 2)
 };
 
 //~ Parsing State
@@ -609,9 +624,13 @@ MD_FUNCTION MD_b32            MD_NodeTable_Insert(MD_NodeTable *table, MD_NodeTa
 //~ Parsing
 MD_FUNCTION MD_Token       MD_ZeroToken(void);
 MD_FUNCTION MD_b32         MD_TokenKindIsWhitespace(MD_TokenKind kind);
+MD_FUNCTION MD_b32         MD_TokenKindIsComment(MD_TokenKind kind);
+MD_FUNCTION MD_b32         MD_TokenKindIsRegular(MD_TokenKind kind);
 MD_FUNCTION MD_ParseCtx    MD_Parse_InitializeCtx(MD_String8 filename, MD_String8 contents);
-MD_FUNCTION MD_Token       MD_Parse_PeekAll(MD_ParseCtx *ctx);
-MD_FUNCTION MD_Token       MD_Parse_PeekNonWhitespace(MD_ParseCtx *ctx);
+
+// TODO(allen): why is peek in the public API and not "bump"?
+MD_FUNCTION MD_Token       MD_Parse_LexNext(MD_ParseCtx *ctx);
+MD_FUNCTION MD_Token       MD_Parse_PeekSkipSome(MD_ParseCtx *ctx, MD_TokenGroups skip_groups);
 MD_FUNCTION MD_b32         MD_Parse_PeekMatch(MD_ParseCtx *ctx, MD_String8 string);
 MD_FUNCTION MD_b32         MD_Parse_TokenMatch(MD_Token token, MD_String8 string, MD_StringMatchFlags flags);
 MD_FUNCTION MD_b32         MD_Parse_Require(MD_ParseCtx *ctx, MD_String8 string);
