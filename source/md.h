@@ -685,6 +685,8 @@ MD_FUNCTION MD_Expr *     MD_ParseAsExpr(MD_Node *first, MD_Node *last);
 MD_FUNCTION MD_Expr *     MD_ParseAsType(MD_Node *first, MD_Node *last);
 MD_FUNCTION MD_i64        MD_EvaluateExpr_I64(MD_Expr *expr);
 MD_FUNCTION MD_f64        MD_EvaluateExpr_F64(MD_Expr *expr);
+MD_FUNCTION MD_b32        MD_ExprMatch(MD_Expr *a, MD_Expr *b, MD_StringMatchFlags str_flags);
+MD_FUNCTION MD_b32        MD_ExprDeepMatch(MD_Expr *a, MD_Expr *b, MD_StringMatchFlags str_flags);
 
 //~ Generation
 MD_FUNCTION void MD_OutputTree(FILE *file, MD_Node *node);

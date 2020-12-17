@@ -71,10 +71,18 @@ BinOpExpr(MD_ExprKind kind, MD_Expr *left, MD_Expr *right)
 }
 
 static MD_b32
-CompareParsedWithTree(MD_String8 string, MD_Node *tree)
+MatchParsedWithNode(MD_String8 string, MD_Node *tree)
 {
     MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), string);
     return MD_NodeDeepMatch(tree, parse.node, 0, MD_NodeMatchFlag_Tags | MD_NodeMatchFlag_TagArguments);
+}
+
+static MD_b32
+MatchParsedWithExpr(MD_String8 string, MD_Expr *expr)
+{
+    MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), string);
+    MD_Expr *parse_expr = MD_ParseAsExpr(parse.node->first_child, parse.node->last_child);
+    return MD_ExprDeepMatch(expr, parse_expr, 0);
 }
 
 static MD_b32
@@ -104,11 +112,11 @@ int main(void)
     
     Test("Empty Sets")
     {
-        TestResult(CompareParsedWithTree(MD_S8Lit("{}"), MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""))));
-        TestResult(CompareParsedWithTree(MD_S8Lit("()"), MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""))));
-        TestResult(CompareParsedWithTree(MD_S8Lit("[]"), MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""))));
-        TestResult(CompareParsedWithTree(MD_S8Lit("[)"), MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""))));
-        TestResult(CompareParsedWithTree(MD_S8Lit("(]"), MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""))));
+        TestResult(MatchParsedWithNode(MD_S8Lit("{}"), MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""))));
+        TestResult(MatchParsedWithNode(MD_S8Lit("()"), MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""))));
+        TestResult(MatchParsedWithNode(MD_S8Lit("[]"), MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""))));
+        TestResult(MatchParsedWithNode(MD_S8Lit("[)"), MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""))));
+        TestResult(MatchParsedWithNode(MD_S8Lit("(]"), MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""))));
     }
     
     Test("Simple Unnamed Sets")
@@ -119,7 +127,7 @@ int main(void)
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("a")));
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("b")));
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("c")));
-            TestResult(CompareParsedWithTree(string, tree));
+            TestResult(MatchParsedWithNode(string, tree));
         }
         {
             MD_String8 string = MD_S8Lit("(1 2 3 4 5)");
@@ -129,13 +137,13 @@ int main(void)
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("3")));
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("4")));
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("5")));
-            TestResult(CompareParsedWithTree(string, tree));
+            TestResult(MatchParsedWithNode(string, tree));
         }
         {
             MD_String8 string = MD_S8Lit("{a}");
             MD_Node *tree = MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""));
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("a")));
-            TestResult(CompareParsedWithTree(string, tree));
+            TestResult(MatchParsedWithNode(string, tree));
         }
     }
     
@@ -146,7 +154,7 @@ int main(void)
         MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("a")));
         MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("b")));
         MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("c")));
-        TestResult(CompareParsedWithTree(string, tree));
+        TestResult(MatchParsedWithNode(string, tree));
     }
     
     Test("Nested Sets")
@@ -163,15 +171,15 @@ int main(void)
                 MD_PushChild(tree, sub);
             }
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("c")));
-            TestResult(CompareParsedWithTree(string, tree));
+            TestResult(MatchParsedWithNode(string, tree));
         }
     }
     
     Test("Non-Sets")
     {
-        TestResult(CompareParsedWithTree(MD_S8Lit("foo"), MakeTestNode(MD_NodeKind_Label, MD_S8Lit("foo"))));
-        TestResult(CompareParsedWithTree(MD_S8Lit("123"), MakeTestNode(MD_NodeKind_Label, MD_S8Lit("123"))));
-        TestResult(CompareParsedWithTree(MD_S8Lit("+"),   MakeTestNode(MD_NodeKind_Label, MD_S8Lit("+"))));
+        TestResult(MatchParsedWithNode(MD_S8Lit("foo"), MakeTestNode(MD_NodeKind_Label, MD_S8Lit("foo"))));
+        TestResult(MatchParsedWithNode(MD_S8Lit("123"), MakeTestNode(MD_NodeKind_Label, MD_S8Lit("123"))));
+        TestResult(MatchParsedWithNode(MD_S8Lit("+"),   MakeTestNode(MD_NodeKind_Label, MD_S8Lit("+"))));
     }
     
     Test("Set Border Flags")
@@ -270,6 +278,22 @@ int main(void)
             MD_Expr *right = BinOpExpr(MD_ExprKind_Add, AtomExpr("2"), AtomExpr("6"));
             MD_Expr *expr  = BinOpExpr(MD_ExprKind_Multiply, left, right);
             TestResult(MD_EvaluateExpr_I64(expr) == 56);
+        }
+    }
+    
+    Test("Expression Parsing")
+    {
+        {
+            MD_String8 string = MD_S8Lit("(1 + 2)");
+            MD_Expr *expr  = BinOpExpr(MD_ExprKind_Add, AtomExpr("1"), AtomExpr("2"));
+            TestResult(MatchParsedWithExpr(string, expr));
+        }
+        {
+            MD_String8 string = MD_S8Lit("((3 + 4) * (2 + 6))");
+            MD_Expr *left  = BinOpExpr(MD_ExprKind_Add, AtomExpr("3"), AtomExpr("4"));
+            MD_Expr *right = BinOpExpr(MD_ExprKind_Add, AtomExpr("2"), AtomExpr("6"));
+            MD_Expr *expr  = BinOpExpr(MD_ExprKind_Multiply, left, right);
+            TestResult(MatchParsedWithExpr(string, expr));
         }
     }
     

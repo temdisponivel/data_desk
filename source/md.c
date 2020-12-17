@@ -21,17 +21,17 @@ MD_PRIVATE_FUNCTION_IMPL MD_b32 _MD_OS_IMPL_FileIter_Increment(MD_FileIter *it, 
 // of maintaining order based initializers.
 static MD_Node _md_nil_node =
 {
-    &_md_nil_node, // next
-    &_md_nil_node, // prev
-    &_md_nil_node, // parent
-    &_md_nil_node, // first_child
-    &_md_nil_node, // last_child
-    &_md_nil_node, // first_tag
-    &_md_nil_node, // last_tag
-    MD_NodeKind_Nil,
-    0, // flags
-    {0}, // string
-    {0}, // whole_string
+    &_md_nil_node,         // next
+    &_md_nil_node,         // prev
+    &_md_nil_node,         // parent
+    &_md_nil_node,         // first_child
+    &_md_nil_node,         // last_child
+    &_md_nil_node,         // first_tag
+    &_md_nil_node,         // last_tag
+    MD_NodeKind_Nil,       // kind
+    0,                     // flags
+    {0},                   // string
+    {0},                   // whole_string
     0xdeadffffffffffull,
     {(MD_u8*)"`NIL DD NODE`", 13},
     0,
@@ -1960,6 +1960,33 @@ MD_EvaluateExpr_F64(MD_Expr *expr)
 #undef _MD_BinaryOp
         case MD_ExprKind_Atom: { result = MD_F64FromString(expr->node->string); }break;
         default: break;
+    }
+    return result;
+}
+
+MD_FUNCTION_IMPL MD_b32
+MD_ExprMatch(MD_Expr *a, MD_Expr *b, MD_StringMatchFlags str_flags)
+{
+    MD_b32 result = 0;
+    if(a->kind == b->kind)
+    {
+        result = 1;
+        if(a->kind == MD_ExprKind_Atom)
+        {
+            result = MD_StringMatch(a->node->string, b->node->string, str_flags);
+        }
+    }
+    return result;
+}
+
+MD_FUNCTION_IMPL MD_b32
+MD_ExprDeepMatch(MD_Expr *a, MD_Expr *b, MD_StringMatchFlags str_flags)
+{
+    MD_b32 result = MD_ExprMatch(a, b, str_flags);
+    if(result && !MD_ExprIsNil(a) && !MD_ExprIsNil(b))
+    {
+        result = (MD_ExprDeepMatch(a->sub[0], b->sub[0], str_flags) &&
+                  MD_ExprDeepMatch(a->sub[1], b->sub[1], str_flags));
     }
     return result;
 }
