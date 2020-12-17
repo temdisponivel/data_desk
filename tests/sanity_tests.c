@@ -295,6 +295,12 @@ int main(void)
             MD_Expr *expr  = BinOpExpr(MD_ExprKind_Multiply, left, right);
             TestResult(MatchParsedWithExpr(string, expr));
         }
+        {
+            MD_String8 string = MD_S8Lit("(1*2+3)");
+            MD_Expr *left  = BinOpExpr(MD_ExprKind_Multiply, AtomExpr("1"), AtomExpr("2"));
+            MD_Expr *expr  = BinOpExpr(MD_ExprKind_Add, left, AtomExpr("3"));
+            TestResult(MatchParsedWithExpr(string, expr));
+        }
     }
     
     return 0;

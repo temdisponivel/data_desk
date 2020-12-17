@@ -1667,54 +1667,54 @@ MD_FUNCTION_IMPL MD_ExprPrec
 MD_ExprPrecFromExprKind(MD_ExprKind kind)
 {
     // 0:  Invalid
-    // 1:  (unary) - ~ !
-    // 2:  . -> () []
-    // 3:  * / %
-    // 4:  + -
-    // 5:  << >>
-    // 6:  < <= > >= 
-    // 7:  == !=
-    // 8:  (bitwise) &
-    // 9:  ^
-    // 10: |
-    // 11: &&
-    // 12: ||
+    // 12: (unary) - ~ !
+    // 11: . -> () []
+    // 10: * / %
+    // 9:  + -
+    // 8:  << >>
+    // 7:  < <= > >= 
+    // 6:  == !=
+    // 5:  (bitwise) &
+    // 4:  ^
+    // 3:  |
+    // 2:  &&
+    // 1:  ||
     MD_ExprPrec kind_to_prec[] =
     {
         +0,  // MD_ExprKind_Nil
         +0,  // MD_ExprKind_Atom
         
-        +2,  // MD_ExprKind_Dot
-        +2,  // MD_ExprKind_Arrow
-        +2,  // MD_ExprKind_Call
-        +2,  // MD_ExprKind_Subscript
-        +1,  // MD_ExprKind_Dereference
-        +1,  // MD_ExprKind_Reference
+        +11, // MD_ExprKind_Dot
+        +11, // MD_ExprKind_Arrow
+        +11, // MD_ExprKind_Call
+        +11, // MD_ExprKind_Subscript
+        +12, // MD_ExprKind_Dereference
+        +12, // MD_ExprKind_Reference
         
-        +4,  // MD_ExprKind_Add
-        +4,  // MD_ExprKind_Subtract
-        +3,  // MD_ExprKind_Multiply
-        +3,  // MD_ExprKind_Divide
-        +3,  // MD_ExprKind_Mod
+        +9,  // MD_ExprKind_Add
+        +9,  // MD_ExprKind_Subtract
+        +10, // MD_ExprKind_Multiply
+        +10, // MD_ExprKind_Divide
+        +10, // MD_ExprKind_Mod
         
-        +7,  // MD_ExprKind_IsEqual
-        +7,  // MD_ExprKind_IsNotEqual
-        +6,  // MD_ExprKind_LessThan
-        +6,  // MD_ExprKind_GreaterThan
-        +6,  // MD_ExprKind_LessThanEqualTo
-        +6,  // MD_ExprKind_GreaterThanEqualTo
+        +6,  // MD_ExprKind_IsEqual
+        +6,  // MD_ExprKind_IsNotEqual
+        +7,  // MD_ExprKind_LessThan
+        +7,  // MD_ExprKind_GreaterThan
+        +7,  // MD_ExprKind_LessThanEqualTo
+        +7,  // MD_ExprKind_GreaterThanEqualTo
         
-        +11, // MD_ExprKind_BoolAnd
-        +12, // MD_ExprKind_BoolOr
-        +1,  // MD_ExprKind_BoolNot
-        +8,  // MD_ExprKind_BitAnd
-        +10, // MD_ExprKind_BitOr
-        +1,  // MD_ExprKind_BitNot
-        +9,  // MD_ExprKind_BitXor
-        +5,  // MD_ExprKind_LeftShift
-        +5,  // MD_ExprKind_RightShift
+        +2,  // MD_ExprKind_BoolAnd
+        +1,  // MD_ExprKind_BoolOr
+        +12, // MD_ExprKind_BoolNot
+        +5,  // MD_ExprKind_BitAnd
+        +3,  // MD_ExprKind_BitOr
+        +12, // MD_ExprKind_BitNot
+        +4,  // MD_ExprKind_BitXor
+        +8,  // MD_ExprKind_LeftShift
+        +8,  // MD_ExprKind_RightShift
         
-        +1,  // MD_ExprKind_Negative
+        +12, // MD_ExprKind_Negative
         +0,  // MD_ExprKind_Pointer
         +0,  // MD_ExprKind_Array
     };
@@ -1872,7 +1872,6 @@ _MD_ParseExpr_(_MD_NodeParseCtx *ctx, int precedence_in)
                 MD_Node *op_node = ctx->at;
                 expr_kind = MD_BinaryExprKindFromNode(ctx->at);
                 int operator_precedence = MD_ExprPrecFromExprKind(expr_kind);
-                
                 if(operator_precedence != precedence)
                 {
                     break;
