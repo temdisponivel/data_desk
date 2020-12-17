@@ -4,9 +4,7 @@
 //
 // - Expression/Type helper
 //   - Parsing things as a type, getting basic type info
-//   - Parsing things to an expression tree (MD_Expr), helpers for
-//     interpreting an MD_Expr tree
-// - Radix for MD_IntFromString
+// - Radix for MD_I64FromString
 // - Freeing calls, allow hooking the allocator with an arena or
 //   something so that someone can use this for work at an application/game's
 //   runtime
