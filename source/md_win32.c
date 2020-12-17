@@ -1,3 +1,6 @@
+////////////////////////////////
+// TODO(allen): Write commentary for all of this.
+
 #define MAX_PATH 260
 typedef unsigned long DWORD;
 typedef unsigned short WORD;
@@ -49,8 +52,10 @@ MD_C_LINKAGE_END
 
 #pragma comment(lib, "User32.lib")
 
-MD_PRIVATE_FUNCTION_IMPL MD_b32
-_MD_OS_IMPL_FileIter_Increment(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_info)
+#define MD_IMPL_FileIterIncrement MD_WIN32_FileIterIncrement
+
+static MD_b32
+MD_WIN32_FileIterIncrement(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_info)
 {
     MD_b32 result = 0;
     

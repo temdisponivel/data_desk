@@ -61,7 +61,7 @@ int main(int argument_count, char **arguments)
     {
         printf("Searching for site pages at \"%.*s\"...\n", MD_StringExpand(page_dir_path));
         MD_FileInfo file_info = {0};
-        for(MD_FileIter it = {0}; MD_FileIter_Increment(&it, page_dir_path, &file_info);)
+        for(MD_FileIter it = {0}; MD_FileIterIncrement(&it, page_dir_path, &file_info);)
         {
             if(MD_StringMatch(MD_ExtensionFromPath(file_info.filename), MD_S8Lit("md"), MD_StringMatchFlag_CaseInsensitive) &&
                !MD_StringMatch(MD_TrimFolder(MD_TrimExtension(file_info.filename)),

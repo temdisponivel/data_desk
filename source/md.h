@@ -16,6 +16,13 @@
 // - Helpers for parsing NodeFlags, figuring out which nodes in a set are
 //   separated by a semicolon, something like MD_SeekNodeWithFlags(node) -> node ?
 
+// NOTE(allen): "Plugin" functionality
+//
+// MD_IMPL_FileIterIncrement(MD_FileIter, MD_String8, MD_FileInfo)
+//
+// TODO(allen): Commentary about this system somewhere easy to discover when
+// you go digging.
+
 #ifndef MD_H
 #define MD_H
 
@@ -709,10 +716,6 @@ MD_FUNCTION MD_b32         MD_CommandLine_Increment(MD_CommandLine *cmdln, MD_St
 
 //~ File System
 MD_FUNCTION MD_String8  MD_LoadEntireFile(MD_String8 filename);
-
-//~ Functions that require OS information... will be excluded from the build
-// if an OS is not specified.
-// TODO(rjf): Decouple
-MD_FUNCTION MD_b32      MD_FileIter_Increment(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_info);
+MD_FUNCTION MD_b32      MD_FileIterIncrement(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_info);
 
 #endif // MD_H
