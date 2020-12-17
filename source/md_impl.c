@@ -792,10 +792,9 @@ MD_TokenKindIsRegular(MD_TokenKind kind)
 }
 
 MD_FUNCTION_IMPL MD_ParseCtx
-MD_Parse_InitializeCtx(void *actx, MD_String8 filename, MD_String8 contents)
+MD_Parse_InitializeCtx(MD_String8 filename, MD_String8 contents)
 {
     MD_ParseCtx ctx = {0};
-    ctx.actx = actx;
     ctx.first_root = ctx.last_root = MD_NilNode();
     ctx.at = contents.str;
     ctx.file_contents = contents;
@@ -1075,13 +1074,13 @@ MD_Parse_RequireKind(MD_ParseCtx *ctx, MD_TokenKind kind, MD_Token *out_token)
 }
 
 MD_PRIVATE_FUNCTION_IMPL void
-_MD_Error(MD_ParseCtx *ctx, char *fmt, ...)
+_MD_Error(void *actx, MD_ParseCtx *ctx, char *fmt, ...)
 {
-    MD_Error *error = _MD_PushArray(ctx->actx, MD_Error, 1);
+    MD_Error *error = _MD_PushArray(actx, MD_Error, 1);
     error->filename = ctx->filename;
     va_list args;
     va_start(args, fmt);
-    error->string = MD_PushStringFV(ctx->actx, fmt, args);
+    error->string = MD_PushStringFV(actx, fmt, args);
     va_end(args);
 }
 
@@ -1108,15 +1107,15 @@ _MD_MakeNode(void *actx, MD_NodeKind kind, MD_String8 string, MD_String8 whole_s
 }
 
 MD_PRIVATE_FUNCTION_IMPL MD_Node *
-_MD_MakeNodeFromToken_Ctx(MD_ParseCtx *ctx, MD_NodeKind kind, MD_Token token)
+_MD_MakeNodeFromToken_Ctx(void *actx, MD_ParseCtx *ctx, MD_NodeKind kind, MD_Token token)
 {
-    return _MD_MakeNode(ctx->actx, kind, token.string, token.outer_string, ctx->filename, ctx->file_contents.str, ctx->at);
+    return _MD_MakeNode(actx, kind, token.string, token.outer_string, ctx->filename, ctx->file_contents.str, ctx->at);
 }
 
 MD_PRIVATE_FUNCTION_IMPL MD_Node *
-_MD_MakeNodeFromString_Ctx(MD_ParseCtx *ctx, MD_NodeKind kind, MD_String8 string)
+_MD_MakeNodeFromString_Ctx(void *actx, MD_ParseCtx *ctx, MD_NodeKind kind, MD_String8 string)
 {
-    return _MD_MakeNode(ctx->actx, kind, string, string, ctx->filename, ctx->file_contents.str, ctx->at);
+    return _MD_MakeNode(actx, kind, string, string, ctx->filename, ctx->file_contents.str, ctx->at);
 }
 
 typedef MD_u32 _MD_ParseSetFlags;
@@ -1128,9 +1127,9 @@ enum
     _MD_ParseSetFlag_Implicit = (1<<3),
 };
 
-MD_PRIVATE_FUNCTION_IMPL MD_ParseResult _MD_ParseOneNode(MD_ParseCtx *ctx);
-MD_PRIVATE_FUNCTION_IMPL void _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags, MD_Node **first_out, MD_Node **last_out);
-MD_PRIVATE_FUNCTION_IMPL void _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out);
+MD_PRIVATE_FUNCTION_IMPL MD_ParseResult _MD_ParseOneNode(void *actx, MD_ParseCtx *ctx);
+MD_PRIVATE_FUNCTION_IMPL void _MD_ParseSet(void *actx, MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags, MD_Node **first_out, MD_Node **last_out);
+MD_PRIVATE_FUNCTION_IMPL void _MD_ParseTagList(void *actx, MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out);
 
 MD_PRIVATE_FUNCTION_IMPL void
 _MD_SetNodeFlagsByToken(MD_Node *node, MD_Token token)
@@ -1144,7 +1143,7 @@ _MD_SetNodeFlagsByToken(MD_Node *node, MD_Token token)
 }
 
 MD_PRIVATE_FUNCTION_IMPL MD_ParseResult
-_MD_ParseOneNode(MD_ParseCtx *ctx)
+_MD_ParseOneNode(void *actx, MD_ParseCtx *ctx)
 {
     MD_u8 *at_first = ctx->at;
     
@@ -1155,7 +1154,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     
     MD_Node *first_tag = 0;
     MD_Node *last_tag = 0;
-    _MD_ParseTagList(ctx, &first_tag, &last_tag);
+    _MD_ParseTagList(actx, ctx, &first_tag, &last_tag);
     
     // NOTE(rjf): Unnamed Sets
     MD_TokenGroups skip_groups = MD_TokenGroup_Whitespace|MD_TokenGroup_Comment;
@@ -1163,8 +1162,8 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
        MD_Parse_TokenMatch(MD_Parse_PeekSkipSome(ctx, skip_groups), MD_S8Lit("{"), 0) ||
        MD_Parse_TokenMatch(MD_Parse_PeekSkipSome(ctx, skip_groups), MD_S8Lit("["), 0))
     {
-        result.node = _MD_MakeNodeFromString_Ctx(ctx, MD_NodeKind_UnnamedSet, MD_S8Lit(""));
-        _MD_ParseSet(ctx, result.node,
+        result.node = _MD_MakeNodeFromString_Ctx(actx, ctx, MD_NodeKind_UnnamedSet, MD_S8Lit(""));
+        _MD_ParseSet(actx, ctx, result.node,
                      _MD_ParseSetFlag_Paren   |
                      _MD_ParseSetFlag_Brace   |
                      _MD_ParseSetFlag_Bracket,
@@ -1180,12 +1179,12 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
             MD_Parse_RequireKind(ctx, MD_TokenKind_CharLiteral,    &token) ||
             MD_Parse_RequireKind(ctx, MD_TokenKind_Symbol,         &token))
     {
-        result.node = MD_MakeNodeFromToken(ctx->actx, MD_NodeKind_Label, ctx->filename, ctx->file_contents.str, ctx->at, token);
+        result.node = MD_MakeNodeFromToken(actx, MD_NodeKind_Label, ctx->filename, ctx->file_contents.str, ctx->at, token);
         _MD_SetNodeFlagsByToken(result.node, token);
         // NOTE(rjf): Children
         if(MD_Parse_Require(ctx, MD_S8Lit(":")))
         {
-            _MD_ParseSet(ctx, result.node,
+            _MD_ParseSet(actx, ctx, result.node,
                          _MD_ParseSetFlag_Paren   |
                          _MD_ParseSetFlag_Brace   |
                          _MD_ParseSetFlag_Bracket |
@@ -1211,7 +1210,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
 }
 
 MD_PRIVATE_FUNCTION_IMPL void
-_MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
+_MD_ParseSet(void *actx, MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
              MD_Node **first_out, MD_Node **last_out)
 {
     MD_Node *first = MD_NilNode();
@@ -1268,7 +1267,7 @@ _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
                 }
             }
             
-            MD_ParseResult parse = _MD_ParseOneNode(ctx);
+            MD_ParseResult parse = _MD_ParseOneNode(actx, ctx);
             MD_Node *child = parse.node;
             if(!MD_NodeIsNil(child))
             {
@@ -1308,7 +1307,7 @@ _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
 }
 
 MD_PRIVATE_FUNCTION_IMPL void
-_MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
+_MD_ParseTagList(void *actx, MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
 {
     MD_Node *first = MD_NilNode();
     MD_Node *last = MD_NilNode();
@@ -1318,8 +1317,8 @@ _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
         MD_Token name = {0};
         if(MD_Parse_RequireKind(ctx, MD_TokenKind_Identifier, &name))
         {
-            MD_Node *tag = _MD_MakeNodeFromToken_Ctx(ctx, MD_NodeKind_Tag, name);
-            _MD_ParseSet(ctx, tag, _MD_ParseSetFlag_Paren, &tag->first_child, &tag->last_child);
+            MD_Node *tag = _MD_MakeNodeFromToken_Ctx(actx, ctx, MD_NodeKind_Tag, name);
+            _MD_ParseSet(actx, ctx, tag, _MD_ParseSetFlag_Paren, &tag->first_child, &tag->last_child);
             _MD_PushNodeToList(&first, &last, MD_NilNode(), tag);
         }
         else
@@ -1335,8 +1334,8 @@ _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
 MD_FUNCTION_IMPL MD_ParseResult
 MD_ParseOneNode(void *actx, MD_String8 filename, MD_String8 contents)
 {
-    MD_ParseCtx ctx = MD_Parse_InitializeCtx(actx, filename, contents);
-    return _MD_ParseOneNode(&ctx);
+    MD_ParseCtx ctx = MD_Parse_InitializeCtx(filename, contents);
+    return _MD_ParseOneNode(actx, &ctx);
 }
 
 MD_FUNCTION MD_Node *
@@ -1346,10 +1345,10 @@ MD_ParseWholeString(void *actx, MD_String8 filename, MD_String8 contents)
     MD_Node *root = MD_MakeNodeFromString(actx, MD_NodeKind_File, filename, contents.str, contents.str, dummy_file_name);
     if(contents.size > 0)
     {
-        MD_ParseCtx ctx = MD_Parse_InitializeCtx(actx, filename, contents);
+        MD_ParseCtx ctx = MD_Parse_InitializeCtx(filename, contents);
         for(MD_u64 i = 0; i < contents.size;)
         {
-            MD_ParseResult parse = _MD_ParseOneNode(&ctx);
+            MD_ParseResult parse = _MD_ParseOneNode(actx, &ctx);
             _MD_PushNodeToList(&root->first_child, &root->last_child, root, parse.node);
             i += parse.bytes_parsed;
             if(parse.bytes_parsed == 0)
@@ -1754,7 +1753,6 @@ MD_MakeExpr(void *actx, MD_Node *node, MD_ExprKind kind, MD_Expr *left, MD_Expr 
 typedef struct _MD_NodeParseCtx _MD_NodeParseCtx;
 struct _MD_NodeParseCtx
 {
-    void *actx;
     MD_Node *at;
     MD_Node *last;
     MD_Node *one_past_last;
@@ -1816,11 +1814,11 @@ _MD_NodeParse_Next(_MD_NodeParseCtx *ctx)
     ctx->at = ctx->at->next;
 }
 
-MD_PRIVATE_FUNCTION_IMPL MD_Expr *_MD_ParseExpr_(_MD_NodeParseCtx *ctx, int precedence_in);
-MD_PRIVATE_FUNCTION_IMPL MD_Expr *_MD_ParseExpr(_MD_NodeParseCtx *ctx);
+MD_PRIVATE_FUNCTION_IMPL MD_Expr *_MD_ParseExpr_(void *actx, _MD_NodeParseCtx *ctx, int precedence_in);
+MD_PRIVATE_FUNCTION_IMPL MD_Expr *_MD_ParseExpr(void *actx, _MD_NodeParseCtx *ctx);
 
 MD_PRIVATE_FUNCTION_IMPL MD_Expr *
-_MD_ParseUnaryExpr(_MD_NodeParseCtx *ctx)
+_MD_ParseUnaryExpr(void *actx, _MD_NodeParseCtx *ctx)
 {
     MD_Expr *result = MD_NilExpr();
     MD_Node *set = 0;
@@ -1829,40 +1827,40 @@ _MD_ParseUnaryExpr(_MD_NodeParseCtx *ctx)
     // NOTE(rjf): Sub-expression
     if(_MD_NodeParse_ConsumeSet(ctx, &set))
     {
-        result = MD_ParseAsExpr(ctx->actx, set->first_child, set->last_child);
+        result = MD_ParseAsExpr(actx, set->first_child, set->last_child);
     }
     
     // NOTE(rjf): Literal
     else if(_MD_NodeParse_ConsumeLiteral(ctx, &node))
     {
-        result = MD_MakeExpr(ctx->actx, node, MD_ExprKind_Atom, 0, 0);
+        result = MD_MakeExpr(actx, node, MD_ExprKind_Atom, 0, 0);
     }
     
     // NOTE(rjf): Negative
     else if(_MD_NodeParse_Consume(ctx, MD_S8Lit("-"), &node))
     {
-        result = MD_MakeExpr(ctx->actx, node, MD_ExprKind_Negative, 0, _MD_ParseExpr(ctx));
+        result = MD_MakeExpr(actx, node, MD_ExprKind_Negative, 0, _MD_ParseExpr(actx, ctx));
     }
     
     // NOTE(rjf): Bitwise Negate
     else if(_MD_NodeParse_Consume(ctx, MD_S8Lit("~"), &node))
     {
-        result = MD_MakeExpr(ctx->actx, node, MD_ExprKind_BitNot, 0, _MD_ParseExpr(ctx));
+        result = MD_MakeExpr(actx, node, MD_ExprKind_BitNot, 0, _MD_ParseExpr(actx, ctx));
     }
     
     // NOTE(rjf): Boolean Negate
     else if(_MD_NodeParse_Consume(ctx, MD_S8Lit("!"), &node))
     {
-        result = MD_MakeExpr(ctx->actx, node, MD_ExprKind_BoolNot, 0, _MD_ParseExpr(ctx));
+        result = MD_MakeExpr(actx, node, MD_ExprKind_BoolNot, 0, _MD_ParseExpr(actx, ctx));
     }
     
     return result;
 }
 
 MD_PRIVATE_FUNCTION_IMPL MD_Expr *
-_MD_ParseExpr_(_MD_NodeParseCtx *ctx, int precedence_in)
+_MD_ParseExpr_(void *actx, _MD_NodeParseCtx *ctx, int precedence_in)
 {
-    MD_Expr *expr = _MD_ParseUnaryExpr(ctx);
+    MD_Expr *expr = _MD_ParseUnaryExpr(actx, ctx);
     if(MD_ExprIsNil(expr))
     {
         goto end_parse;
@@ -1892,7 +1890,7 @@ _MD_ParseExpr_(_MD_NodeParseCtx *ctx, int precedence_in)
                 
                 _MD_NodeParse_Next(ctx);
                 
-                MD_Expr *right = _MD_ParseExpr_(ctx, precedence+1);
+                MD_Expr *right = _MD_ParseExpr_(actx, ctx, precedence+1);
                 if(MD_ExprIsNil(right))
                 {
                     // TODO(rjf): Error: "Expected right-hand-side of binary expression."
@@ -1900,7 +1898,7 @@ _MD_ParseExpr_(_MD_NodeParseCtx *ctx, int precedence_in)
                 }
                 
                 MD_Expr *left = expr;
-                expr = MD_MakeExpr(ctx->actx, op_node, expr_kind, left, right);
+                expr = MD_MakeExpr(actx, op_node, expr_kind, left, right);
                 expr->sub[0] = left;
                 expr->sub[1] = right;
             }
@@ -1912,23 +1910,25 @@ _MD_ParseExpr_(_MD_NodeParseCtx *ctx, int precedence_in)
 }
 
 MD_PRIVATE_FUNCTION_IMPL MD_Expr *
-_MD_ParseExpr(_MD_NodeParseCtx *ctx)
+_MD_ParseExpr(void *actx, _MD_NodeParseCtx *ctx)
 {
-    return _MD_ParseExpr_(ctx, 1);
+    return _MD_ParseExpr_(actx, ctx, 1);
 }
 
 MD_FUNCTION_IMPL MD_Expr *
 MD_ParseAsExpr(void *actx, MD_Node *first, MD_Node *last)
 {
-    _MD_NodeParseCtx ctx = { actx, first, last, last->next };
-    return _MD_ParseExpr(&ctx);
+    _MD_NodeParseCtx ctx_ = { first, last, last->next };
+    _MD_NodeParseCtx *ctx = &ctx_;
+    return _MD_ParseExpr(actx, ctx);
 }
 
 MD_FUNCTION_IMPL MD_Expr *
 MD_ParseAsType(void *actx, MD_Node *first, MD_Node *last)
 {
     MD_Expr *expr = MD_NilExpr();
-    _MD_NodeParseCtx ctx = { actx, first, last, last->next };
+    _MD_NodeParseCtx ctx_ = { first, last, last->next };
+    _MD_NodeParseCtx *ctx = &ctx_;
     
     return expr;
 }
