@@ -59,8 +59,6 @@ MD_WIN32_FileIterIncrement(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_in
 {
     MD_b32 result = 0;
     
-    void *actx = (void*)1;
-    
     WIN32_FIND_DATAA find_data = {0};
     HANDLE state = *(HANDLE *)(&it->state);
     if(state == 0)
@@ -71,7 +69,7 @@ MD_WIN32_FileIterIncrement(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_in
         {
             need_star = 1;
         }
-        MD_String8 cpath = need_star ? MD_PushStringF(actx, "%.*s*", MD_StringExpand(path)) : path;
+        MD_String8 cpath = need_star ? MD_PushStringF("%.*s*", MD_StringExpand(path)) : path;
         state = FindFirstFileA((char*)cpath.str, &find_data);
         result = !!state;
     }
@@ -88,7 +86,7 @@ MD_WIN32_FileIterIncrement(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_in
         {
             out_info->flags |= MD_FileFlag_Directory;
         }
-        out_info->filename = MD_PushStringF(actx, "%s", find_data.cFileName);
+        out_info->filename = MD_PushStringF("%s", find_data.cFileName);
         out_info->file_size = ((((MD_u64)find_data.nFileSizeHigh) << 32) |
                                ((MD_u64)find_data.nFileSizeLow));
     }

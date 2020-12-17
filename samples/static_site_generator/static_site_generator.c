@@ -32,12 +32,11 @@ static void GeneratePageContent(MD_NodeTable *index_table, SiteInfo *site_info, 
 
 int main(int argument_count, char **arguments)
 {
-    void *actx = (void*)1;
     
     //~ NOTE(rjf): Parse command line arguments.
     MD_String8 site_info_path = {0};
     MD_String8 page_dir_path = {0};
-    MD_CommandLine cmdln = MD_CommandLine_Start(actx, argument_count, arguments);
+    MD_CommandLine cmdln = MD_CommandLine_Start(argument_count, arguments);
     if(!MD_CommandLine_FlagString(&cmdln, MD_S8Lit("--siteinfo"), &site_info_path) ||
        !MD_CommandLine_FlagString(&cmdln, MD_S8Lit("--pagedir"), &page_dir_path))
     {
@@ -46,13 +45,13 @@ int main(int argument_count, char **arguments)
     }
     
     //~ NOTE(rjf): Load JS.
-    MD_String8 js_string = MD_LoadEntireFile(actx, MD_PushStringF(actx, "%.*s/site.js", MD_StringExpand(page_dir_path)));
+    MD_String8 js_string = MD_LoadEntireFile(MD_PushStringF("%.*s/site.js", MD_StringExpand(page_dir_path)));
     
     //~ NOTE(rjf): Parse site info.
     SiteInfo site_info = {0};
     {
         printf("Parsing site metadata at \"%.*s\"...\n", MD_StringExpand(site_info_path));
-        MD_Node *site_info_file = MD_ParseWholeFile(actx, site_info_path);
+        MD_Node *site_info_file = MD_ParseWholeFile(site_info_path);
         site_info = ParseSiteInfo(site_info_file);
     }
     
@@ -72,10 +71,10 @@ int main(int argument_count, char **arguments)
             {
                 printf("Processing site page at \"%.*s\"...\n", MD_StringExpand(file_info.filename));
                 MD_String8 folder = MD_FolderFromPath(page_dir_path);
-                MD_String8 path = MD_PushStringF(actx, "%.*s/%.*s",
+                MD_String8 path = MD_PushStringF("%.*s/%.*s",
                                                  MD_StringExpand(folder),
                                                  MD_StringExpand(file_info.filename));
-                MD_PushSibling(&first_root, &last_root, MD_NilNode(), MD_ParseWholeFile(actx, path));
+                MD_PushSibling(&first_root, &last_root, MD_NilNode(), MD_ParseWholeFile(path));
             }
         }
     }
@@ -91,7 +90,7 @@ int main(int argument_count, char **arguments)
                 {
                     for(MD_EachNode(index_string, node->first_child))
                     {
-                        MD_NodeTable_Insert(actx, &index_table, MD_NodeTableCollisionRule_Chain, index_string->string, root);
+                        MD_NodeTable_Insert(&index_table, MD_NodeTableCollisionRule_Chain, index_string->string, root);
                     }
                     goto end_index_build;
                 }
@@ -127,7 +126,7 @@ int main(int argument_count, char **arguments)
         PageInfo page_info = ParsePageInfo(root);
         
         MD_String8 name_without_extension = MD_TrimFolder(MD_TrimExtension(root->filename));
-        FILE *file = fopen(MD_PushStringF(actx, "%.*s.html", MD_StringExpand(name_without_extension)).str, "w");
+        FILE *file = fopen(MD_PushStringF("%.*s.html", MD_StringExpand(name_without_extension)).str, "w");
         if(file)
         {
             fprintf(file, "<!DOCTYPE html>\n");
@@ -361,8 +360,7 @@ MakeDateString(MD_Node *date)
             int month_idx = MD_I64FromString(month->string)-1;
             if(month_idx >= 0 && month_idx < sizeof(month_names)/sizeof(month_names[0]))
             {
-                void *actx = (void*)1;
-                result = MD_PushStringF(actx, "%.*s %s %.*s",
+                result = MD_PushStringF("%.*s %s %.*s",
                                         MD_StringExpand(day->string),
                                         month_names[month_idx],
                                         MD_StringExpand(year->string));
@@ -376,7 +374,6 @@ MakeDateString(MD_Node *date)
 static void
 GeneratePageContent(MD_NodeTable *index_table, SiteInfo *site_info, PageInfo *page_info, FILE *file, MD_Node *node)
 {
-    void *actx = (void*)1;
     
     //~ NOTE(rjf): Text blobs
     if(MD_NodeIsNil(node->first_child) &&
@@ -405,7 +402,7 @@ GeneratePageContent(MD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
         {
             MD_S8Lit("\n\n"),
         };
-        MD_String8List strlist = MD_SplitString(actx, node->string, sizeof(splits)/sizeof(splits[0]), splits);
+        MD_String8List strlist = MD_SplitString(node->string, sizeof(splits)/sizeof(splits[0]), splits);
         
         for(MD_String8Node *strnode = strlist.first; strnode; strnode = strnode->next)
         {
@@ -414,7 +411,7 @@ GeneratePageContent(MD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
             {
                 if(strnode->string.str[i] == '@')
                 {
-                    MD_ParseResult parse =  MD_ParseOneNode(actx, node->filename, MD_StringSubstring(strnode->string, i, strnode->string.size));
+                    MD_ParseResult parse =  MD_ParseOneNode(node->filename, MD_StringSubstring(strnode->string, i, strnode->string.size));
                     if(!MD_NodeIsNil(parse.node))
                     {
                         if(MD_NodeHasTag(node, MD_S8Lit("i")))
@@ -516,7 +513,7 @@ GeneratePageContent(MD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
             MD_Node *index_string = 0;
             for(MD_u64 idx = 0; !MD_NodeIsNil(index_string = MD_ChildFromIndex(node, idx)); idx += 1)
             {
-                for(MD_NodeTableSlot *slot = MD_NodeTable_Lookup(actx, index_table, index_string->string);
+                for(MD_NodeTableSlot *slot = MD_NodeTable_Lookup(index_table, index_string->string);
                     slot; slot = slot->next)
                 {
                     if(slot->node)
@@ -525,7 +522,7 @@ GeneratePageContent(MD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
                         
                         MD_String8 filename = slot->node->filename;
                         MD_String8 filename_no_ext = MD_TrimExtension(MD_TrimFolder(filename));
-                        MD_String8 link = MD_PushStringF(actx, "%.*s.html", MD_StringExpand(filename_no_ext));
+                        MD_String8 link = MD_PushStringF("%.*s.html", MD_StringExpand(filename_no_ext));
                         MD_String8 name = info.title->string;
                         MD_String8 date = MakeDateString(info.date);
                         

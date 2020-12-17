@@ -6,7 +6,7 @@
 static void*
 MD_MALLOC_Alloc(void *ctx, MD_u64 size)
 {
-    MD_Assert(ctx == (void*)1);
+    MD_Assert(ctx == MD_MALLOC_Alloc);
     return(malloc(size));
 }
 
@@ -15,5 +15,5 @@ MD_MALLOC_Alloc(void *ctx, MD_u64 size)
 static void*
 MD_MALLOC_GetCtx(void)
 {
-    return((void*)1);
+    return(MD_MALLOC_Alloc);
 }
