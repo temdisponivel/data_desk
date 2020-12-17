@@ -611,7 +611,7 @@ MD_FUNCTION MD_String8List MD_SplitStringByCharacter(MD_String8 string, MD_u8 ch
 MD_FUNCTION MD_String8     MD_JoinStringList(MD_String8List list);
 // TODO(rjf): Radix
 MD_FUNCTION MD_i64         MD_I64FromString(MD_String8 string);
-MD_FUNCTION MD_f32         MD_F32FromString(MD_String8 string);
+MD_FUNCTION MD_f64         MD_F64FromString(MD_String8 string);
 MD_FUNCTION MD_u64         MD_HashString(MD_String8 string);
 MD_FUNCTION MD_u64         MD_CalculateCStringLength(char *cstr);
 
@@ -684,6 +684,7 @@ MD_FUNCTION MD_Expr *     MD_MakeExpr(MD_Node *node, MD_ExprKind kind, MD_Expr *
 MD_FUNCTION MD_Expr *     MD_ParseAsExpr(MD_Node *first, MD_Node *last);
 MD_FUNCTION MD_Expr *     MD_ParseAsType(MD_Node *first, MD_Node *last);
 MD_FUNCTION MD_i64        MD_EvaluateExpr_I64(MD_Expr *expr);
+MD_FUNCTION MD_f64        MD_EvaluateExpr_F64(MD_Expr *expr);
 
 //~ Generation
 MD_FUNCTION void MD_OutputTree(FILE *file, MD_Node *node);

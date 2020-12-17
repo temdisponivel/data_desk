@@ -429,8 +429,8 @@ MD_I64FromString(MD_String8 string)
     return atoll(str);
 }
 
-MD_FUNCTION_IMPL MD_f32
-MD_F32FromString(MD_String8 string)
+MD_FUNCTION_IMPL MD_f64
+MD_F64FromString(MD_String8 string)
 {
     char str[64];
     _MD_WriteStringToBuffer(string, sizeof(str), str);
@@ -1934,22 +1934,31 @@ MD_EvaluateExpr_I64(MD_Expr *expr)
     MD_i64 result = 0;
     switch(expr->kind)
     {
-        case MD_ExprKind_Divide: { result = MD_EvaluateExpr_I64(expr->sub[0]) / MD_EvaluateExpr_I64(expr->sub[1]); }break;
-        
 #define _MD_BinaryOp(name, op) case MD_ExprKind_##name: { result = MD_EvaluateExpr_I64(expr->sub[0]) op MD_EvaluateExpr_I64(expr->sub[1]); }break
-        
         _MD_BinaryOp(Add,      +);
         _MD_BinaryOp(Subtract, -);
         _MD_BinaryOp(Multiply, *);
-        //_MD_BinaryOp(Divide,   /);
-        
+        _MD_BinaryOp(Divide,   /);
 #undef _MD_BinaryOp
-        
-        case MD_ExprKind_Atom:
-        {
-            result = MD_I64FromString(expr->node->string);
-        }break;
-        
+        case MD_ExprKind_Atom: { result = MD_I64FromString(expr->node->string); }break;
+        default: break;
+    }
+    return result;
+}
+
+MD_FUNCTION_IMPL MD_f64
+MD_EvaluateExpr_F64(MD_Expr *expr)
+{
+    MD_f64 result = 0;
+    switch(expr->kind)
+    {
+#define _MD_BinaryOp(name, op) case MD_ExprKind_##name: { result = MD_EvaluateExpr_I64(expr->sub[0]) op MD_EvaluateExpr_F64(expr->sub[1]); }break
+        _MD_BinaryOp(Add,      +);
+        _MD_BinaryOp(Subtract, -);
+        _MD_BinaryOp(Multiply, *);
+        _MD_BinaryOp(Divide,   /);
+#undef _MD_BinaryOp
+        case MD_ExprKind_Atom: { result = MD_F64FromString(expr->node->string); }break;
         default: break;
     }
     return result;
