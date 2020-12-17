@@ -605,19 +605,19 @@ MD_FUNCTION MD_String8     MD_TrimFolder(MD_String8 string);
 MD_FUNCTION MD_String8     MD_ExtensionFromPath(MD_String8 string);
 MD_FUNCTION MD_String8     MD_FolderFromPath(MD_String8 string);
 
-MD_FUNCTION MD_String8     MD_PushStringCopy(MD_String8 string);
-MD_FUNCTION MD_String8     MD_PushStringFV(char *fmt, va_list args);
-MD_FUNCTION MD_String8     MD_PushStringF(char *fmt, ...);
+MD_FUNCTION MD_String8     MD_PushStringCopy(void *actx, MD_String8 string);
+MD_FUNCTION MD_String8     MD_PushStringFV(void *actx, char *fmt, va_list args);
+MD_FUNCTION MD_String8     MD_PushStringF(void *actx, char *fmt, ...);
 
 #define MD_StringExpand(s) (int)(s).size, (s).str
 
-MD_FUNCTION void           MD_PushStringToList(MD_String8List *list, MD_String8 string);
+MD_FUNCTION void           MD_PushStringToList(void *actx, MD_String8List *list, MD_String8 string);
 MD_FUNCTION void           MD_PushStringListToList(MD_String8List *list, MD_String8List *to_push);
 // TODO(rjf): Just simplify to a single splitter
-MD_FUNCTION MD_String8List MD_SplitString(MD_String8 string, int split_count, MD_String8 *splits);
-MD_FUNCTION MD_String8List MD_SplitStringByString(MD_String8 string, MD_String8 split);
-MD_FUNCTION MD_String8List MD_SplitStringByCharacter(MD_String8 string, MD_u8 character);
-MD_FUNCTION MD_String8     MD_JoinStringList(MD_String8List list);
+MD_FUNCTION MD_String8List MD_SplitString(void *actx, MD_String8 string, int split_count, MD_String8 *splits);
+MD_FUNCTION MD_String8List MD_SplitStringByString(void *actx, MD_String8 string, MD_String8 split);
+MD_FUNCTION MD_String8List MD_SplitStringByCharacter(void *actx, MD_String8 string, MD_u8 character);
+MD_FUNCTION MD_String8     MD_JoinStringList(void *actx, MD_String8List list);
 // TODO(rjf): Radix
 MD_FUNCTION MD_i64         MD_I64FromString(MD_String8 string);
 MD_FUNCTION MD_f64         MD_F64FromString(MD_String8 string);
@@ -629,14 +629,14 @@ MD_FUNCTION MD_UnicodeConsume MD_CodepointFromUtf8(MD_u8 *str, MD_u64 max);
 MD_FUNCTION MD_UnicodeConsume MD_CodepointFromUtf16(MD_u16 *str, MD_u64 max);
 MD_FUNCTION MD_u32 MD_Utf8FromCodepoint(MD_u8 *out, MD_u32 codepoint);
 MD_FUNCTION MD_u32 MD_Utf16FromCodepoint(MD_u16 *out, MD_u32 codepoint);
-MD_FUNCTION MD_String8     MD_S8FromS16(MD_String16 str);
-MD_FUNCTION MD_String16    MD_S16FromS8(MD_String8 str);
-MD_FUNCTION MD_String8     MD_S8FromS32(MD_String32 str);
-MD_FUNCTION MD_String32    MD_S32FromS8(MD_String8 str);
+MD_FUNCTION MD_String8     MD_S8FromS16(void *actx, MD_String16 str);
+MD_FUNCTION MD_String16    MD_S16FromS8(void *actx, MD_String8 str);
+MD_FUNCTION MD_String8     MD_S8FromS32(void *actx, MD_String32 str);
+MD_FUNCTION MD_String32    MD_S32FromS8(void *actx, MD_String8 str);
 
 //~ String-To-Node-List Table
-MD_FUNCTION MD_NodeTableSlot *MD_NodeTable_Lookup(MD_NodeTable *table, MD_String8 string);
-MD_FUNCTION MD_b32            MD_NodeTable_Insert(MD_NodeTable *table, MD_NodeTableCollisionRule collision_rule, MD_String8 string, MD_Node *node);
+MD_FUNCTION MD_NodeTableSlot *MD_NodeTable_Lookup(void *actx, MD_NodeTable *table, MD_String8 string);
+MD_FUNCTION MD_b32            MD_NodeTable_Insert(void *actx, MD_NodeTable *table, MD_NodeTableCollisionRule collision_rule, MD_String8 string, MD_Node *node);
 
 //~ Parsing
 MD_FUNCTION MD_Token       MD_ZeroToken(void);
@@ -652,15 +652,15 @@ MD_FUNCTION MD_Token       MD_Parse_PeekSkipSome(MD_ParseCtx *ctx, MD_TokenGroup
 MD_FUNCTION MD_b32         MD_Parse_TokenMatch(MD_Token token, MD_String8 string, MD_StringMatchFlags flags);
 MD_FUNCTION MD_b32         MD_Parse_Require(MD_ParseCtx *ctx, MD_String8 string);
 MD_FUNCTION MD_b32         MD_Parse_RequireKind(MD_ParseCtx *ctx, MD_TokenKind kind, MD_Token *out_token);
-MD_FUNCTION MD_ParseResult MD_ParseOneNode     (MD_String8 filename, MD_String8 contents);
-MD_FUNCTION MD_Node *      MD_ParseWholeString (MD_String8 filename, MD_String8 contents);
-MD_FUNCTION MD_Node *      MD_ParseWholeFile   (MD_String8 filename);
+MD_FUNCTION MD_ParseResult MD_ParseOneNode     (void *actx, MD_String8 filename, MD_String8 contents);
+MD_FUNCTION MD_Node *      MD_ParseWholeString (void *actx, MD_String8 filename, MD_String8 contents);
+MD_FUNCTION MD_Node *      MD_ParseWholeFile   (void *actx, MD_String8 filename);
 
 //~ Tree/List Building
 MD_FUNCTION MD_b32   MD_NodeIsNil(MD_Node *node);
 MD_FUNCTION MD_Node *MD_NilNode(void);
-MD_FUNCTION MD_Node *MD_MakeNodeFromToken(MD_NodeKind kind, MD_String8 filename, MD_u8 *file, MD_u8 *at, MD_Token token);
-MD_FUNCTION MD_Node *MD_MakeNodeFromString(MD_NodeKind kind, MD_String8 filename, MD_u8 *file, MD_u8 *at, MD_String8 string);
+MD_FUNCTION MD_Node *MD_MakeNodeFromToken(void *actx, MD_NodeKind kind, MD_String8 filename, MD_u8 *file, MD_u8 *at, MD_Token token);
+MD_FUNCTION MD_Node *MD_MakeNodeFromString(void *actx, MD_NodeKind kind, MD_String8 filename, MD_u8 *file, MD_u8 *at, MD_String8 string);
 MD_FUNCTION void     MD_PushSibling(MD_Node **first, MD_Node **last, MD_Node *parent, MD_Node *new_sibling);
 MD_FUNCTION void     MD_PushChild(MD_Node *parent, MD_Node *new_child);
 MD_FUNCTION void     MD_PushTag(MD_Node *node, MD_Node *tag);
@@ -689,9 +689,9 @@ MD_FUNCTION MD_b32        MD_ExprIsNil(MD_Expr *expr);
 MD_FUNCTION MD_ExprKind   MD_PreUnaryExprKindFromNode(MD_Node *node);
 MD_FUNCTION MD_ExprKind   MD_BinaryExprKindFromNode(MD_Node *node);
 MD_FUNCTION MD_ExprPrec   MD_ExprPrecFromExprKind(MD_ExprKind kind);
-MD_FUNCTION MD_Expr *     MD_MakeExpr(MD_Node *node, MD_ExprKind kind, MD_Expr *left, MD_Expr *right);
-MD_FUNCTION MD_Expr *     MD_ParseAsExpr(MD_Node *first, MD_Node *last);
-MD_FUNCTION MD_Expr *     MD_ParseAsType(MD_Node *first, MD_Node *last);
+MD_FUNCTION MD_Expr *     MD_MakeExpr(void *actx, MD_Node *node, MD_ExprKind kind, MD_Expr *left, MD_Expr *right);
+MD_FUNCTION MD_Expr *     MD_ParseAsExpr(void *actx, MD_Node *first, MD_Node *last);
+MD_FUNCTION MD_Expr *     MD_ParseAsType(void *actx, MD_Node *first, MD_Node *last);
 MD_FUNCTION MD_i64        MD_EvaluateExpr_I64(MD_Expr *expr);
 MD_FUNCTION MD_f64        MD_EvaluateExpr_F64(MD_Expr *expr);
 MD_FUNCTION MD_b32        MD_ExprMatch(MD_Expr *a, MD_Expr *b, MD_StringMatchFlags str_flags);
@@ -701,14 +701,14 @@ MD_FUNCTION MD_b32        MD_ExprDeepMatch(MD_Expr *a, MD_Expr *b, MD_StringMatc
 MD_FUNCTION void MD_OutputTree(FILE *file, MD_Node *node);
 MD_FUNCTION void MD_OutputExpr(FILE *file, MD_Expr *expr);
 MD_FUNCTION void MD_OutputTree_C_String(FILE *file, MD_Node *node);
-MD_FUNCTION void MD_OutputTree_C_Struct(FILE *file, MD_Node *node);
-MD_FUNCTION void MD_OutputTree_C_Decl(FILE *file, MD_Node *node);
+MD_FUNCTION void MD_OutputTree_C_Struct(void *actx, FILE *file, MD_Node *node);
+MD_FUNCTION void MD_OutputTree_C_Decl(void *actx, FILE *file, MD_Node *node);
 MD_FUNCTION void MD_Output_C_DeclByNameAndType(FILE *file, MD_String8 name, MD_Expr *type);
 MD_FUNCTION void MD_OutputType_C_LHS(FILE *file, MD_Expr *type);
 MD_FUNCTION void MD_OutputType_C_RHS(FILE *file, MD_Expr *type);
 
 //~ Command Line Argument Helper
-MD_FUNCTION MD_CommandLine MD_CommandLine_Start(int argument_count, char **arguments);
+MD_FUNCTION MD_CommandLine MD_CommandLine_Start(void *actx, int argument_count, char **arguments);
 MD_FUNCTION MD_b32         MD_CommandLine_Flag(MD_CommandLine *cmdln, MD_String8 string);
 MD_FUNCTION MD_b32         MD_CommandLine_FlagStrings(MD_CommandLine *cmdln, MD_String8 string, int out_count, MD_String8 *out);
 MD_FUNCTION MD_b32         MD_CommandLine_FlagIntegers(MD_CommandLine *cmdln, MD_String8 string, int out_count, MD_i64 *out);
@@ -717,7 +717,7 @@ MD_FUNCTION MD_b32         MD_CommandLine_FlagInteger(MD_CommandLine *cmdln, MD_
 MD_FUNCTION MD_b32         MD_CommandLine_Increment(MD_CommandLine *cmdln, MD_String8 **string_ptr);
 
 //~ File System
-MD_FUNCTION MD_String8  MD_LoadEntireFile(MD_String8 filename);
+MD_FUNCTION MD_String8  MD_LoadEntireFile(void *actx, MD_String8 filename);
 MD_FUNCTION MD_b32      MD_FileIterIncrement(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_info);
 
 #endif // MD_H
