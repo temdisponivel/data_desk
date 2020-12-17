@@ -210,6 +210,8 @@ typedef int8_t   MD_b8;
 typedef int16_t  MD_b16;
 typedef int32_t  MD_b32;
 typedef int64_t  MD_b64;
+typedef float    MD_f32;
+typedef double   MD_f64;
 
 //~ Basic UTF-8 string types.
 
@@ -608,8 +610,8 @@ MD_FUNCTION MD_String8List MD_SplitStringByString(MD_String8 string, MD_String8 
 MD_FUNCTION MD_String8List MD_SplitStringByCharacter(MD_String8 string, MD_u8 character);
 MD_FUNCTION MD_String8     MD_JoinStringList(MD_String8List list);
 // TODO(rjf): Radix
-MD_FUNCTION int            MD_IntFromString(MD_String8 string);
-MD_FUNCTION float          MD_FloatFromString(MD_String8 string);
+MD_FUNCTION MD_i64         MD_I64FromString(MD_String8 string);
+MD_FUNCTION MD_f32         MD_F32FromString(MD_String8 string);
 MD_FUNCTION MD_u64         MD_HashString(MD_String8 string);
 MD_FUNCTION MD_u64         MD_CalculateCStringLength(char *cstr);
 
@@ -681,6 +683,7 @@ MD_FUNCTION MD_ExprPrec   MD_ExprPrecFromExprKind(MD_ExprKind kind);
 MD_FUNCTION MD_Expr *     MD_MakeExpr(MD_Node *node, MD_ExprKind kind, MD_Expr *left, MD_Expr *right);
 MD_FUNCTION MD_Expr *     MD_ParseAsExpr(MD_Node *first, MD_Node *last);
 MD_FUNCTION MD_Expr *     MD_ParseAsType(MD_Node *first, MD_Node *last);
+MD_FUNCTION MD_i64        MD_EvaluateExpr_I64(MD_Expr *expr);
 
 //~ Generation
 MD_FUNCTION void MD_OutputTree(FILE *file, MD_Node *node);

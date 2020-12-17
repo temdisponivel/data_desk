@@ -54,8 +54,9 @@ MD_PRIVATE_FUNCTION_IMPL void
 _MD_WriteStringToBuffer(MD_String8 string, MD_u64 max, void *dest)
 {
     MD_u64 write_size = string.size;
-    if(write_size > max) write_size = max;
+    if(write_size > max-1) write_size = max-1;
     _MD_MemoryCopy(dest, string.str, write_size);
+    ((MD_u8 *)dest)[write_size] = 0;
 }
 
 MD_PRIVATE_FUNCTION_IMPL void *
@@ -420,16 +421,16 @@ MD_JoinStringList(MD_String8List list)
     return string;
 }
 
-MD_FUNCTION_IMPL int
-MD_IntFromString(MD_String8 string)
+MD_FUNCTION_IMPL MD_i64
+MD_I64FromString(MD_String8 string)
 {
     char str[64];
     _MD_WriteStringToBuffer(string, sizeof(str), str);
-    return atoi(str);
+    return atoll(str);
 }
 
-MD_FUNCTION_IMPL float
-MD_FloatFromString(MD_String8 string)
+MD_FUNCTION_IMPL MD_f32
+MD_F32FromString(MD_String8 string)
 {
     char str[64];
     _MD_WriteStringToBuffer(string, sizeof(str), str);
@@ -1927,6 +1928,33 @@ MD_ParseAsType(MD_Node *first, MD_Node *last)
     return expr;
 }
 
+MD_FUNCTION_IMPL MD_i64
+MD_EvaluateExpr_I64(MD_Expr *expr)
+{
+    MD_i64 result = 0;
+    switch(expr->kind)
+    {
+        case MD_ExprKind_Divide: { result = MD_EvaluateExpr_I64(expr->sub[0]) / MD_EvaluateExpr_I64(expr->sub[1]); }break;
+        
+#define _MD_BinaryOp(name, op) case MD_ExprKind_##name: { result = MD_EvaluateExpr_I64(expr->sub[0]) op MD_EvaluateExpr_I64(expr->sub[1]); }break
+        
+        _MD_BinaryOp(Add,      +);
+        _MD_BinaryOp(Subtract, -);
+        _MD_BinaryOp(Multiply, *);
+        //_MD_BinaryOp(Divide,   /);
+        
+#undef _MD_BinaryOp
+        
+        case MD_ExprKind_Atom:
+        {
+            result = MD_I64FromString(expr->node->string);
+        }break;
+        
+        default: break;
+    }
+    return result;
+}
+
 MD_FUNCTION_IMPL void
 MD_OutputTree(FILE *file, MD_Node *node)
 {
@@ -2181,7 +2209,7 @@ MD_CommandLine_FlagIntegers(MD_CommandLine *cmdln, MD_String8 string, int out_co
             {
                 for(int out_idx = 0; out_idx < out_count; out_idx += 1)
                 {
-                    out[out_idx] = (MD_i64)MD_IntFromString(cmdln->arguments[i+out_idx+1]);
+                    out[out_idx] = MD_I64FromString(cmdln->arguments[i+out_idx+1]);
                     cmdln->arguments[i+out_idx+1].str = 0;
                     cmdln->arguments[i+out_idx+1].size = 0;
                 }

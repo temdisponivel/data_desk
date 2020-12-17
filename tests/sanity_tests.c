@@ -58,6 +58,18 @@ MakeTestNode(MD_NodeKind kind, MD_String8 string)
     return MD_MakeNodeFromString(kind, MD_S8Lit("`TEST_NODE`"), 0, 0, string);
 }
 
+static MD_Expr *
+AtomExpr(char *str)
+{
+    return MD_MakeExpr(MakeTestNode(MD_NodeKind_Label, MD_S8CString(str)), MD_ExprKind_Atom, MD_NilExpr(), MD_NilExpr());
+}
+
+static MD_Expr *
+BinOpExpr(MD_ExprKind kind, MD_Expr *left, MD_Expr *right)
+{
+    return MD_MakeExpr(MD_NilNode(), kind, left, right);
+}
+
 static MD_b32
 CompareParsedWithTree(MD_String8 string, MD_Node *tree)
 {
@@ -224,6 +236,41 @@ int main(void)
                    MD_NodeFlag_StringLiteral);
         TestResult(MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("'foo'")).node->flags &
                    MD_NodeFlag_CharLiteral);
+    }
+    
+    Test("Expression Evaluation")
+    {
+        // NOTE(rjf): 5 + 3
+        {
+            MD_Expr *expr = BinOpExpr(MD_ExprKind_Add, AtomExpr("5"), AtomExpr("3"));
+            TestResult(MD_EvaluateExpr_I64(expr) == 8);
+        }
+        
+        // NOTE(rjf): 5 - 3
+        {
+            MD_Expr *expr = BinOpExpr(MD_ExprKind_Subtract, AtomExpr("5"), AtomExpr("3"));
+            TestResult(MD_EvaluateExpr_I64(expr) == 2);
+        }
+        
+        // NOTE(rjf): 5 * 3
+        {
+            MD_Expr *expr = BinOpExpr(MD_ExprKind_Multiply, AtomExpr("5"), AtomExpr("3"));
+            TestResult(MD_EvaluateExpr_I64(expr) == 15);
+        }
+        
+        // NOTE(rjf): 10 / 2
+        {
+            MD_Expr *expr = BinOpExpr(MD_ExprKind_Divide, AtomExpr("10"), AtomExpr("2"));
+            TestResult(MD_EvaluateExpr_I64(expr) == 5);
+        }
+        
+        // NOTE(rjf): (3 + 4) * (2 + 6)
+        {
+            MD_Expr *left  = BinOpExpr(MD_ExprKind_Add, AtomExpr("3"), AtomExpr("4"));
+            MD_Expr *right = BinOpExpr(MD_ExprKind_Add, AtomExpr("2"), AtomExpr("6"));
+            MD_Expr *expr  = BinOpExpr(MD_ExprKind_Multiply, left, right);
+            TestResult(MD_EvaluateExpr_I64(expr) == 56);
+        }
     }
     
     return 0;
