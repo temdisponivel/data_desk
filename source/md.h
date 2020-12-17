@@ -18,7 +18,8 @@
 
 // NOTE(allen): "Plugin" functionality
 //
-// MD_IMPL_FileIterIncrement(MD_FileIter, MD_String8, MD_FileInfo)
+// MD_b32     MD_IMPL_FileIterIncrement(MD_FileIter*, MD_String8, MD_FileInfo*) - optional
+// void*      MD_IMPL_Alloc(void*,MD_u64)                                       - required
 //
 // TODO(allen): Commentary about this system somewhere easy to discover when
 // you go digging.

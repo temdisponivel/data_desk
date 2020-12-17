@@ -11,4 +11,6 @@
 # error No default implementation for this OS
 #endif
 
+#include "md_malloc.c"
+
 #include "md_impl.c"

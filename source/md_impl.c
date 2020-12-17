@@ -49,11 +49,18 @@ _MD_WriteStringToBuffer(MD_String8 string, MD_u64 max, void *dest)
 }
 
 MD_PRIVATE_FUNCTION_IMPL void *
-_MD_PushSize_(MD_u64 size)
+_MD_AllocZero(MD_u64 size)
 {
-    return calloc(1, size);
+#if !defined(MD_IMPL_Alloc)
+# error Missing implementation detail MD_IMPL_Alloc
+#else
+    void *result = MD_IMPL_Alloc(0, size);
+    _MD_MemoryZero(result, size);
+    return(result);
+#endif
 }
-#define _MD_PushArray(type, count) (type *)_MD_PushSize_(sizeof(type)*(count))
+
+#define _MD_PushArray(type, count) (type *)_MD_AllocZero(sizeof(type)*(count))
 
 MD_FUNCTION_IMPL MD_b32
 MD_CharIsAlpha(MD_u8 c)
@@ -607,7 +614,7 @@ MD_FUNCTION MD_String8
 MD_S8FromS16(MD_String16 in)
 {
     MD_u64 cap = in.size*3;
-    MD_u8 *str = (MD_u8*)malloc(cap + 1);
+    MD_u8 *str = _MD_PushArray(MD_u8, cap + 1);
     MD_u16 *ptr = in.str;
     MD_u16 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -626,7 +633,7 @@ MD_FUNCTION MD_String16
 MD_S16FromS8(MD_String8 in)
 {
     MD_u64 cap = in.size*2;
-    MD_u16 *str = (MD_u16*)malloc(sizeof(MD_u16)*(cap + 1));
+    MD_u16 *str = _MD_PushArray(MD_u16, (cap + 1));
     MD_u8 *ptr = in.str;
     MD_u8 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -646,7 +653,7 @@ MD_FUNCTION MD_String8
 MD_S8FromS32(MD_String32 in)
 {
     MD_u64 cap = in.size*4;
-    MD_u8 *str = (MD_u8*)malloc(cap + 1);
+    MD_u8 *str = _MD_PushArray(MD_u8, cap + 1);
     MD_u32 *ptr = in.str;
     MD_u32 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -663,7 +670,7 @@ MD_FUNCTION MD_String32
 MD_S32FromS8(MD_String8 in)
 {
     MD_u64 cap = in.size;
-    MD_u32 *str = (MD_u32*)malloc(sizeof(MD_u32)*(cap + 1));
+    MD_u32 *str = _MD_PushArray(MD_u32, (cap + 1));
     MD_u8 *ptr = in.str;
     MD_u8 *opl = ptr + in.size;
     MD_u64 size = 0;
