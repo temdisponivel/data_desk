@@ -103,7 +103,7 @@ int main(void)
     Test("Lexer")
     {
         MD_String8 string = MD_S8Lit("abc def 123 456 123_456 abc123 123abc");
-        MD_ParseCtx ctx = MD_Parse_InitializeCtx(MD_S8Lit(""), string);
+        MD_ParseCtx ctx = MD_Parse_InitializeCtx(actx, MD_S8Lit(""), string);
         TestResult(TokenMatch(MD_Parse_LexNext(&ctx), MD_S8Lit("abc"), MD_TokenKind_Identifier));
         TestResult(TokenMatch(MD_Parse_LexNext(&ctx), MD_S8Lit(" "), MD_TokenKind_Whitespace));
         TestResult(TokenMatch(MD_Parse_LexNext(&ctx), MD_S8Lit("def"), MD_TokenKind_Identifier));
