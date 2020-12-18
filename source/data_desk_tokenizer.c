@@ -178,6 +178,7 @@ GetNextTokenFromBuffer(Tokenizer *tokenizer)
                         {
                             if(buffer[j] == '\'')
                             {
+								++j;
                                 break;
                             }
                             else if(buffer[j] == '\\')
